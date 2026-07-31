@@ -42,6 +42,12 @@ final class Week {
     var goalList: [Goal] { goals ?? [] }
     var dayList: [Day] { days ?? [] }
 
+    func appendGoal(_ goal: Goal) {
+        var existingGoals = goalList
+        existingGoals.append(goal)
+        goals = existingGoals
+    }
+
     init(
         id: UUID = UUID(),
         isoYear: Int,

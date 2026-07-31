@@ -12,20 +12,20 @@ enum AppDestination: Hashable {
 struct AnkerRootView: View {
     @Environment(\.modelContext) private var modelContext
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
+    @AppStorage("onboardingVersion") private var onboardingVersion = 0
 
     let weeks: [Week]
     @State private var selectedDestination: AppDestination = .week
     @State private var showingNewTask = false
+    @State private var showingNewGoal = false
+
+    private let requiredOnboardingVersion = 2
+    private let onboardingPlaceholderTitle = "Erstes Wochenziel"
 
     private var currentWeek: Week? {
         let today = Date()
         let sortedWeeks = weeks.sorted { $0.monday < $1.monday }
-
-        if let matchingWeek = sortedWeeks.first(where: { contains(today, in: $0) }) {
-            return matchingWeek
-        }
-
-        return sortedWeeks.last
+        return sortedWeeks.first(where: { contains(today, in: $0) })
     }
 
     private var today: Day? {
@@ -33,11 +33,16 @@ struct AnkerRootView: View {
             ?? currentWeek?.dayList.sorted { $0.date < $1.date }.first
     }
 
+    private var needsOnboarding: Bool {
+        guard let currentWeek else { return true }
+        return currentWeek.goalList.filter(isUserCreatedGoal).isEmpty
+    }
+
     var body: some View {
         Group {
-            if !hasCompletedOnboarding || weeks.isEmpty {
-                OnboardingView {
-                    completeOnboarding()
+            if needsOnboarding {
+                OnboardingView(weekIntervalTitle: currentWeekTitle) { title in
+                    completeOnboarding(with: title)
                 }
             } else if let currentWeek, let today {
 #if os(macOS)
@@ -50,8 +55,8 @@ struct AnkerRootView: View {
                 }
 #endif
             } else {
-                OnboardingView {
-                    completeOnboarding()
+                OnboardingView(weekIntervalTitle: currentWeekTitle) { title in
+                    completeOnboarding(with: title)
                 }
             }
         }
@@ -61,10 +66,16 @@ struct AnkerRootView: View {
                     .presentationDetents([.medium])
             }
         }
+        .sheet(isPresented: $showingNewGoal) {
+            if let currentWeek {
+                NewGoalSheet(week: currentWeek)
+                    .presentationDetents([.medium])
+            }
+        }
         .task {
             removeReferenceDataIfNeeded()
             if hasCompletedOnboarding {
-                ensureCurrentWeekForOnboarding()
+                ensureCurrentWeek()
                 try? modelContext.save()
             }
         }
@@ -82,9 +93,11 @@ struct AnkerRootView: View {
                             showingNewTask = true
                         }
                     case .week:
-                        WeekOverviewView(week: week, selectedDay: day) {
+                        WeekOverviewView(week: week, selectedDay: day, onAddTask: {
                             showingNewTask = true
-                        }
+                        }, onAddGoal: {
+                            showingNewGoal = true
+                        })
                     case .year:
                         YearOverviewView(week: week)
                     case .review:
@@ -114,7 +127,9 @@ struct AnkerRootView: View {
 
     private func splitContent(week: Week, day: Day) -> some View {
         NavigationSplitView {
-            SidebarView(week: week, selection: $selectedDestination)
+            SidebarView(week: week, selection: $selectedDestination) {
+                showingNewGoal = true
+            }
         } detail: {
             Group {
                 switch selectedDestination {
@@ -125,22 +140,33 @@ struct AnkerRootView: View {
                 case .year:
                     YearOverviewView(week: week)
                 case .week:
-                    WeekOverviewView(week: week, selectedDay: day) {
+                    WeekOverviewView(week: week, selectedDay: day, onAddTask: {
                         showingNewTask = true
-                    }
+                    }, onAddGoal: {
+                        showingNewGoal = true
+                    })
                 case .review:
                     WeeklyReviewView(week: week)
                 case .goal(let id):
                     if let goal = week.goalList.first(where: { $0.id == id }) {
                         GoalDetailView(goal: goal, week: week)
                     } else {
-                        WeekOverviewView(week: week, selectedDay: day) {
+                        WeekOverviewView(week: week, selectedDay: day, onAddTask: {
                             showingNewTask = true
-                        }
+                        }, onAddGoal: {
+                            showingNewGoal = true
+                        })
                     }
                 }
             }
             .toolbar {
+                ToolbarItem {
+                    Button {
+                        showingNewGoal = true
+                    } label: {
+                        Label("Neues Wochenziel", systemImage: "target")
+                    }
+                }
                 ToolbarItem {
                     Button {
                         showingNewTask = true
@@ -156,11 +182,20 @@ struct AnkerRootView: View {
         }
     }
 
-    private func completeOnboarding() {
+    private var currentWeekTitle: String {
+        let interval = AnkerCalendar.weekInterval(containing: Date())
+        let start = interval.monday.formatted(.dateTime.locale(Locale(identifier: "de_DE")).day(.twoDigits).month(.twoDigits))
+        let end = interval.sunday.formatted(.dateTime.locale(Locale(identifier: "de_DE")).day(.twoDigits).month(.twoDigits).year())
+        return "\(start) - \(end)"
+    }
+
+    private func completeOnboarding(with title: String) {
         removeReferenceDataIfNeeded()
-        ensureCurrentWeekForOnboarding()
+        let week = ensureCurrentWeek()
+        let goal = upsertOnboardingGoal(title: title, in: week)
         hasCompletedOnboarding = true
-        selectedDestination = .week
+        onboardingVersion = requiredOnboardingVersion
+        selectedDestination = .goal(goal.id)
         try? modelContext.save()
     }
 
@@ -174,7 +209,7 @@ struct AnkerRootView: View {
         }
 
         if hasCompletedOnboarding && weeks.allSatisfy(SampleData.isReferenceWeek) {
-            ensureCurrentWeekForOnboarding()
+            ensureCurrentWeek()
         }
 
         try? modelContext.save()
@@ -182,11 +217,11 @@ struct AnkerRootView: View {
     }
 
     @discardableResult
-    private func ensureCurrentWeekForOnboarding() -> Week {
+    private func ensureCurrentWeek() -> Week {
         let today = Date()
 
         if let existingWeek = weeks.first(where: { contains(today, in: $0) }) {
-            ensureOnboardingDefaults(in: existingWeek)
+            ensureWeekDays(in: existingWeek)
             return existingWeek
         }
 
@@ -202,8 +237,6 @@ struct AnkerRootView: View {
             monday: interval.monday,
             sunday: interval.sunday
         )
-        let goal = Goal(title: "Erstes Wochenziel", colorHex: "#5B6EE8", week: week)
-        week.goals = [goal]
         week.days = AnkerCalendar.daysInWeek(starting: interval.monday).map { date in
             Day(date: date, week: week)
         }
@@ -211,16 +244,36 @@ struct AnkerRootView: View {
         return week
     }
 
-    private func ensureOnboardingDefaults(in week: Week) {
-        if week.goalList.isEmpty {
-            week.goals = [Goal(title: "Erstes Wochenziel", colorHex: "#5B6EE8", week: week)]
-        }
-
+    private func ensureWeekDays(in week: Week) {
         if week.dayList.isEmpty {
             week.days = AnkerCalendar.daysInWeek(starting: week.monday).map { date in
                 Day(date: date, week: week)
             }
         }
+    }
+
+    private func upsertOnboardingGoal(title: String, in week: Week) -> Goal {
+        let cleanTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        if let placeholder = week.goalList.first(where: { isPlaceholderGoal($0) }) {
+            placeholder.title = cleanTitle
+            placeholder.colorHex = "#5B6EE8"
+            return placeholder
+        }
+
+        let goal = Goal(title: cleanTitle, colorHex: "#5B6EE8", week: week)
+        modelContext.insert(goal)
+        week.appendGoal(goal)
+        return goal
+    }
+
+    private func isUserCreatedGoal(_ goal: Goal) -> Bool {
+        let title = goal.title.trimmingCharacters(in: .whitespacesAndNewlines)
+        return !title.isEmpty && !isPlaceholderGoal(goal)
+    }
+
+    private func isPlaceholderGoal(_ goal: Goal) -> Bool {
+        goal.title.trimmingCharacters(in: .whitespacesAndNewlines) == onboardingPlaceholderTitle
+            && goal.taskList.isEmpty
     }
 
     private func contains(_ date: Date, in week: Week) -> Bool {
@@ -231,6 +284,25 @@ struct AnkerRootView: View {
 struct SidebarView: View {
     let week: Week
     @Binding var selection: AppDestination
+    var onAddGoal: () -> Void = {}
+
+    private var monthGroups: [SidebarMonthGroup] {
+        let calendar = Calendar.current
+        let sortedDays = week.dayList.sorted { $0.date < $1.date }
+        return sortedDays.reduce(into: [SidebarMonthGroup]()) { groups, day in
+            let components = calendar.dateComponents([.year, .month], from: day.date)
+            let month = components.month ?? 1
+            let year = components.year ?? week.isoYear
+
+            if let lastIndex = groups.indices.last,
+               groups[lastIndex].month == month,
+               groups[lastIndex].year == year {
+                groups[lastIndex].days.append(day)
+            } else {
+                groups.append(SidebarMonthGroup(year: year, month: month, days: [day]))
+            }
+        }
+    }
 
     var body: some View {
         List {
@@ -245,11 +317,11 @@ struct SidebarView: View {
                     .listRowBackground(Color.clear)
             }
 
-            Section("\(week.isoYear)") {
+            Section {
                 Button {
                     selection = .year
                 } label: {
-                    NavigationItemRow(color: AnkerColor.month[0], title: "Januar", isEmphasized: selection == .year)
+                    NavigationItemRow(color: AnkerColor.month[max(weekMonthIndex, 0)], title: "Jahr", isEmphasized: selection == .year)
                 }
                 .buttonStyle(.plain)
 
@@ -262,16 +334,18 @@ struct SidebarView: View {
                 }
                 .buttonStyle(.plain)
 
-                ForEach(week.dayList.sorted { $0.date < $1.date }, id: \.id) { day in
-                    Text(day.date.formatted(.dateTime.locale(Locale(identifier: "de_DE")).weekday(.abbreviated).day(.twoDigits).month(.twoDigits)))
-                        .font(.system(size: 11))
-                        .foregroundStyle(AnkerColor.muted)
-                        .padding(.leading, 14)
+                ForEach(monthGroups) { group in
+                    NavigationItemRow(color: AnkerColor.month[group.month - 1], title: group.title(in: week.isoYear))
+                        .padding(.top, 5)
+                    ForEach(group.days, id: \.id) { day in
+                        Text(day.date.formatted(.dateTime.locale(Locale(identifier: "de_DE")).weekday(.abbreviated).day(.twoDigits).month(.twoDigits)))
+                            .font(.system(size: 11))
+                            .foregroundStyle(AnkerColor.muted)
+                            .padding(.leading, 18)
+                    }
                 }
-
-                ForEach(Array(["Februar", "März"].enumerated()), id: \.offset) { index, month in
-                    NavigationItemRow(color: AnkerColor.month[index + 1], title: month)
-                }
+            } header: {
+                Text(verbatim: String(week.isoYear))
             }
 
             Section("Ziele") {
@@ -285,6 +359,14 @@ struct SidebarView: View {
                     }
                     .buttonStyle(.plain)
                 }
+
+                Button(action: onAddGoal) {
+                    Label("Neues Wochenziel", systemImage: "plus.circle")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(AnkerColor.indigoText)
+                }
+                .buttonStyle(.plain)
+                .disabled(week.goalList.count >= 4)
             }
 
             Section {
@@ -311,6 +393,10 @@ struct SidebarView: View {
         }
         .navigationTitle("Anker")
     }
+
+    private var weekMonthIndex: Int {
+        Calendar.current.component(.month, from: week.monday) - 1
+    }
 }
 
 private struct NavigationItemRow: View {
@@ -328,10 +414,24 @@ private struct NavigationItemRow: View {
     }
 }
 
+private struct SidebarMonthGroup: Identifiable {
+    let year: Int
+    let month: Int
+    var days: [Day]
+
+    var id: String { "\(year)-\(month)" }
+
+    func title(in currentYear: Int) -> String {
+        let monthName = Calendar.current.monthSymbols[month - 1]
+        return year == currentYear ? monthName : "\(monthName) \(year)"
+    }
+}
+
 struct WeekOverviewView: View {
     let week: Week
     let selectedDay: Day
     var onAddTask: () -> Void = {}
+    var onAddGoal: () -> Void = {}
 
     var body: some View {
         VStack(spacing: 0) {
@@ -350,6 +450,15 @@ struct WeekOverviewView: View {
                 }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.small)
+                Button(action: onAddGoal) {
+                    Image(systemName: "target")
+                        .font(.system(size: 12, weight: .semibold))
+                        .frame(width: 28, height: 28)
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+                .help("Neues Wochenziel")
+                .disabled(week.goalList.count >= 4)
             }
             .padding(.horizontal, 18)
             .padding(.vertical, 11)
@@ -359,6 +468,19 @@ struct WeekOverviewView: View {
             HStack(spacing: 10) {
                 ForEach(week.goalList.prefix(4), id: \.id) { goal in
                     GoalPill(goal: goal)
+                }
+                if week.goalList.count < 4 {
+                    Button(action: onAddGoal) {
+                        Image(systemName: "plus")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundStyle(AnkerColor.indigoText)
+                            .frame(maxWidth: .infinity, minHeight: 82)
+                            .background(AnkerColor.card)
+                            .overlay(RoundedRectangle(cornerRadius: 12).stroke(AnkerColor.line, style: StrokeStyle(lineWidth: 1, dash: [5, 4])))
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                    }
+                    .buttonStyle(.plain)
+                    .help("Neues Wochenziel")
                 }
             }
             .padding(.horizontal, 18)

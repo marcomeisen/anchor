@@ -97,14 +97,9 @@ struct QuickCapturePopover: View {
     private var currentWeek: Week? {
         let today = Date()
         let sortedWeeks = weeks.sorted { $0.monday < $1.monday }
-
-        if let matchingWeek = sortedWeeks.first(where: { week in
+        return sortedWeeks.first(where: { week in
             (week.monday...week.sunday).contains(today)
-        }) {
-            return matchingWeek
-        }
-
-        return sortedWeeks.last
+        })
     }
 
     private var currentDay: Day? {
@@ -200,6 +195,83 @@ struct QuickCapturePopover: View {
     }
 }
 #endif
+
+struct NewGoalSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.modelContext) private var modelContext
+    @Bindable var week: Week
+
+    @State private var title = ""
+    @State private var selectedColor = "#5B6EE8"
+
+    private let colorOptions = ["#5B6EE8", "#C9974B", "#7FCDA8", "#8FA8E8", "#F0C955", "#F09EA9"]
+
+    var body: some View {
+        NavigationStack {
+            VStack(alignment: .leading, spacing: 13) {
+                TextField("Was ist dein Wochenziel?", text: $title)
+                    .textFieldStyle(.plain)
+                    .font(.system(size: 12.5))
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 9)
+                    .background(AnkerColor.surfaceRaised)
+                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(AnkerColor.line))
+
+                Text("Farbe".uppercased())
+                    .font(.system(size: 10.5, weight: .bold))
+                    .foregroundStyle(AnkerColor.muted)
+
+                HStack(spacing: 8) {
+                    ForEach(colorOptions, id: \.self) { colorHex in
+                        Button {
+                            selectedColor = colorHex
+                        } label: {
+                            Circle()
+                                .fill(Color(hex: colorHex))
+                                .frame(width: 25, height: 25)
+                                .overlay(Circle().stroke(selectedColor == colorHex ? AnkerColor.ink : AnkerColor.line, lineWidth: selectedColor == colorHex ? 2 : 1))
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Zielfarbe")
+                    }
+                }
+
+                Text("\(week.goalList.count)/4 Wochenziele")
+                    .font(.system(size: 11.5, weight: .medium))
+                    .foregroundStyle(AnkerColor.muted)
+
+                Spacer()
+            }
+            .padding(16)
+            .background(AnkerColor.card)
+            .navigationTitle("Neues Wochenziel")
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Abbrechen") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Sichern") {
+                        save()
+                        dismiss()
+                    }
+                    .disabled(cleanTitle.isEmpty || week.goalList.count >= 4)
+                }
+            }
+        }
+    }
+
+    private var cleanTitle: String {
+        title.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private func save() {
+        guard !cleanTitle.isEmpty, week.goalList.count < 4 else { return }
+        let goal = Goal(title: cleanTitle, colorHex: selectedColor, week: week)
+        modelContext.insert(goal)
+        week.appendGoal(goal)
+        try? modelContext.save()
+    }
+}
 
 private struct CaptureChip: View {
     let title: String
@@ -440,7 +512,10 @@ private struct TimelineDayBar: View {
 }
 
 struct OnboardingView: View {
-    var onCreateGoal: () -> Void
+    let weekIntervalTitle: String
+    var onCreateGoal: (String) -> Void
+
+    @State private var goalTitle = ""
 
     var body: some View {
         VStack(spacing: 0) {
@@ -457,12 +532,28 @@ struct OnboardingView: View {
                 .foregroundStyle(AnkerColor.ink)
                 .padding(.bottom, 10)
 
-            Text("Setze bis zu vier Wochenziele. Jede Tagesaufgabe, die du erledigst, bleibt sichtbar mit ihrem Ziel verbunden.")
+            Text(weekIntervalTitle)
+                .font(.system(size: 11.5, weight: .medium, design: .monospaced))
+                .foregroundStyle(AnkerColor.indigoText)
+                .padding(.bottom, 8)
+
+            Text("Setze dein erstes Wochenziel. Jede Tagesaufgabe, die du erledigst, bleibt sichtbar mit ihrem Ziel verbunden.")
                 .font(.system(size: 13))
                 .foregroundStyle(Color(hex: "#5A5D6A", darkHex: "#C4C6D0"))
                 .lineSpacing(4)
                 .multilineTextAlignment(.center)
-                .padding(.bottom, 30)
+                .padding(.bottom, 18)
+
+            TextField("Mein Wochenziel", text: $goalTitle)
+                .textFieldStyle(.plain)
+                .font(.system(size: 13.5, weight: .semibold))
+                .foregroundStyle(AnkerColor.ink)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 11)
+                .background(AnkerColor.surfaceRaised)
+                .overlay(RoundedRectangle(cornerRadius: 10).stroke(AnkerColor.line))
+                .clipShape(RoundedRectangle(cornerRadius: 10))
+                .padding(.bottom, 22)
 
             HStack(spacing: 6) {
                 Capsule().fill(AnkerColor.indigo).frame(width: 16, height: 6)
@@ -471,7 +562,9 @@ struct OnboardingView: View {
             }
             .padding(.bottom, 22)
 
-            Button(action: onCreateGoal) {
+            Button {
+                onCreateGoal(cleanGoalTitle)
+            } label: {
                 Text("Erstes Wochenziel setzen")
                     .font(.system(size: 14, weight: .bold))
                     .foregroundStyle(.white)
@@ -486,10 +579,16 @@ struct OnboardingView: View {
                     .shadow(color: AnkerColor.indigoText.opacity(0.35), radius: 18, x: 0, y: 8)
             }
             .buttonStyle(.plain)
+            .disabled(cleanGoalTitle.isEmpty)
+            .opacity(cleanGoalTitle.isEmpty ? 0.58 : 1)
 
             Spacer()
         }
         .padding(.horizontal, 32)
         .background(AnkerColor.paper)
+    }
+
+    private var cleanGoalTitle: String {
+        goalTitle.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 }
