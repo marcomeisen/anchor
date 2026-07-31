@@ -2,6 +2,7 @@ import SwiftData
 import SwiftUI
 
 enum AppDestination: Hashable {
+    case today
     case year
     case week
     case review
@@ -28,8 +29,8 @@ struct AnkerRootView: View {
     }
 
     private var today: Day? {
-        currentWeek?.days.first { AnkerCalendar.isSameDay($0.date, Date()) }
-            ?? currentWeek?.days.sorted { $0.date < $1.date }.first
+        currentWeek?.dayList.first { AnkerCalendar.isSameDay($0.date, Date()) }
+            ?? currentWeek?.dayList.sorted { $0.date < $1.date }.first
     }
 
     var body: some View {
@@ -56,7 +57,7 @@ struct AnkerRootView: View {
         }
         .sheet(isPresented: $showingNewTask) {
             if let currentWeek, let today {
-                NewTaskSheet(day: today, goals: currentWeek.goals)
+                NewTaskSheet(day: today, goals: currentWeek.goalList)
                     .presentationDetents([.medium])
             }
         }
@@ -73,21 +74,39 @@ struct AnkerRootView: View {
 
     private func phoneContent(week: Week, day: Day) -> some View {
         NavigationStack {
-            TodayView(day: day, week: week) {
-                showingNewTask = true
-            }
-            .toolbar {
-                ToolbarItem {
-                    NavigationLink("Index") {
+            ZStack(alignment: .bottom) {
+                Group {
+                    switch selectedDestination {
+                    case .today:
+                        TodayView(day: day, week: week) {
+                            showingNewTask = true
+                        }
+                    case .week:
+                        WeekOverviewView(week: week, selectedDay: day) {
+                            showingNewTask = true
+                        }
+                    case .year:
                         YearOverviewView(week: week)
-                    }
-                    .font(.system(size: 12, weight: .semibold))
-                }
-                ToolbarItem {
-                    NavigationLink("Rückblick") {
+                    case .review:
                         WeeklyReviewView(week: week)
+                    case .goal:
+                        TodayView(day: day, week: week) {
+                            showingNewTask = true
+                        }
                     }
-                    .font(.system(size: 12, weight: .semibold))
+                }
+
+                GlassTabBar(selection: $selectedDestination)
+                    .padding(.horizontal, 18)
+                    .padding(.bottom, 16)
+            }
+#if os(iOS)
+            .toolbarBackground(.visible, for: .navigationBar)
+            .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
+#endif
+            .onAppear {
+                if selectedDestination == .week {
+                    selectedDestination = .today
                 }
             }
         }
@@ -99,6 +118,10 @@ struct AnkerRootView: View {
         } detail: {
             Group {
                 switch selectedDestination {
+                case .today:
+                    TodayView(day: day, week: week) {
+                        showingNewTask = true
+                    }
                 case .year:
                     YearOverviewView(week: week)
                 case .week:
@@ -108,7 +131,7 @@ struct AnkerRootView: View {
                 case .review:
                     WeeklyReviewView(week: week)
                 case .goal(let id):
-                    if let goal = week.goals.first(where: { $0.id == id }) {
+                    if let goal = week.goalList.first(where: { $0.id == id }) {
                         GoalDetailView(goal: goal, week: week)
                     } else {
                         WeekOverviewView(week: week, selectedDay: day) {
@@ -126,6 +149,10 @@ struct AnkerRootView: View {
                     }
                 }
             }
+#if os(macOS)
+            .toolbarBackground(.visible, for: .windowToolbar)
+            .toolbarBackground(.regularMaterial, for: .windowToolbar)
+#endif
         }
     }
 
@@ -185,11 +212,11 @@ struct AnkerRootView: View {
     }
 
     private func ensureOnboardingDefaults(in week: Week) {
-        if week.goals.isEmpty {
+        if week.goalList.isEmpty {
             week.goals = [Goal(title: "Erstes Wochenziel", colorHex: "#5B6EE8", week: week)]
         }
 
-        if week.days.isEmpty {
+        if week.dayList.isEmpty {
             week.days = AnkerCalendar.daysInWeek(starting: week.monday).map { date in
                 Day(date: date, week: week)
             }
@@ -235,7 +262,7 @@ struct SidebarView: View {
                 }
                 .buttonStyle(.plain)
 
-                ForEach(week.days.sorted { $0.date < $1.date }, id: \.id) { day in
+                ForEach(week.dayList.sorted { $0.date < $1.date }, id: \.id) { day in
                     Text(day.date.formatted(.dateTime.locale(Locale(identifier: "de_DE")).weekday(.abbreviated).day(.twoDigits).month(.twoDigits)))
                         .font(.system(size: 11))
                         .foregroundStyle(AnkerColor.muted)
@@ -248,7 +275,7 @@ struct SidebarView: View {
             }
 
             Section("Ziele") {
-                ForEach(week.goals, id: \.id) { goal in
+                ForEach(week.goalList, id: \.id) { goal in
                     Button {
                         selection = .goal(goal.id)
                     } label: {
@@ -272,7 +299,16 @@ struct SidebarView: View {
             }
         }
         .scrollContentBackground(.hidden)
-        .background(Color(hex: "#EFEFF4", darkHex: "#17181F"))
+        .background(.regularMaterial)
+        .overlay(alignment: .trailing) {
+            LinearGradient(
+                colors: [.black.opacity(0.08), .clear],
+                startPoint: .trailing,
+                endPoint: .leading
+            )
+            .frame(width: 18)
+            .allowsHitTesting(false)
+        }
         .navigationTitle("Anker")
     }
 }
@@ -316,23 +352,23 @@ struct WeekOverviewView: View {
                 .controlSize(.small)
             }
             .padding(.horizontal, 18)
-            .padding(.vertical, 10)
-            .background(AnkerColor.card)
-            .overlay(alignment: .bottom) { Rectangle().fill(AnkerColor.line).frame(height: 1) }
+            .padding(.vertical, 11)
+            .background(.regularMaterial)
+            .overlay(alignment: .bottom) { Rectangle().fill(.white.opacity(0.22)).frame(height: 1) }
 
             HStack(spacing: 10) {
-                ForEach(week.goals.prefix(4), id: \.id) { goal in
+                ForEach(week.goalList.prefix(4), id: \.id) { goal in
                     GoalPill(goal: goal)
                 }
             }
             .padding(.horizontal, 18)
             .padding(.vertical, 14)
-            .background(Color(hex: "#FBFBFD", darkHex: "#17181F"))
+            .background(AnkerColor.paper)
             .overlay(alignment: .bottom) { Rectangle().fill(AnkerColor.line).frame(height: 1) }
 
             ScrollView {
                 VStack(spacing: 0) {
-                    ForEach(week.days.sorted { $0.date < $1.date }, id: \.id) { day in
+                    ForEach(week.dayList.sorted { $0.date < $1.date }, id: \.id) { day in
                         WeekGridRow(day: day, isToday: AnkerCalendar.isSameDay(day.date, selectedDay.date))
                     }
                 }
@@ -400,7 +436,7 @@ private struct WeekGridRow: View {
             .frame(width: 96, alignment: .leading)
 
             FlowLayout(spacing: 6) {
-                ForEach(day.tasks.sorted { $0.order < $1.order }, id: \.id) { task in
+                ForEach(day.taskList.sorted { $0.order < $1.order }, id: \.id) { task in
                     MiniTask(task: task)
                 }
             }
@@ -449,19 +485,19 @@ struct YearOverviewView: View {
             }
             .padding(.horizontal, 18)
             .padding(.vertical, 10)
-            .background(AnkerColor.card)
-            .overlay(alignment: .bottom) { Rectangle().fill(AnkerColor.line).frame(height: 1) }
+            .background(.regularMaterial)
+            .overlay(alignment: .bottom) { Rectangle().fill(.white.opacity(0.22)).frame(height: 1) }
 
             LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 10), count: 4), spacing: 10) {
                 ForEach(0..<12, id: \.self) { index in
                     VStack(alignment: .leading) {
                         Text(monthNames[index])
                             .font(.system(size: 12.5, weight: .bold))
-                            .foregroundStyle(Color(hex: "#24262F"))
+                            .foregroundStyle(Color(hex: "#1C1E27"))
                         Spacer()
                         Text(index == 0 ? "3/4 Ziele erreicht" : "—")
                             .font(.system(size: 10, weight: .semibold))
-                            .foregroundStyle(Color(hex: "#4A4D5A"))
+                            .foregroundStyle(Color(hex: "#1C1E27").opacity(0.72))
                     }
                     .frame(maxWidth: .infinity, minHeight: 78, alignment: .leading)
                     .padding(12)

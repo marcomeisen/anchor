@@ -8,11 +8,18 @@
 import SwiftUI
 import SwiftData
 
+private enum CloudSyncConfiguration {
+    static let containerIdentifier = "iCloud.com.marcomeisen.Anchor"
+}
+
 @main
 struct AnchorApp: App {
     var sharedModelContainer: ModelContainer = {
         let schema = Schema(AnkerSchema.models)
-        let modelConfiguration = ModelConfiguration(schema: schema, cloudKitDatabase: .automatic)
+        let modelConfiguration = ModelConfiguration(
+            schema: schema,
+            cloudKitDatabase: .private(CloudSyncConfiguration.containerIdentifier)
+        )
 
         do {
             return try ModelContainer(for: schema, configurations: [modelConfiguration])

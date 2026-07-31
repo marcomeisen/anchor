@@ -11,7 +11,7 @@ enum SampleData {
     ]
 
     nonisolated static func isReferenceWeek(_ week: Week) -> Bool {
-        let titles = Set(week.goals.map(\.title))
+        let titles = Set(week.goalList.map(\.title))
         return week.isoYear == 2026
             && week.isoWeek == 1
             && referenceGoalTitles.isSubset(of: titles)

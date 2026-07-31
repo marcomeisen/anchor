@@ -60,7 +60,10 @@ struct GoalBanner: View {
     let title: String
     var badgeColor: Color = AnkerColor.indigo
     var background: LinearGradient = LinearGradient(
-        colors: [Color(hex: "#EEF0FF"), Color(hex: "#F7F1E4")],
+        colors: [
+            Color(light: "#EEF0FF", dark: "#1C1D24"),
+            Color(light: "#F7F1E4", dark: "#23242D")
+        ],
         startPoint: .topLeading,
         endPoint: .bottomTrailing
     )
@@ -71,7 +74,7 @@ struct GoalBanner: View {
             VStack(alignment: .leading, spacing: 1) {
                 Text(label.uppercased())
                     .font(.system(size: 9.5, weight: .bold))
-                    .foregroundStyle(AnkerColor.indigoDark)
+                    .foregroundStyle(AnkerColor.indigoText)
                     .tracking(0.57)
                 Text(title)
                     .font(.system(size: 12.5, weight: .semibold))
@@ -85,7 +88,7 @@ struct GoalBanner: View {
         .background(background)
         .overlay(
             RoundedRectangle(cornerRadius: AnkerRadius.pill)
-                .stroke(Color(hex: "#DCE1FA"), lineWidth: 1)
+                .stroke(AnkerColor.line, lineWidth: 1)
         )
         .clipShape(RoundedRectangle(cornerRadius: AnkerRadius.pill))
         .accessibilityElement(children: .combine)
@@ -98,8 +101,8 @@ struct PriorityTag: View {
     var color: Color {
         switch priority {
         case .a: AnkerColor.prioA
-        case .b: AnkerColor.indigo
-        case .c: AnkerColor.muted
+        case .b: AnkerColor.indigoBadge
+        case .c: AnkerColor.prioC
         }
     }
 
@@ -172,7 +175,7 @@ struct TaskCard: View {
                             .lineLimit(1)
                     }
                     .font(.system(size: 10, weight: .semibold))
-                    .foregroundStyle(AnkerColor.indigoDark)
+                    .foregroundStyle(AnkerColor.indigoText)
                     .accessibilityLabel("Verankert an \(goal.title)")
                 }
             }
@@ -211,7 +214,13 @@ struct WeekDot: View {
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundStyle(AnkerColor.ink)
                     .frame(width: 28, height: 28)
-                    .background(isActive ? AnkerColor.month[0] : AnkerColor.lineSoft, in: Circle())
+                    .background(
+                        isActive
+                            ? AnyShapeStyle(LinearGradient(colors: [Color(hex: "#96A6F2"), AnkerColor.indigo], startPoint: .topLeading, endPoint: .bottomTrailing))
+                            : AnyShapeStyle(AnkerColor.surfaceRaised),
+                        in: Circle()
+                    )
+                    .overlay(Circle().stroke(isActive ? Color.clear : AnkerColor.line, lineWidth: 1))
                     .overlay {
                         if isActive {
                             Circle()
@@ -245,16 +254,93 @@ struct ChipButton: View {
         Button(action: action) {
             Text(title)
                 .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(isPrimary ? AnkerColor.indigoDark : AnkerColor.muted)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 5)
-                .background(isPrimary ? Color(hex: "#EEF0FF") : Color(hex: "#F4F4F7"))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 7)
-                        .stroke(isPrimary ? Color(hex: "#DDE1FA") : AnkerColor.line, lineWidth: 1)
-                )
-                .clipShape(RoundedRectangle(cornerRadius: 7))
+                .foregroundStyle(isPrimary ? AnkerColor.indigoText : AnkerColor.muted)
+                .padding(.horizontal, 11)
+                .padding(.vertical, 6)
+                .background(.thinMaterial, in: Capsule())
+                .overlay(Capsule().stroke(.white.opacity(0.28), lineWidth: 1))
+                .shadow(color: .black.opacity(0.08), radius: 7, x: 0, y: 2)
         }
         .buttonStyle(.plain)
+    }
+}
+
+struct GlassTabBar: View {
+    @Binding var selection: AppDestination
+
+    var body: some View {
+        HStack(spacing: 0) {
+            tab(.today, title: "Heute", systemImage: "sun.max")
+            tab(.week, title: "Woche", systemImage: "calendar")
+            tab(.year, title: "Jahr", systemImage: "square.grid.2x2")
+            tab(.review, title: "Mehr", systemImage: "ellipsis.circle")
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 9)
+        .background(.ultraThinMaterial, in: Capsule())
+        .overlay(Capsule().stroke(.white.opacity(0.28), lineWidth: 1))
+        .shadow(color: .black.opacity(0.22), radius: 24, x: 0, y: 14)
+        .accessibilityElement(children: .contain)
+    }
+
+    private func tab(_ destination: AppDestination, title: String, systemImage: String) -> some View {
+        Button {
+            selection = destination
+        } label: {
+            VStack(spacing: 3) {
+                Image(systemName: systemImage)
+                    .font(.system(size: 14, weight: .semibold))
+                    .frame(width: 22, height: 20)
+                    .background(isSelected(destination) ? AnkerColor.indigo.opacity(0.16) : Color.clear, in: RoundedRectangle(cornerRadius: 7))
+                Text(title)
+                    .font(.system(size: 9, weight: .semibold))
+            }
+            .foregroundStyle(isSelected(destination) ? AnkerColor.indigo : AnkerColor.muted)
+            .frame(maxWidth: .infinity)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(title)
+    }
+
+    private func isSelected(_ destination: AppDestination) -> Bool {
+        switch (selection, destination) {
+        case (.today, .today), (.week, .week), (.year, .year), (.review, .review):
+            true
+        default:
+            false
+        }
+    }
+}
+
+struct GlassFAB: View {
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: "plus")
+                .font(.system(size: 20, weight: .bold))
+                .foregroundStyle(.white)
+                .frame(width: 52, height: 52)
+                .background(.ultraThinMaterial, in: Circle())
+                .background(
+                    LinearGradient(
+                        colors: [Color(hex: "#8C9BF5").opacity(0.92), AnkerColor.indigoText.opacity(0.92)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    ),
+                    in: Circle()
+                )
+                .overlay(alignment: .topLeading) {
+                    Circle()
+                        .fill(.white.opacity(0.46))
+                        .frame(width: 16, height: 16)
+                        .blur(radius: 6)
+                        .offset(x: 8, y: 7)
+                }
+                .overlay(Circle().stroke(.white.opacity(0.35), lineWidth: 1))
+                .shadow(color: AnkerColor.indigoText.opacity(0.5), radius: 18, x: 0, y: 10)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Neue Aufgabe")
     }
 }

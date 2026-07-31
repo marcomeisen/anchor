@@ -7,7 +7,7 @@ struct TodayView: View {
     var onAddTask: () -> Void
 
     private var tasks: [AnkerTask] {
-        day.tasks.sorted { $0.order < $1.order }
+        day.taskList.sorted { $0.order < $1.order }
     }
 
     var body: some View {
@@ -17,7 +17,7 @@ struct TodayView: View {
                     header
                     weekStrip
 
-                    if let focus = day.focusNote ?? week.goals.first?.title {
+                    if let focus = day.focusNote ?? week.goalList.first?.title {
                         GoalBanner(label: "Verankert an Wochenziel", title: focus)
                             .padding(.horizontal, AnkerSpacing.screenPadding)
                             .padding(.bottom, 14)
@@ -27,7 +27,7 @@ struct TodayView: View {
                         .padding(.horizontal, AnkerSpacing.screenPadding)
 
                     VStack(spacing: 0) {
-                        ForEach(day.timeBlocks.sorted { $0.startTime < $1.startTime }, id: \.id) { block in
+                        ForEach(day.timeBlockList.sorted { $0.startTime < $1.startTime }, id: \.id) { block in
                             TimeBlockRow(block: block, isAnchored: block.linkedEventIdentifier != nil)
                         }
                     }
@@ -56,18 +56,9 @@ struct TodayView: View {
             }
             .background(AnkerColor.paper)
 
-            Button(action: onAddTask) {
-                Image(systemName: "plus")
-                    .font(.system(size: 20, weight: .bold))
-                    .foregroundStyle(.white)
-                    .frame(width: 52, height: 52)
-                    .background(AnkerColor.indigo, in: Circle())
-                    .shadow(color: AnkerColor.indigo.opacity(0.55), radius: 12, x: 0, y: 6)
-            }
-            .buttonStyle(.plain)
+            GlassFAB(action: onAddTask)
             .padding(.trailing, 22)
-            .padding(.bottom, 26)
-            .accessibilityLabel("Neue Aufgabe")
+            .padding(.bottom, 86)
         }
         .navigationTitle("Heute")
 #if os(iOS)
@@ -85,20 +76,26 @@ struct TodayView: View {
                 .font(.system(size: 22, weight: .bold))
                 .foregroundStyle(AnkerColor.ink)
         }
-        .padding(.horizontal, AnkerSpacing.screenPadding)
-        .padding(.top, 16)
-        .padding(.bottom, 10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 20))
+        .overlay(RoundedRectangle(cornerRadius: 20).stroke(.white.opacity(0.28), lineWidth: 1))
+        .shadow(color: .black.opacity(0.08), radius: 18, x: 0, y: 8)
+        .padding(.horizontal, 13)
+        .padding(.top, 12)
+        .padding(.bottom, 8)
     }
 
     private var weekStrip: some View {
         HStack {
-            ForEach(week.days.sorted { $0.date < $1.date }, id: \.id) { item in
+            ForEach(week.dayList.sorted { $0.date < $1.date }, id: \.id) { item in
                 WeekDot(
                     date: item.date,
                     isActive: AnkerCalendar.isSameDay(item.date, day.date),
-                    hasGoal: item.tasks.contains { $0.linkedGoal != nil }
+                    hasGoal: item.taskList.contains { $0.linkedGoal != nil }
                 )
-                if item.id != week.days.sorted(by: { $0.date < $1.date }).last?.id {
+                if item.id != week.dayList.sorted(by: { $0.date < $1.date }).last?.id {
                     Spacer(minLength: 0)
                 }
             }

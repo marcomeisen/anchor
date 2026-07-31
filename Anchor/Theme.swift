@@ -1,17 +1,28 @@
 import SwiftUI
 
 enum AnkerColor {
-    static let indigo = Color(hex: "#5B6EE8", darkHex: "#7F8DFF")
-    static let indigoDark = Color(hex: "#3F4FBF", darkHex: "#A8B1FF")
-    static let brass = Color(hex: "#C9974B", darkHex: "#E0B56C")
-    static let ink = Color(hex: "#1C1E27", darkHex: "#F1F2F7")
-    static let paper = Color(hex: "#F7F7FA", darkHex: "#101116")
-    static let card = Color(hex: "#FFFFFF", darkHex: "#17181F")
-    static let line = Color(hex: "#E4E5EA", darkHex: "#2A2C36")
-    static let lineSoft = Color(hex: "#EDEEF2", darkHex: "#202127")
-    static let muted = Color(hex: "#8A8D98", darkHex: "#AEB0BA")
-    static let success = Color(hex: "#34C759", darkHex: "#4FDB74")
-    static let prioA = Color(hex: "#E0574D", darkHex: "#FF746B")
+    static let appBackground = Color(light: "#F7F7FA", dark: "#111219")
+    static let surface = Color(light: "#FFFFFF", dark: "#1C1D24")
+    static let surfaceRaised = Color(light: "#FFFFFF", dark: "#23242D")
+    static let line = Color(light: "#E4E5EA", dark: "#FFFFFF1F")
+    static let lineSoft = Color(light: "#EDEEF2", dark: "#FFFFFF12")
+    static let textStrong = Color(light: "#1C1E27", dark: "#F2F2F7")
+    static let textSoft = Color(light: "#8A8D98", dark: "#A6A9B5")
+
+    static let indigo = Color(hex: "#5B6EE8")
+    static let indigoBadge = Color(hex: "#4D61E6")
+    static let indigoText = Color(light: "#3F4FBF", dark: "#90A0F5")
+    static let brass = Color(light: "#C9974B", dark: "#E0BC85")
+    static let successIcon = Color(hex: "#2A9F47")
+    static let prioA = Color(hex: "#D93327")
+    static let prioC = Color(hex: "#6E7180")
+
+    static let ink = textStrong
+    static let paper = appBackground
+    static let card = surface
+    static let muted = textSoft
+    static let indigoDark = indigoText
+    static let success = successIcon
 
     static let month: [Color] = [
         "#8FA8E8", "#7FCDA8", "#B9D97A", "#F0C955",
@@ -32,9 +43,18 @@ enum AnkerSpacing {
 }
 
 extension Color {
+    init(light: String, dark: String) {
+        self.init(hex: light, darkHex: dark)
+    }
+
     init(hex: String, darkHex: String? = nil) {
         let light = PlatformColor(hex: hex)
-        let dark = darkHex.map(PlatformColor.init(hex:))
+        let dark: PlatformColor?
+        if let darkHex {
+            dark = PlatformColor(hex: darkHex)
+        } else {
+            dark = nil
+        }
 
 #if os(macOS)
         if let dark {

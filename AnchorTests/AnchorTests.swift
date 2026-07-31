@@ -7,13 +7,13 @@ final class AnchorTests: XCTestCase {
     func testGoalProgressCountsDoneLinkedTasks() throws {
         let container = try makeContainer()
         let week = SampleData.insertReferenceWeek(in: container.mainContext)
-        let goal = try XCTUnwrap(week.goals.first { $0.title == "Jahresplanung 2026" })
+        let goal = try XCTUnwrap(week.goalList.first { $0.title == "Jahresplanung 2026" })
 
-        XCTAssertEqual(goal.tasks.count, 5)
-        XCTAssertEqual(goal.tasks.filter(\.isDone).count, 2)
+        XCTAssertEqual(goal.taskList.count, 5)
+        XCTAssertEqual(goal.taskList.filter(\.isDone).count, 2)
         XCTAssertEqual(goal.progress, 0.4, accuracy: 0.001)
 
-        goal.tasks.first { !$0.isDone }?.isDone = true
+        goal.taskList.first { !$0.isDone }?.isDone = true
         XCTAssertEqual(goal.progress, 0.6, accuracy: 0.001)
     }
 

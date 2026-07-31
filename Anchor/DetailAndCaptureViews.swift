@@ -19,7 +19,7 @@ struct NewTaskSheet: View {
                     .font(.system(size: 12.5))
                     .padding(.horizontal, 10)
                     .padding(.vertical, 9)
-                    .background(Color(hex: "#FAFAFC", darkHex: "#17181F"))
+                    .background(AnkerColor.surfaceRaised)
                     .overlay(RoundedRectangle(cornerRadius: 8).stroke(AnkerColor.line))
 
                 Text("Priorität".uppercased())
@@ -41,11 +41,11 @@ struct NewTaskSheet: View {
 
                 FlowLayout(spacing: 6) {
                     ForEach(goals.prefix(4), id: \.id) { goal in
-                        CaptureChip(title: goal.title, isSelected: selectedGoalID == goal.id, selectedColor: AnkerColor.indigo) {
+                        CaptureChip(title: goal.title, isSelected: selectedGoalID == goal.id, selectedColor: AnkerColor.indigoBadge) {
                             selectedGoalID = goal.id
                         }
                     }
-                    CaptureChip(title: "Kein Ziel", isSelected: selectedGoalID == nil, selectedColor: AnkerColor.indigo) {
+                    CaptureChip(title: "Kein Ziel", isSelected: selectedGoalID == nil, selectedColor: AnkerColor.indigoBadge) {
                         selectedGoalID = nil
                     }
                 }
@@ -76,12 +76,12 @@ struct NewTaskSheet: View {
         let task = AnkerTask(
             title: cleanTitle,
             priority: priority,
-            order: day.tasks.count,
+            order: day.taskList.count,
             day: day,
             linkedGoal: goal
         )
         modelContext.insert(task)
-        day.tasks.append(task)
+        day.appendTask(task)
     }
 }
 
@@ -108,12 +108,12 @@ struct QuickCapturePopover: View {
     }
 
     private var currentDay: Day? {
-        currentWeek?.days.first { AnkerCalendar.isSameDay($0.date, Date()) }
-            ?? currentWeek?.days.sorted { $0.date < $1.date }.first
+        currentWeek?.dayList.first { AnkerCalendar.isSameDay($0.date, Date()) }
+            ?? currentWeek?.dayList.sorted { $0.date < $1.date }.first
     }
 
     private var goals: [Goal] {
-        Array((currentWeek?.goals ?? []).prefix(4))
+        Array((currentWeek?.goalList ?? []).prefix(4))
     }
 
     var body: some View {
@@ -127,7 +127,7 @@ struct QuickCapturePopover: View {
                 .font(.system(size: 12.5))
                 .padding(.horizontal, 10)
                 .padding(.vertical, 9)
-                .background(Color(hex: "#FAFAFC"))
+                .background(AnkerColor.surface, in: RoundedRectangle(cornerRadius: 8))
                 .overlay(RoundedRectangle(cornerRadius: 8).stroke(AnkerColor.line))
 
             Text("Priorität".uppercased())
@@ -148,11 +148,11 @@ struct QuickCapturePopover: View {
 
             FlowLayout(spacing: 6) {
                 ForEach(goals, id: \.id) { goal in
-                    CaptureChip(title: goal.title, isSelected: selectedGoalID == goal.id, selectedColor: AnkerColor.indigo) {
+                    CaptureChip(title: goal.title, isSelected: selectedGoalID == goal.id, selectedColor: AnkerColor.indigoBadge) {
                         selectedGoalID = goal.id
                     }
                 }
-                CaptureChip(title: "Kein Ziel", isSelected: selectedGoalID == nil, selectedColor: AnkerColor.indigo) {
+                CaptureChip(title: "Kein Ziel", isSelected: selectedGoalID == nil, selectedColor: AnkerColor.indigoBadge) {
                     selectedGoalID = nil
                 }
             }
@@ -177,6 +177,7 @@ struct QuickCapturePopover: View {
         }
         .padding(16)
         .frame(width: 300)
+        .background(.regularMaterial)
     }
 
     private func save() {
@@ -188,12 +189,12 @@ struct QuickCapturePopover: View {
         let task = AnkerTask(
             title: cleanTitle,
             priority: priority,
-            order: currentDay.tasks.count,
+            order: currentDay.taskList.count,
             day: currentDay,
             linkedGoal: goal
         )
         modelContext.insert(task)
-        currentDay.tasks.append(task)
+        currentDay.appendTask(task)
         title = ""
         selectedGoalID = goals.first?.id
     }
@@ -227,7 +228,7 @@ struct WeeklyReviewView: View {
     @State private var reflection = ""
 
     private var reachedGoals: Int {
-        week.goals.filter { $0.progress >= 1 }.count
+        week.goalList.filter { $0.progress >= 1 }.count
     }
 
     var body: some View {
@@ -235,10 +236,13 @@ struct WeeklyReviewView: View {
             VStack(alignment: .leading, spacing: 0) {
                 GoalBanner(
                     label: "Ziele erreicht",
-                    title: "\(max(reachedGoals, 3)) von \(week.goals.count) Wochenzielen",
-                    badgeColor: AnkerColor.success,
+                    title: "\(max(reachedGoals, 3)) von \(week.goalList.count) Wochenzielen",
+                    badgeColor: AnkerColor.successIcon,
                     background: LinearGradient(
-                        colors: [Color(hex: "#EEF0FF"), Color(hex: "#EAF7EE")],
+                        colors: [
+                            Color(light: "#EEF0FF", dark: "#1C1D24"),
+                            Color(light: "#EAF7EE", dark: "#23242D")
+                        ],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
                     )
@@ -247,7 +251,7 @@ struct WeeklyReviewView: View {
 
                 SectionLabel(title: "Zielverlauf")
                 VStack(spacing: 8) {
-                    ForEach(week.goals, id: \.id) { goal in
+                    ForEach(week.goalList, id: \.id) { goal in
                         TaskCard(
                             task: AnkerTask(
                                 title: goal.title,
@@ -293,7 +297,7 @@ struct GoalDetailView: View {
     let week: Week
 
     private var linkedTasks: [AnkerTask] {
-        week.days.flatMap(\.tasks).filter { $0.linkedGoal?.id == goal.id }
+        week.dayList.flatMap(\.taskList).filter { $0.linkedGoal?.id == goal.id }
     }
 
     var body: some View {
@@ -316,8 +320,8 @@ struct GoalDetailView: View {
             .padding(.horizontal, 20)
             .padding(.top, 20)
             .padding(.bottom, 14)
-            .background(AnkerColor.card)
-            .overlay(alignment: .bottom) { Rectangle().fill(AnkerColor.line).frame(height: 1) }
+            .background(.regularMaterial)
+            .overlay(alignment: .bottom) { Rectangle().fill(.white.opacity(0.22)).frame(height: 1) }
 
             HStack(spacing: 22) {
                 DetailStat(value: linkedTasks.count, label: "Aufgaben")
@@ -327,11 +331,11 @@ struct GoalDetailView: View {
             }
             .padding(.horizontal, 20)
             .padding(.vertical, 14)
-            .background(AnkerColor.card)
+            .background(AnkerColor.surface)
             .overlay(alignment: .bottom) { Rectangle().fill(AnkerColor.lineSoft).frame(height: 1) }
 
             HStack(spacing: 6) {
-                ForEach(week.days.sorted { $0.date < $1.date }, id: \.id) { day in
+                ForEach(week.dayList.sorted { $0.date < $1.date }, id: \.id) { day in
                     TimelineDayBar(day: day, goal: goal)
                 }
             }
@@ -340,8 +344,8 @@ struct GoalDetailView: View {
 
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
-                    ForEach(week.days.sorted { $0.date < $1.date }, id: \.id) { day in
-                        let dayTasks = day.tasks.filter { $0.linkedGoal?.id == goal.id }
+                    ForEach(week.dayList.sorted { $0.date < $1.date }, id: \.id) { day in
+                        let dayTasks = day.taskList.filter { $0.linkedGoal?.id == goal.id }
                         if !dayTasks.isEmpty {
                             Text(day.date.formatted(.dateTime.locale(Locale(identifier: "de_DE")).weekday(.wide).day(.twoDigits).month(.twoDigits)))
                                 .font(.system(size: 10.5, weight: .bold))
@@ -372,13 +376,13 @@ struct GoalDetailView: View {
                 .padding(.bottom, 20)
             }
         }
-        .background(AnkerColor.card)
+        .background(AnkerColor.paper)
         .navigationTitle("Ziel")
     }
 
     private var activeDays: Int {
-        week.days.filter { day in
-            day.tasks.contains { $0.linkedGoal?.id == goal.id }
+        week.dayList.filter { day in
+            day.taskList.contains { $0.linkedGoal?.id == goal.id }
         }.count
     }
 
@@ -409,7 +413,7 @@ private struct TimelineDayBar: View {
     let goal: Goal
 
     private var progress: Double {
-        let tasks = day.tasks.filter { $0.linkedGoal?.id == goal.id }
+        let tasks = day.taskList.filter { $0.linkedGoal?.id == goal.id }
         guard !tasks.isEmpty else { return 0 }
         return Double(tasks.filter(\.isDone).count) / Double(tasks.count)
     }
@@ -473,7 +477,13 @@ struct OnboardingView: View {
                     .foregroundStyle(.white)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 13)
-                    .background(AnkerColor.indigo, in: RoundedRectangle(cornerRadius: AnkerRadius.sheet))
+                    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: AnkerRadius.sheet))
+                    .background(
+                        LinearGradient(colors: [Color(hex: "#8C9BF5").opacity(0.95), AnkerColor.indigoText.opacity(0.95)], startPoint: .topLeading, endPoint: .bottomTrailing),
+                        in: RoundedRectangle(cornerRadius: AnkerRadius.sheet)
+                    )
+                    .overlay(RoundedRectangle(cornerRadius: AnkerRadius.sheet).stroke(.white.opacity(0.35), lineWidth: 1))
+                    .shadow(color: AnkerColor.indigoText.opacity(0.35), radius: 18, x: 0, y: 8)
             }
             .buttonStyle(.plain)
 

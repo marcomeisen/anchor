@@ -3,17 +3,19 @@ import SwiftData
 
 @Model
 final class Goal {
-    var id: UUID
-    var title: String
-    var colorHex: String
+    var id: UUID = UUID()
+    var title: String = ""
+    var colorHex: String = "#5B6EE8"
     var week: Week?
 
     @Relationship(deleteRule: .nullify, inverse: \AnkerTask.linkedGoal)
-    var tasks: [AnkerTask] = []
+    var tasks: [AnkerTask]? = []
 
     var progress: Double {
-        tasks.isEmpty ? 0 : Double(tasks.filter(\.isDone).count) / Double(tasks.count)
+        taskList.isEmpty ? 0 : Double(taskList.filter(\.isDone).count) / Double(taskList.count)
     }
+
+    var taskList: [AnkerTask] { tasks ?? [] }
 
     init(id: UUID = UUID(), title: String, colorHex: String, week: Week? = nil) {
         self.id = id
@@ -25,17 +27,20 @@ final class Goal {
 
 @Model
 final class Week {
-    var id: UUID
-    var isoYear: Int
-    var isoWeek: Int
-    var monday: Date
-    var sunday: Date
+    var id: UUID = UUID()
+    var isoYear: Int = 0
+    var isoWeek: Int = 0
+    var monday: Date = Date()
+    var sunday: Date = Date()
 
     @Relationship(deleteRule: .cascade, inverse: \Goal.week)
-    var goals: [Goal] = []
+    var goals: [Goal]? = []
 
     @Relationship(deleteRule: .cascade, inverse: \Day.week)
-    var days: [Day] = []
+    var days: [Day]? = []
+
+    var goalList: [Goal] { goals ?? [] }
+    var dayList: [Day] { days ?? [] }
 
     init(
         id: UUID = UUID(),
@@ -54,18 +59,27 @@ final class Week {
 
 @Model
 final class Day {
-    var id: UUID
-    var date: Date
+    var id: UUID = UUID()
+    var date: Date = Date()
     var focusNote: String?
     var week: Week?
 
     @Relationship(deleteRule: .cascade, inverse: \AnkerTask.day)
-    var tasks: [AnkerTask] = []
+    var tasks: [AnkerTask]? = []
 
     @Relationship(deleteRule: .cascade, inverse: \TimeBlock.day)
-    var timeBlocks: [TimeBlock] = []
+    var timeBlocks: [TimeBlock]? = []
 
     var notes: String?
+
+    var taskList: [AnkerTask] { tasks ?? [] }
+    var timeBlockList: [TimeBlock] { timeBlocks ?? [] }
+
+    func appendTask(_ task: AnkerTask) {
+        var existingTasks = taskList
+        existingTasks.append(task)
+        tasks = existingTasks
+    }
 
     init(
         id: UUID = UUID(),
@@ -94,11 +108,11 @@ enum Priority: String, Codable, CaseIterable, Identifiable {
 
 @Model
 final class AnkerTask {
-    var id: UUID
-    var title: String
-    var priority: Priority
-    var isDone: Bool
-    var order: Int
+    var id: UUID = UUID()
+    var title: String = ""
+    var priority: Priority = Priority.b
+    var isDone: Bool = false
+    var order: Int = 0
     var day: Day?
     var linkedGoal: Goal?
 
@@ -123,10 +137,10 @@ final class AnkerTask {
 
 @Model
 final class TimeBlock {
-    var id: UUID
-    var startTime: Date
-    var endTime: Date
-    var title: String
+    var id: UUID = UUID()
+    var startTime: Date = Date()
+    var endTime: Date = Date()
+    var title: String = ""
     var day: Day?
     var linkedEventIdentifier: String?
 
