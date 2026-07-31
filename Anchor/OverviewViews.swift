@@ -9,19 +9,36 @@ enum AppDestination: Hashable {
 }
 
 struct AnkerRootView: View {
+    @Environment(\.modelContext) private var modelContext
+    @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
+
     let weeks: [Week]
     @State private var selectedDestination: AppDestination = .week
     @State private var showingNewTask = false
 
-    private var currentWeek: Week? { weeks.sorted { $0.monday < $1.monday }.first }
+    private var currentWeek: Week? {
+        let today = Date()
+        let sortedWeeks = weeks.sorted { $0.monday < $1.monday }
+
+        if let matchingWeek = sortedWeeks.first(where: { contains(today, in: $0) }) {
+            return matchingWeek
+        }
+
+        return sortedWeeks.last
+    }
+
     private var today: Day? {
-        currentWeek?.days.first { AnkerCalendar.isSameDay($0.date, SampleData.referenceToday) }
+        currentWeek?.days.first { AnkerCalendar.isSameDay($0.date, Date()) }
             ?? currentWeek?.days.sorted { $0.date < $1.date }.first
     }
 
     var body: some View {
         Group {
-            if let currentWeek, let today {
+            if !hasCompletedOnboarding || weeks.isEmpty {
+                OnboardingView {
+                    completeOnboarding()
+                }
+            } else if let currentWeek, let today {
 #if os(macOS)
                 splitContent(week: currentWeek, day: today)
 #else
@@ -32,13 +49,22 @@ struct AnkerRootView: View {
                 }
 #endif
             } else {
-                OnboardingView(onCreateGoal: {})
+                OnboardingView {
+                    completeOnboarding()
+                }
             }
         }
         .sheet(isPresented: $showingNewTask) {
             if let currentWeek, let today {
                 NewTaskSheet(day: today, goals: currentWeek.goals)
                     .presentationDetents([.medium])
+            }
+        }
+        .task {
+            removeReferenceDataIfNeeded()
+            if hasCompletedOnboarding {
+                ensureCurrentWeekForOnboarding()
+                try? modelContext.save()
             }
         }
     }
@@ -71,21 +97,107 @@ struct AnkerRootView: View {
         NavigationSplitView {
             SidebarView(week: week, selection: $selectedDestination)
         } detail: {
-            switch selectedDestination {
-            case .year:
-                YearOverviewView(week: week)
-            case .week:
-                WeekOverviewView(week: week, selectedDay: day)
-            case .review:
-                WeeklyReviewView(week: week)
-            case .goal(let id):
-                if let goal = week.goals.first(where: { $0.id == id }) {
-                    GoalDetailView(goal: goal, week: week)
-                } else {
-                    WeekOverviewView(week: week, selectedDay: day)
+            Group {
+                switch selectedDestination {
+                case .year:
+                    YearOverviewView(week: week)
+                case .week:
+                    WeekOverviewView(week: week, selectedDay: day) {
+                        showingNewTask = true
+                    }
+                case .review:
+                    WeeklyReviewView(week: week)
+                case .goal(let id):
+                    if let goal = week.goals.first(where: { $0.id == id }) {
+                        GoalDetailView(goal: goal, week: week)
+                    } else {
+                        WeekOverviewView(week: week, selectedDay: day) {
+                            showingNewTask = true
+                        }
+                    }
+                }
+            }
+            .toolbar {
+                ToolbarItem {
+                    Button {
+                        showingNewTask = true
+                    } label: {
+                        Label("Neue Aufgabe", systemImage: "plus")
+                    }
                 }
             }
         }
+    }
+
+    private func completeOnboarding() {
+        removeReferenceDataIfNeeded()
+        ensureCurrentWeekForOnboarding()
+        hasCompletedOnboarding = true
+        selectedDestination = .week
+        try? modelContext.save()
+    }
+
+    @discardableResult
+    private func removeReferenceDataIfNeeded() -> Bool {
+        let referenceWeeks = weeks.filter(SampleData.isReferenceWeek)
+        guard !referenceWeeks.isEmpty else { return false }
+
+        for week in referenceWeeks {
+            modelContext.delete(week)
+        }
+
+        if hasCompletedOnboarding && weeks.allSatisfy(SampleData.isReferenceWeek) {
+            ensureCurrentWeekForOnboarding()
+        }
+
+        try? modelContext.save()
+        return true
+    }
+
+    @discardableResult
+    private func ensureCurrentWeekForOnboarding() -> Week {
+        let today = Date()
+
+        if let existingWeek = weeks.first(where: { contains(today, in: $0) }) {
+            ensureOnboardingDefaults(in: existingWeek)
+            return existingWeek
+        }
+
+        return insertWeek(containing: today)
+    }
+
+    @discardableResult
+    private func insertWeek(containing date: Date) -> Week {
+        let interval = AnkerCalendar.weekInterval(containing: date)
+        let week = Week(
+            isoYear: interval.isoYear,
+            isoWeek: interval.isoWeek,
+            monday: interval.monday,
+            sunday: interval.sunday
+        )
+        let goal = Goal(title: "Erstes Wochenziel", colorHex: "#5B6EE8", week: week)
+        week.goals = [goal]
+        week.days = AnkerCalendar.daysInWeek(starting: interval.monday).map { date in
+            Day(date: date, week: week)
+        }
+        modelContext.insert(week)
+        return week
+    }
+
+    private func ensureOnboardingDefaults(in week: Week) {
+        if week.goals.isEmpty {
+            week.goals = [Goal(title: "Erstes Wochenziel", colorHex: "#5B6EE8", week: week)]
+        }
+
+        if week.days.isEmpty {
+            week.days = AnkerCalendar.daysInWeek(starting: week.monday).map { date in
+                Day(date: date, week: week)
+            }
+        }
+    }
+
+    private func contains(_ date: Date, in week: Week) -> Bool {
+        (week.monday...week.sunday).contains(date)
     }
 }
 
@@ -183,6 +295,7 @@ private struct NavigationItemRow: View {
 struct WeekOverviewView: View {
     let week: Week
     let selectedDay: Day
+    var onAddTask: () -> Void = {}
 
     var body: some View {
         VStack(spacing: 0) {
@@ -194,6 +307,13 @@ struct WeekOverviewView: View {
                 Text("\(shortDate(week.monday)) – \(shortDate(week.sunday))")
                     .font(.system(size: 11, weight: .regular, design: .monospaced))
                     .foregroundStyle(AnkerColor.muted)
+                Button(action: onAddTask) {
+                    Label("Neue Aufgabe", systemImage: "plus")
+                        .labelStyle(.titleAndIcon)
+                        .font(.system(size: 11, weight: .semibold))
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.small)
             }
             .padding(.horizontal, 18)
             .padding(.vertical, 10)

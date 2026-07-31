@@ -2,19 +2,10 @@ import SwiftData
 import SwiftUI
 
 struct ContentView: View {
-    @Environment(\.modelContext) private var modelContext
     @Query(sort: \Week.monday) private var weeks: [Week]
 
     var body: some View {
         AnkerRootView(weeks: weeks)
-            .task {
-                seedIfNeeded()
-            }
-    }
-
-    private func seedIfNeeded() {
-        guard weeks.isEmpty else { return }
-        SampleData.insertReferenceWeek(in: modelContext)
     }
 }
 

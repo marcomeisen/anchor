@@ -29,8 +29,9 @@ struct AnchorApp: App {
 
 #if os(macOS)
         MenuBarExtra("Anker", systemImage: "anchor") {
-            QuickCapturePopover(goals: SampleDataPreview.week.goals)
+            QuickCapturePopover()
         }
+        .modelContainer(sharedModelContainer)
         .menuBarExtraStyle(.window)
 #endif
     }

@@ -3,6 +3,19 @@ import SwiftData
 
 enum SampleData {
     static let referenceToday = AnkerCalendar.date(year: 2026, month: 1, day: 1, hour: 9, minute: 41)
+    nonisolated static let referenceGoalTitles: Set<String> = [
+        "Jahresplanung 2026",
+        "Security-Review AWS SES",
+        "Workshop Product Owner Lead",
+        "FZulG-Bewertung abschließen"
+    ]
+
+    nonisolated static func isReferenceWeek(_ week: Week) -> Bool {
+        let titles = Set(week.goals.map(\.title))
+        return week.isoYear == 2026
+            && week.isoWeek == 1
+            && referenceGoalTitles.isSubset(of: titles)
+    }
 
     @discardableResult
     static func insertReferenceWeek(in context: ModelContext) -> Week {

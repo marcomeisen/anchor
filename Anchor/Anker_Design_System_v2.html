@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<title>Anker — Designsystem v2 (Liquid Glass · Dark Mode · Kontrast-korrigiert)</title>
+<style>
+  :root{
+    --stage:#101116;
+
+    --app-bg:#F7F7FA;
+    --surface:#FFFFFF;
+    --surface-2:#FFFFFF;
+    --glass: rgba(255,255,255,.58);
+    --glass-strong: rgba(255,255,255,.7);
+    --glass-border: rgba(255,255,255,.6);
+    --line:#E4E5EA;
+    --line-soft:#EDEEF2;
+
+    --text-strong:#1C1E27;
+    --text-soft:#8A8D98;
+
+    --indigo:#5B6EE8;
+    --indigo-badge:#4D61E6;      /* kontrastkorrigiert: weiß darauf >=4.5 */
+    --indigo-text:#3F4FBF;       /* Text auf hellem Untergrund */
+    --indigo-text-dark:#90A0F5;  /* Text auf dunklem Untergrund (Dark Mode) */
+    --brass:#C9974B;
+    --success-icon:#2A9F47;      /* kontrastkorrigiert: weißes Icon-Glyph >=3:1 */
+    --success:#34C759;
+    --prio-a:#D93327;            /* kontrastkorrigiert: weißer Text >=4.5 */
+    --prio-c:#6E7180;
+
+    --font-ui: -apple-system, "SF Pro Text","SF Pro Display","Helvetica Neue",Arial,sans-serif;
+    --font-mono: ui-monospace,"SF Mono",Menlo,monospace;
+  }
+
+  body.dark{
+    --app-bg:#111219;
+    --surface:#1C1D24;
+    --surface-2:#23242D;
+    --glass: rgba(40,42,54,.55);
+    --glass-strong: rgba(46,48,60,.65);
+    --glass-border: rgba(255,255,255,.12);
+    --line: rgba(255,255,255,.12);
+    --line-soft: rgba(255,255,255,.07);
+
+    --text-strong:#F2F2F7;
+    --text-soft:#A6A9B5;
+
+    --indigo-text: var(--indigo-text-dark);
+    --brass:#E0BC85;
+  }
+
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; padding:0; }
+  body{
+    background: radial-gradient(1200px 800px at 20% -10%, #1B1D28 0%, var(--stage) 55%, #0B0C10 100%);
+    font-family: var(--font-ui); color:var(--text-strong);
+    padding: 56px 32px 110px;
+    transition: color .2s ease;
+  }
+
+  .toggle-bar{
+    max-width:1180px; margin:0 auto 28px; display:flex; justify-content:flex-end;
+  }
+  .mode-toggle{
+    display:flex; align-items:center; gap:8px; background:rgba(255,255,255,.08);
+    border:1px solid rgba(255,255,255,.16); border-radius:20px; padding:6px 6px;
+    cursor:pointer; user-select:none;
+  }
+  .mode-toggle .seg{
+    padding:6px 14px; border-radius:14px; font-size:12px; font-weight:700; color:#9598A6;
+  }
+  .mode-toggle .seg.active{ background:#EDEEF4; color:#1C1E27; }
+  .mode-toggle.is-dark .seg.light.active{ display:none; }
+
+  .page-head{ max-width:1180px; margin:0 auto 20px; color:#EDEEF4; }
+  .eyebrow{ font-family:var(--font-mono); font-size:12px; letter-spacing:.12em; text-transform:uppercase; color:#C9974B; margin-bottom:10px; }
+  .page-head h1{ font-size:32px; line-height:1.15; margin:0 0 12px; font-weight:700; letter-spacing:-0.01em; }
+  .page-head p{ max-width:720px; color:#B7B9C6; font-size:14.5px; line-height:1.6; margin:0; }
+
+  .section-tag{ max-width:1180px; margin:48px auto 16px; color:#EDEEF4; font-size:13px; font-weight:700; display:flex; align-items:center; gap:10px; }
+  .section-tag .n{ width:22px; height:22px; border-radius:50%; background:#5B6EE8; color:#fff; font-size:11px; display:flex; align-items:center; justify-content:center; flex:0 0 auto; }
+  .fix-list{ max-width:1180px; margin:0 auto 20px; color:#9598A6; font-size:12.5px; line-height:1.7; }
+  .fix-list b{ color:#D7D9E2; }
+
+  .gallery{ max-width:1180px; margin:0 auto; display:flex; flex-wrap:wrap; gap:40px; align-items:flex-start; }
+  .frame-block{ display:flex; flex-direction:column; align-items:center; gap:16px; }
+  .frame-caption{ max-width:320px; text-align:center; }
+  .frame-caption .cap-title{ color:#F1F2F7; font-weight:600; font-size:14px; margin-bottom:4px; }
+  .frame-caption .cap-body{ color:#9598A6; font-size:12.5px; line-height:1.5; }
+
+  /* ---------- Device chrome (bezel bleibt immer dunkel, unabhängig vom App-Theme) ---------- */
+  .iphone{ width:346px; height:706px; background:#0B0C10; border-radius:52px; padding:13px;
+    box-shadow:0 40px 80px -20px rgba(0,0,0,.7), inset 0 0 0 1.5px #2A2C36; position:relative; flex:0 0 auto; }
+  .iphone-screen{ position:relative; width:100%; height:100%; border-radius:39px; overflow:hidden;
+    background: var(--app-bg); display:flex; flex-direction:column; transition: background .2s ease; }
+  .dynamic-island{ position:absolute; top:13px; left:50%; transform:translateX(-50%); width:96px; height:26px; background:#0B0C10; border-radius:18px; z-index:8; }
+
+  .glass-navbar{
+    margin:52px 13px 8px; padding:10px 16px; border-radius:20px;
+    background: linear-gradient(180deg, var(--glass-strong), var(--glass));
+    backdrop-filter: blur(18px) saturate(160%); -webkit-backdrop-filter: blur(18px) saturate(160%);
+    border:1px solid var(--glass-border);
+    box-shadow: 0 8px 22px -10px rgba(20,20,40,.28), inset 0 1px 0 rgba(255,255,255,.35);
+  }
+  .glass-navbar .date{ font-family:var(--font-mono); font-size:10.5px; color:var(--text-soft); letter-spacing:.03em; }
+  .glass-navbar h2{ margin:2px 0 0; font-size:20px; font-weight:700; color:var(--text-strong); }
+
+  .week-strip{ display:flex; justify-content:space-between; padding:10px 18px 6px; }
+  .week-dot-wrap{ display:flex; flex-direction:column; align-items:center; gap:5px; }
+  .week-dot-wrap .wd{ font-size:9px; color:var(--text-soft); font-weight:600; }
+  .week-dot{ width:26px; height:26px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+    font-size:10.5px; font-weight:600; color:var(--text-strong); background: var(--surface-2); border:1px solid var(--line); }
+  .week-dot.active{ background: linear-gradient(160deg,#96A6F2,var(--indigo)); color:#fff; border:none;
+    box-shadow:0 4px 10px -2px rgba(91,110,232,.55), inset 0 1px 0 rgba(255,255,255,.5); }
+  .week-dot.has-goal::after{ content:""; width:4px; height:4px; border-radius:50%; background:var(--brass); position:relative; top:10px; }
+
+  .goal-banner{ margin:8px 18px 12px; background:var(--surface); border:1px solid var(--line); border-radius:14px;
+    padding:10px 12px; display:flex; align-items:center; gap:9px; }
+  .anchor-badge{ width:24px; height:24px; border-radius:7px; background:var(--indigo); flex:0 0 auto; display:flex; align-items:center; justify-content:center; }
+  .goal-banner .lbl{ font-size:9px; letter-spacing:.06em; text-transform:uppercase; color:var(--indigo-text); font-weight:700; }
+  .goal-banner .val{ font-size:12px; color:var(--text-strong); font-weight:600; margin-top:1px; }
+
+  .scroll-area{ flex:1; overflow:hidden; padding:0 18px 86px; }
+  .section-label{ font-size:10.5px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:var(--text-soft); margin:12px 0 7px; }
+  .task-card{ display:flex; align-items:flex-start; gap:8px; background:var(--surface); border:1px solid var(--line); border-radius:11px; padding:9px 10px; margin-bottom:7px; }
+  .prio-tag{ font-size:8.5px; font-weight:800; color:#fff; border-radius:5px; padding:2px 5px; letter-spacing:.03em; flex:0 0 auto; margin-top:1px; }
+  .prio-a{ background:var(--prio-a); } .prio-b{ background:var(--indigo-badge); } .prio-c{ background:var(--prio-c); }
+  .task-check{ width:16px; height:16px; border-radius:5px; border:1.6px solid var(--line); flex:0 0 auto; margin-top:1px; }
+  .task-check.done{ background:var(--success-icon); border-color:var(--success-icon); }
+  .task-body .title{ font-size:12.5px; font-weight:600; color:var(--text-strong); }
+  .task-body .title.muted{ color:var(--text-soft); text-decoration:line-through; }
+  .task-body .goal-ref{ display:inline-flex; align-items:center; gap:4px; margin-top:3px; font-size:9.5px; color:var(--indigo-text); font-weight:600; }
+
+  .glass-tabbar{ position:absolute; left:18px; right:18px; bottom:16px; z-index:6; display:flex; justify-content:space-around; align-items:center;
+    padding:9px 10px; border-radius:24px;
+    background: linear-gradient(180deg, var(--glass-strong), var(--glass));
+    backdrop-filter: blur(20px) saturate(170%); -webkit-backdrop-filter: blur(20px) saturate(170%);
+    border:1px solid var(--glass-border); box-shadow:0 14px 30px -12px rgba(20,20,40,.35), inset 0 1px 0 rgba(255,255,255,.35); }
+  .tab-item{ display:flex; flex-direction:column; align-items:center; gap:3px; color:var(--text-soft); font-size:8.5px; font-weight:600; }
+  .tab-item.active{ color:var(--indigo); }
+  .tab-dot{ width:20px; height:20px; border-radius:6px; display:flex; align-items:center; justify-content:center; }
+  .tab-item.active .tab-dot{ background:rgba(91,110,232,.16); }
+
+  .glass-fab{ position:absolute; right:20px; bottom:82px; width:50px; height:50px; border-radius:50%; z-index:7;
+    background: linear-gradient(150deg, rgba(140,155,245,.9), rgba(63,79,191,.92));
+    box-shadow:0 14px 26px -8px rgba(63,79,191,.65), inset 0 1px 0 rgba(255,255,255,.5);
+    display:flex; align-items:center; justify-content:center; border:1px solid rgba(255,255,255,.35); }
+
+  /* ---------- Mac / iPad window ---------- */
+  .mac-window{ width:700px; border-radius:16px; overflow:hidden; background:var(--app-bg);
+    box-shadow:0 50px 90px -30px rgba(0,0,0,.65), 0 0 0 1px #2A2C36; flex:0 0 auto; transition: background .2s ease; }
+  .unified-bar{ background: linear-gradient(180deg, var(--glass-strong), var(--glass));
+    backdrop-filter: blur(22px) saturate(160%); -webkit-backdrop-filter: blur(22px) saturate(160%);
+    border-bottom:1px solid var(--glass-border); box-shadow: inset 0 1px 0 rgba(255,255,255,.25); }
+  .titlebar{ height:36px; display:flex; align-items:center; gap:8px; padding:0 14px; }
+  .traffic{ width:11px; height:11px; border-radius:50%; }
+  .t-red{background:#FF5F57;} .t-yellow{background:#FEBC2E;} .t-green{background:#28C840;}
+  .titlebar .wtitle{ margin-left:8px; font-size:12px; color:var(--text-soft); font-weight:600; }
+
+  .mac-body{ display:flex; height:460px; }
+  .sidebar{ width:206px; background: linear-gradient(180deg, var(--glass-strong), var(--glass));
+    backdrop-filter: blur(24px) saturate(150%); -webkit-backdrop-filter: blur(24px) saturate(150%);
+    padding:14px 10px; overflow:hidden; box-shadow: inset -1px 0 0 var(--glass-border), 6px 0 24px -18px rgba(0,0,0,.25); }
+  .sb-search{ background:var(--surface); border:1px solid var(--line); border-radius:8px; padding:6px 9px; font-size:11px; color:var(--text-soft); margin-bottom:12px; }
+  .sb-year{ font-size:10.5px; font-weight:700; color:var(--text-soft); text-transform:uppercase; letter-spacing:.04em; padding:4px 6px; }
+  .sb-month{ display:flex; align-items:center; gap:8px; padding:6px 8px; border-radius:8px; font-size:12px; color:var(--text-strong); }
+  .sb-month.open{ background:rgba(91,110,232,.16); font-weight:700; }
+  .sb-dot{ width:8px; height:8px; border-radius:50%; flex:0 0 auto; }
+  .sb-week{ padding:4px 8px 4px 28px; font-size:11px; color:var(--text-soft); border-radius:7px; }
+  .sb-week.active{ background:linear-gradient(160deg,#7688EE,var(--indigo)); color:#fff; font-weight:600; box-shadow:0 3px 8px -2px rgba(91,110,232,.5); }
+  .sb-day{ padding:3px 8px 3px 42px; font-size:10.5px; color:var(--text-soft); }
+  .sb-day.active{ color:var(--indigo-text); font-weight:700; }
+
+  .main-pane{ flex:1; display:flex; flex-direction:column; overflow:hidden; background:var(--app-bg); }
+  .context-bar{ display:flex; align-items:center; gap:8px; padding:11px 16px; }
+  .chip-btn{ font-size:10.5px; font-weight:600; color:var(--indigo-text); background:var(--glass); backdrop-filter:blur(10px);
+    border:1px solid var(--glass-border); border-radius:18px; padding:6px 11px; box-shadow:0 2px 6px -2px rgba(20,20,40,.15), inset 0 1px 0 rgba(255,255,255,.3); }
+  .chip-btn.ghost{ color:var(--text-soft); }
+  .context-bar .spacer{ flex:1; }
+  .context-bar .kw{ font-family:var(--font-mono); font-size:10.5px; color:var(--text-soft); padding-right:2px; }
+
+  .goals-row{ display:flex; gap:10px; padding:13px 16px; border-bottom:1px solid var(--line-soft); }
+  .goal-pill{ flex:1; background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:10px 12px; display:flex; flex-direction:column; gap:6px; }
+  .goal-pill .gp-top{ display:flex; justify-content:space-between; align-items:center; }
+  .goal-pill .gp-title{ font-size:11.5px; font-weight:700; color:var(--text-strong); }
+  .ring{ width:22px; height:22px; }
+  .progress-bar{ height:5px; border-radius:4px; background:var(--line-soft); overflow:hidden; }
+  .progress-bar span{ display:block; height:100%; background:var(--indigo); }
+
+  .week-grid{ flex:1; overflow:hidden; padding:11px 16px; }
+  .wg-row{ display:grid; grid-template-columns:92px 1fr; gap:12px; padding:8px 0; border-bottom:1px solid var(--line-soft); align-items:center; }
+  .wg-row .dayname{ font-size:12px; font-weight:700; color:var(--text-strong); }
+  .wg-row .daydate{ font-size:10px; color:var(--text-soft); font-family:var(--font-mono); }
+  .wg-tasks{ display:flex; gap:6px; flex-wrap:wrap; }
+  .mini-task{ font-size:10px; background:var(--surface); border:1px solid var(--line); border-radius:6px; padding:4px 8px; display:flex; align-items:center; gap:5px; color:var(--text-strong); }
+  .mini-task .dot{ width:6px; height:6px; border-radius:50%; }
+  .wg-row.today{ background: rgba(91,110,232,.08); margin:0 -16px; padding-left:16px; padding-right:16px; border-radius:10px; }
+
+  /* ---------- Menu bar popover ---------- */
+  .menubar-mock{ width:290px; flex:0 0 auto; }
+  .mb-bar{ height:24px; background:#1A1B20; border-radius:8px 8px 0 0; display:flex; align-items:center; justify-content:flex-end; padding:0 10px; gap:12px; }
+  .mb-bar .mb-icon{ width:13px; height:13px; border-radius:3px; background:#3A3C46; }
+  .mb-bar .mb-icon.active{ background:var(--brass); }
+  .popover{ background: linear-gradient(180deg, var(--glass-strong), var(--glass));
+    backdrop-filter: blur(22px) saturate(170%); -webkit-backdrop-filter: blur(22px) saturate(170%);
+    border-radius:0 0 16px 16px; box-shadow:0 30px 60px -18px rgba(0,0,0,.55); border:1px solid var(--glass-border); border-top:none;
+    padding:16px 15px 14px; }
+  .popover h4{ margin:0 0 10px; font-size:13px; font-weight:700; color:var(--text-strong); }
+  .pop-input{ width:100%; border:1px solid var(--line); border-radius:8px; padding:9px 10px; font-size:12px; color:var(--text-strong);
+    margin-bottom:10px; background:var(--surface); }
+  .pop-row-label{ font-size:10px; font-weight:700; color:var(--text-soft); text-transform:uppercase; letter-spacing:.04em; margin:8px 0 6px; }
+  .pop-chips{ display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px; }
+  .pop-chip{ font-size:10.5px; padding:5px 9px; border-radius:7px; border:1px solid var(--line); color:var(--text-strong); background:var(--surface); }
+  .pop-chip.sel{ background:var(--indigo-badge); color:#fff; border-color:var(--indigo-badge); }
+  .pop-actions{ display:flex; justify-content:flex-end; gap:8px; margin-top:12px; }
+  .btn{ font-size:11.5px; font-weight:600; padding:7px 13px; border-radius:8px; }
+  .btn.primary{ background:var(--indigo-badge); color:#fff; }
+  .btn.secondary{ background:var(--surface-2); color:var(--text-strong); border:1px solid var(--line); }
+
+  /* ---------- Jahresübersicht ---------- */
+  .year-toolbar h3{ margin:0; font-size:13px; font-weight:700; color:var(--text-strong); padding:11px 16px; }
+  .month-tile-grid{ flex:1; padding:14px 16px; display:grid; grid-template-columns:repeat(4,1fr); gap:9px; overflow:hidden; }
+  .month-tile{ border-radius:12px; padding:11px; display:flex; flex-direction:column; justify-content:space-between; min-height:74px; border:1px solid rgba(0,0,0,.06); }
+  /* Kachel-Text bewusst IMMER ink, unabhängig vom App-Theme: Kacheln sind farbige "Sticker", kein Chrome */
+  .month-tile .mt-name{ font-size:12px; font-weight:700; color:#1C1E27; }
+  .month-tile .mt-stat{ font-size:9.5px; color:#1C1E27; font-weight:600; opacity:.72; }
+  .month-tile.now{ box-shadow:0 0 0 2px var(--indigo) inset; }
+
+  /* ---------- Ziel-Detail ---------- */
+  .detail-head{ display:flex; align-items:center; gap:14px; padding:18px 18px 12px; border-bottom:1px solid var(--line); }
+  .detail-ring-big{ width:58px; height:58px; flex:0 0 auto; }
+  .detail-head h3{ margin:0 0 4px; font-size:16px; color:var(--text-strong); }
+  .detail-head .sub{ font-size:11px; color:var(--text-soft); }
+  .detail-stats{ display:flex; gap:20px; padding:12px 18px; border-bottom:1px solid var(--line-soft); }
+  .dstat b{ display:block; font-size:16px; color:var(--text-strong); }
+  .dstat span{ font-size:9.5px; color:var(--text-soft); text-transform:uppercase; letter-spacing:.04em; font-weight:700; }
+  .detail-timeline{ display:flex; gap:6px; padding:12px 18px 0; }
+  .tl-day{ flex:1; text-align:center; }
+  .tl-day .tld-lbl{ font-size:9px; color:var(--text-soft); margin-bottom:5px; }
+  .tl-bar{ height:40px; border-radius:6px; background:var(--line-soft); display:flex; align-items:flex-end; overflow:hidden; }
+  .tl-bar span{ display:block; width:100%; background:var(--indigo); }
+  .detail-tasklist{ padding:12px 18px 18px; overflow:hidden; }
+  .dt-day-label{ font-size:10px; font-weight:700; color:var(--text-soft); text-transform:uppercase; margin:10px 0 6px; }
+  .dt-row{ display:flex; align-items:center; gap:9px; padding:6px 0; font-size:12px; color:var(--text-strong); border-bottom:1px solid var(--line-soft); }
+  .dt-row .dt-check{ width:15px; height:15px; border-radius:4px; border:1.5px solid var(--line); flex:0 0 auto; }
+  .dt-row .dt-check.done{ background:var(--success-icon); border-color:var(--success-icon); }
+  .dt-row.muted{ color:var(--text-soft); text-decoration:line-through; }
+
+  /* ---------- Onboarding ---------- */
+  .onboard-wrap{ flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:0 30px; text-align:center; }
+  .onboard-icon{ width:72px; height:72px; border-radius:20px; background:linear-gradient(150deg,var(--indigo),var(--indigo-text)); display:flex; align-items:center; justify-content:center; margin-bottom:24px; box-shadow:0 16px 30px -10px rgba(91,110,232,.5); }
+  .onboard-wrap h2{ font-size:19px; margin:0 0 10px; color:var(--text-strong); }
+  .onboard-wrap p{ font-size:12.5px; color:var(--text-soft); line-height:1.55; margin:0 0 26px; }
+  .onboard-dots{ display:flex; gap:6px; margin-bottom:20px; }
+  .onboard-dots span{ width:6px; height:6px; border-radius:50%; background:var(--line); }
+  .onboard-dots span.active{ background:var(--indigo); width:16px; border-radius:3px; }
+  .onboard-btn{ width:100%; background: linear-gradient(160deg, rgba(140,155,245,.95), rgba(63,79,191,.95));
+    color:#fff; border-radius:13px; padding:12px; font-size:13.5px; font-weight:700; text-align:center;
+    box-shadow:0 12px 24px -8px rgba(63,79,191,.55), inset 0 1px 0 rgba(255,255,255,.4); }
+
+  /* ---------- Widgets (immer auf Wallpaper -> themeunabhängig) ---------- */
+  .wallpaper{ width:320px; height:320px; border-radius:32px; overflow:hidden; position:relative;
+    background: linear-gradient(160deg,#4A5AC7,#2E3670 60%,#1B2050); padding:24px; display:flex; flex-direction:column; gap:15px; flex:0 0 auto; }
+  .widget-medium{ background:rgba(255,255,255,.14); backdrop-filter:blur(8px); border-radius:18px; padding:13px 15px; border:1px solid rgba(255,255,255,.18); }
+  .widget-medium .wlbl{ font-size:9px; letter-spacing:.05em; text-transform:uppercase; color:rgba(255,255,255,.75); font-weight:700; margin-bottom:6px; }
+  .widget-medium .wgoal{ font-size:12.5px; font-weight:700; color:#fff; margin-bottom:9px; }
+  .widget-medium .wtask{ display:flex; align-items:center; gap:7px; font-size:11px; color:#fff; padding:3px 0; }
+  .widget-medium .wtask .wc{ width:14px; height:14px; border-radius:4px; border:1.4px solid rgba(255,255,255,.75); display:flex; align-items:center; justify-content:center; }
+  .widget-medium .wtask .wc.done{ background:rgba(52,199,89,.9); border-color:transparent; }
+  .widget-medium .wtask.done-txt{ opacity:.6; text-decoration:line-through; }
+  .lockrow{ display:flex; gap:13px; align-items:center; }
+  .widget-lock{ width:54px; height:54px; border-radius:50%; background:rgba(255,255,255,.16); border:1px solid rgba(255,255,255,.25); display:flex; align-items:center; justify-content:center; position:relative; }
+  .widget-lock svg{ position:absolute; inset:0; }
+  .widget-lock .wl-txt{ font-size:11px; font-weight:800; color:#fff; }
+  .lock-caption{ font-size:10.5px; color:rgba(255,255,255,.8); }
+
+  /* ---------- Apple Watch (OLED, themeunabhängig) ---------- */
+  .watch{ width:188px; height:230px; background:#0B0C10; border-radius:48px; padding:8px;
+    box-shadow:0 30px 60px -18px rgba(0,0,0,.7), inset 0 0 0 1.5px #2A2C36; flex:0 0 auto; }
+  .watch-screen{ width:100%; height:100%; background:#000; border-radius:40px; padding:15px 13px; color:#fff; display:flex; flex-direction:column; gap:7px; }
+  .watch-time{ font-size:10.5px; color:#8A8D98; text-align:center; margin-bottom:1px; }
+  .watch-ring-row{ display:flex; justify-content:center; margin-bottom:3px; }
+  .watch-title{ font-size:11.5px; font-weight:700; text-align:center; margin-bottom:2px; }
+  .watch-sub{ font-size:9px; color:#8A8D98; text-align:center; margin-bottom:5px; }
+  .watch-task{ display:flex; align-items:center; gap:6px; font-size:10px; padding:3px 0; border-bottom:1px solid #202127; }
+  .watch-task .wc2{ width:10.5px; height:10.5px; border-radius:3px; border:1.3px solid #5A5D6A; flex:0 0 auto; }
+  .watch-task .wc2.done{ background:var(--success-icon); border-color:var(--success-icon); }
+</style>
+</head>
+<body>
+
+  <div class="toggle-bar">
+    <div class="mode-toggle" id="modeToggle" onclick="toggleTheme()">
+      <span class="seg light active" id="segLight">☀️ Light</span>
+      <span class="seg dark" id="segDark">🌙 Dark</span>
+    </div>
+  </div>
+
+  <div class="page-head">
+    <div class="eyebrow">Designsystem v2 · vollständig</div>
+    <h1>Anker — alle 9 Screens in Liquid Glass, mit Dark-Mode-Umschalter</h1>
+    <p>Navigationsebene (Leisten, Sidebar, Popover, Tab-Leiste, FAB) ist transluzentes Material; Inhaltsebene
+       (Aufgaben, Ziele, Kacheln) bleibt matt — gemäß Apples eigener Liquid-Glass-Richtlinie. Alle Textfarben
+       sind gegen WCAG-AA geprüft und wo nötig korrigiert (Details siehe Kontrast-Check-Dokument). Rechts oben
+       zwischen Light/Dark umschalten — die Umschaltung läuft komplett über CSS-Variablen, keine Screens sind
+       doppelt gebaut.</p>
+  </div>
+
+  <!-- ============ 1: HEUTE ============ -->
+  <div class="section-tag"><span class="n">1</span> iPhone „Heute"</div>
+  <div class="gallery">
+    <div class="frame-block">
+      <div class="iphone">
+        <div class="iphone-screen">
+          <div class="dynamic-island"></div>
+          <div class="glass-navbar">
+            <div class="date">DONNERSTAG · 01.01.2026 · KW 01</div>
+            <h2>Heute</h2>
+          </div>
+          <div class="week-strip">
+            <div class="week-dot-wrap"><span class="wd">Mo</span><div class="week-dot has-goal">29</div></div>
+            <div class="week-dot-wrap"><span class="wd">Di</span><div class="week-dot has-goal">30</div></div>
+            <div class="week-dot-wrap"><span class="wd">Mi</span><div class="week-dot">31</div></div>
+            <div class="week-dot-wrap"><span class="wd">Do</span><div class="week-dot active has-goal">01</div></div>
+            <div class="week-dot-wrap"><span class="wd">Fr</span><div class="week-dot">02</div></div>
+            <div class="week-dot-wrap"><span class="wd">Sa</span><div class="week-dot">03</div></div>
+            <div class="week-dot-wrap"><span class="wd">So</span><div class="week-dot">04</div></div>
+          </div>
+          <div class="goal-banner">
+            <div class="anchor-badge"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8"><path d="M12 3v14M8 7a4 4 0 0 0 8 0M5 13a7 7 0 0 0 14 0M12 21c-2 0-3.5-1-3.5-1"/><circle cx="12" cy="4.2" r="1.4" fill="#fff" stroke="none"/></svg></div>
+            <div><div class="lbl">Verankert an Wochenziel</div><div class="val">Jahresplanung 2026 abschließen</div></div>
+          </div>
+          <div class="scroll-area">
+            <div class="section-label">Prio A</div>
+            <div class="task-card">
+              <span class="prio-tag prio-a">A</span><div class="task-check"></div>
+              <div class="task-body"><div class="title">Executive Summary finalisieren</div><div class="goal-ref">↳ Jahresplanung 2026</div></div>
+            </div>
+            <div class="task-card">
+              <span class="prio-tag prio-b">B</span><div class="task-check"></div>
+              <div class="task-body"><div class="title">Rückmeldung an R+V senden</div></div>
+            </div>
+          </div>
+          <div class="glass-fab"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></div>
+          <div class="glass-tabbar">
+            <div class="tab-item active"><div class="tab-dot"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#5B6EE8" stroke-width="2"><circle cx="12" cy="12" r="9"/></svg></div>Heute</div>
+            <div class="tab-item"><div class="tab-dot"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#8A8D98" stroke-width="2"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16"/></svg></div>Woche</div>
+            <div class="tab-item"><div class="tab-dot"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#8A8D98" stroke-width="2"><rect x="4" y="4" width="7" height="7"/><rect x="13" y="4" width="7" height="7"/><rect x="4" y="13" width="7" height="7"/><rect x="13" y="13" width="7" height="7"/></svg></div>Jahr</div>
+            <div class="tab-item"><div class="tab-dot"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#8A8D98" stroke-width="2"><circle cx="12" cy="8" r="3.2"/><path d="M5 20c0-3.5 3-5.5 7-5.5s7 2 7 5.5"/></svg></div>Mehr</div>
+          </div>
+        </div>
+      </div>
+      <div class="frame-caption"><div class="cap-title">iPhone — „Heute"</div><div class="cap-body">Glas-Navbar, Glas-Tab-Leiste, Glas-FAB; Inhalt matt.</div></div>
+    </div>
+  </div>
+
+  <!-- ============ 2: WOCHE/SIDEBAR ============ -->
+  <div class="section-tag"><span class="n">2</span> Mac/iPad — Sidebar &amp; Wochenübersicht</div>
+  <div class="gallery">
+    <div class="frame-block">
+      <div class="mac-window">
+        <div class="unified-bar"><div class="titlebar"><span class="traffic t-red"></span><span class="traffic t-yellow"></span><span class="traffic t-green"></span><span class="wtitle">Anker — Wochenübersicht</span></div></div>
+        <div class="mac-body">
+          <div class="sidebar">
+            <div class="sb-search">⌕ Ziele, Aufgaben, Notizen</div>
+            <div class="sb-year">2026</div>
+            <div class="sb-month open"><span class="sb-dot" style="background:#8FA8E8"></span>Januar</div>
+            <div class="sb-week active">Woche 01</div>
+            <div class="sb-day">Do 01.01.</div>
+            <div class="sb-day active">Fr 02.01.</div>
+            <div class="sb-day">Sa 03.01.</div>
+            <div class="sb-week">Woche 02</div>
+            <div class="sb-month"><span class="sb-dot" style="background:#7FCDA8"></span>Februar</div>
+            <div class="sb-month"><span class="sb-dot" style="background:#B9D97A"></span>März</div>
+          </div>
+          <div class="main-pane">
+            <div class="context-bar">
+              <span class="chip-btn">◀ Index</span><span class="chip-btn ghost">« KW 52</span><span class="chip-btn ghost">KW 02 »</span>
+              <span class="spacer"></span><span class="kw">29.12.2025 – 04.01.2026</span>
+            </div>
+            <div class="goals-row">
+              <div class="goal-pill"><div class="gp-top"><span class="gp-title">Jahresplanung 2026</span>
+                <svg class="ring" viewBox="0 0 36 36"><circle cx="18" cy="18" r="15" fill="none" stroke="#E4E5EA" stroke-width="4"/><circle cx="18" cy="18" r="15" fill="none" stroke="#5B6EE8" stroke-width="4" stroke-dasharray="70 100" stroke-linecap="round" transform="rotate(-90 18 18)"/></svg></div>
+                <div class="progress-bar"><span style="width:70%"></span></div></div>
+              <div class="goal-pill"><div class="gp-top"><span class="gp-title">Security-Review AWS SES</span>
+                <svg class="ring" viewBox="0 0 36 36"><circle cx="18" cy="18" r="15" fill="none" stroke="#E4E5EA" stroke-width="4"/><circle cx="18" cy="18" r="15" fill="none" stroke="#C9974B" stroke-width="4" stroke-dasharray="35 100" stroke-linecap="round" transform="rotate(-90 18 18)"/></svg></div>
+                <div class="progress-bar"><span style="width:35%; background:var(--brass);"></span></div></div>
+            </div>
+            <div class="week-grid">
+              <div class="wg-row"><div><div class="dayname">Montag</div><div class="daydate">29.12.</div></div><div class="wg-tasks"><span class="mini-task"><span class="dot" style="background:#5B6EE8"></span>RACI-Matrix Review</span></div></div>
+              <div class="wg-row"><div><div class="dayname">Dienstag</div><div class="daydate">30.12.</div></div><div class="wg-tasks"><span class="mini-task"><span class="dot" style="background:#C9974B"></span>SOC-Meldung abschließen</span></div></div>
+              <div class="wg-row today"><div><div class="dayname">Donnerstag</div><div class="daydate">01.01.</div></div><div class="wg-tasks">
+                <span class="mini-task"><span class="dot" style="background:#5B6EE8"></span>Executive Summary</span>
+                <span class="mini-task"><span class="dot" style="background:#8A8D98"></span>Rückmeldung R+V</span></div></div>
+              <div class="wg-row"><div><div class="dayname">Freitag</div><div class="daydate">02.01.</div></div><div class="wg-tasks"><span class="mini-task"><span class="dot" style="background:#5B6EE8"></span>Workshop vorbereiten</span></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="frame-caption"><div class="cap-title">Mac — Sidebar &amp; Wochenübersicht</div><div class="cap-body">Vibrante Sidebar, vereinte Werkzeugleiste, Glas-Kontextchips.</div></div>
+    </div>
+  </div>
+
+  <!-- ============ 3: MENU BAR ============ -->
+  <div class="section-tag"><span class="n">3</span> macOS — Menüleisten-Erfassung</div>
+  <div class="gallery">
+    <div class="frame-block">
+      <div class="menubar-mock">
+        <div class="mb-bar"><span class="mb-icon"></span><span class="mb-icon active"></span><span class="mb-icon"></span></div>
+        <div class="popover">
+          <h4>Schnell erfassen</h4>
+          <input class="pop-input" placeholder="Was steht an?" value="Foliensatz für Steering-Meeting" readonly>
+          <div class="pop-row-label">Priorität</div>
+          <div class="pop-chips"><span class="pop-chip sel">A</span><span class="pop-chip">B</span><span class="pop-chip">C</span></div>
+          <div class="pop-row-label">Wochenziel verankern</div>
+          <div class="pop-chips"><span class="pop-chip sel">Jahresplanung 2026</span><span class="pop-chip">Security-Review</span><span class="pop-chip">Kein Ziel</span></div>
+          <div class="pop-actions"><span class="btn secondary">Abbrechen</span><span class="btn primary">Sichern</span></div>
+        </div>
+      </div>
+      <div class="frame-caption"><div class="cap-title">macOS — Menüleiste</div><div class="cap-body">Popover jetzt als Glas-Material (nativ via <code>MenuBarExtra</code>/<code>NSPopover</code>), Eingabe/Chips bleiben matt.</div></div>
+    </div>
+  </div>
+
+  <!-- ============ 4: JAHRESÜBERSICHT ============ -->
+  <div class="section-tag"><span class="n">4</span> Mac — Jahresübersicht</div>
+  <div class="gallery">
+    <div class="frame-block">
+      <div class="mac-window">
+        <div class="unified-bar"><div class="titlebar"><span class="traffic t-red"></span><span class="traffic t-yellow"></span><span class="traffic t-green"></span><span class="wtitle">Anker — Jahresübersicht</span></div>
+          <div class="year-toolbar"><h3>2026 — 52 Wochen, 8 von 12 Monaten mit erreichten Zielen</h3></div>
+        </div>
+        <div class="mac-body" style="height:420px;">
+          <div class="sidebar">
+            <div class="sb-search">⌕ Ziele, Aufgaben, Notizen</div>
+            <div class="sb-year">2026</div>
+            <div class="sb-month"><span class="sb-dot" style="background:#8FA8E8"></span>Januar</div>
+            <div class="sb-month"><span class="sb-dot" style="background:#7FCDA8"></span>Februar</div>
+            <div class="sb-month"><span class="sb-dot" style="background:#B9D97A"></span>März</div>
+          </div>
+          <div class="main-pane">
+            <div class="month-tile-grid">
+              <div class="month-tile now" style="background:#8FA8E8"><span class="mt-name">Januar</span><span class="mt-stat">3/4 Ziele erreicht</span></div>
+              <div class="month-tile" style="background:#7FCDA8"><span class="mt-name">Februar</span><span class="mt-stat">—</span></div>
+              <div class="month-tile" style="background:#B9D97A"><span class="mt-name">März</span><span class="mt-stat">—</span></div>
+              <div class="month-tile" style="background:#F0C955"><span class="mt-name">April</span><span class="mt-stat">—</span></div>
+              <div class="month-tile" style="background:#F0A968"><span class="mt-name">Mai</span><span class="mt-stat">—</span></div>
+              <div class="month-tile" style="background:#F09EA9"><span class="mt-name">Juni</span><span class="mt-stat">—</span></div>
+              <div class="month-tile" style="background:#C79BE8"><span class="mt-name">Juli</span><span class="mt-stat">—</span></div>
+              <div class="month-tile" style="background:#A79BE8"><span class="mt-name">August</span><span class="mt-stat">—</span></div>
+              <div class="month-tile" style="background:#7FB4E8"><span class="mt-name">September</span><span class="mt-stat">—</span></div>
+              <div class="month-tile" style="background:#6FD6C4"><span class="mt-name">Oktober</span><span class="mt-stat">—</span></div>
+              <div class="month-tile" style="background:#AEB0BA"><span class="mt-name">November</span><span class="mt-stat">—</span></div>
+              <div class="month-tile" style="background:#E8B98A"><span class="mt-name">Dezember</span><span class="mt-stat">—</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="frame-caption"><div class="cap-title">Mac — Jahresübersicht</div><div class="cap-body">Toolbar+Sidebar als vereinte Glas-Fläche; Monatskacheln bleiben farbige, matte "Sticker" — Text darauf bewusst immer Ink (siehe Kontrast-Check).</div></div>
+    </div>
+  </div>
+
+  <!-- ============ 5: WOCHENRÜCKBLICK ============ -->
+  <div class="section-tag"><span class="n">5</span> iPhone — Wochenrückblick</div>
+  <div class="gallery">
+    <div class="frame-block">
+      <div class="iphone">
+        <div class="iphone-screen">
+          <div class="dynamic-island"></div>
+          <div class="glass-navbar"><div class="date">KW 01 · 29.12. – 04.01.</div><h2>Wochenrückblick</h2></div>
+          <div class="scroll-area" style="padding-top:2px;">
+            <div class="goal-banner">
+              <div class="anchor-badge" style="background:var(--success-icon);"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4"><path d="M4 12l5 5L20 6"/></svg></div>
+              <div><div class="lbl">Ziele erreicht</div><div class="val">3 von 4 Wochenzielen</div></div>
+            </div>
+            <div class="section-label">Zielverlauf</div>
+            <div class="task-card"><div class="task-check done"></div><div class="task-body"><div class="title">Jahresplanung 2026</div></div></div>
+            <div class="task-card"><div class="task-check done"></div><div class="task-body"><div class="title">Security-Review AWS SES</div></div></div>
+            <div class="task-card"><div class="task-check done"></div><div class="task-body"><div class="title">Workshop Product Owner Lead</div></div></div>
+            <div class="task-card"><div class="task-check"></div><div class="task-body"><div class="title">FZulG-Bewertung abschließen</div><div class="goal-ref" style="color:var(--brass);">→ automatisch nach KW 02 verschoben</div></div></div>
+            <div class="section-label">Rückblick</div>
+            <div class="task-card" style="display:block;">
+              <div style="font-size:11.5px; color:var(--text-soft); margin-bottom:8px;">Was nimmst du mit in die nächste Woche?</div>
+              <div style="border:1px solid var(--line); border-radius:8px; padding:10px; font-size:12px; color:var(--text-soft);">Notiz hinzufügen …</div>
+            </div>
+          </div>
+          <div class="glass-tabbar">
+            <div class="tab-item"><div class="tab-dot"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#8A8D98" stroke-width="2"><circle cx="12" cy="12" r="9"/></svg></div>Heute</div>
+            <div class="tab-item active"><div class="tab-dot"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#5B6EE8" stroke-width="2"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16"/></svg></div>Woche</div>
+            <div class="tab-item"><div class="tab-dot"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#8A8D98" stroke-width="2"><rect x="4" y="4" width="7" height="7"/><rect x="13" y="4" width="7" height="7"/><rect x="4" y="13" width="7" height="7"/><rect x="13" y="13" width="7" height="7"/></svg></div>Jahr</div>
+            <div class="tab-item"><div class="tab-dot"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#8A8D98" stroke-width="2"><circle cx="12" cy="8" r="3.2"/><path d="M5 20c0-3.5 3-5.5 7-5.5s7 2 7 5.5"/></svg></div>Mehr</div>
+          </div>
+        </div>
+      </div>
+      <div class="frame-caption"><div class="cap-title">iPhone — Wochenrückblick</div><div class="cap-body">Success-Icon-Grün jetzt kontrastkorrigiert (weißes Häkchen ≥3:1).</div></div>
+    </div>
+  </div>
+
+  <!-- ============ 6: ZIEL-DETAIL ============ -->
+  <div class="section-tag"><span class="n">6</span> Mac — Ziel-Detail</div>
+  <div class="gallery">
+    <div class="frame-block">
+      <div class="mac-window" style="width:500px;">
+        <div class="unified-bar"><div class="titlebar"><span class="traffic t-red"></span><span class="traffic t-yellow"></span><span class="traffic t-green"></span><span class="wtitle">Ziel — Jahresplanung 2026</span></div></div>
+        <div style="display:flex; flex-direction:column; height:420px; background:var(--app-bg); overflow:hidden;">
+          <div class="detail-head">
+            <svg class="detail-ring-big" viewBox="0 0 36 36"><circle cx="18" cy="18" r="15" fill="none" stroke="#E4E5EA" stroke-width="3.5"/><circle cx="18" cy="18" r="15" fill="none" stroke="#5B6EE8" stroke-width="3.5" stroke-dasharray="70 100" stroke-linecap="round" transform="rotate(-90 18 18)"/></svg>
+            <div><h3>Jahresplanung 2026</h3><div class="sub">Wochenziel · KW 01 · verankert seit Mo 29.12.</div></div>
+          </div>
+          <div class="detail-stats"><div class="dstat"><b>7</b><span>Aufgaben</span></div><div class="dstat"><b>5</b><span>Erledigt</span></div><div class="dstat"><b>3</b><span>Tage aktiv</span></div></div>
+          <div class="detail-timeline">
+            <div class="tl-day"><div class="tld-lbl">Mo</div><div class="tl-bar"><span style="height:80%"></span></div></div>
+            <div class="tl-day"><div class="tld-lbl">Di</div><div class="tl-bar"><span style="height:40%"></span></div></div>
+            <div class="tl-day"><div class="tld-lbl">Mi</div><div class="tl-bar"><span style="height:0%"></span></div></div>
+            <div class="tl-day"><div class="tld-lbl">Do</div><div class="tl-bar"><span style="height:100%"></span></div></div>
+            <div class="tl-day"><div class="tld-lbl">Fr</div><div class="tl-bar"><span style="height:60%"></span></div></div>
+            <div class="tl-day"><div class="tld-lbl">Sa</div><div class="tl-bar"><span style="height:0%"></span></div></div>
+            <div class="tl-day"><div class="tld-lbl">So</div><div class="tl-bar"><span style="height:0%"></span></div></div>
+          </div>
+          <div class="detail-tasklist">
+            <div class="dt-day-label">Donnerstag, 01.01.</div>
+            <div class="dt-row"><div class="dt-check done"></div>Executive Summary finalisieren</div>
+            <div class="dt-row muted"><div class="dt-check done"></div>Feedback-Runde einplanen</div>
+            <div class="dt-day-label">Freitag, 02.01.</div>
+            <div class="dt-row"><div class="dt-check"></div>Workshop-Agenda abstimmen</div>
+          </div>
+        </div>
+      </div>
+      <div class="frame-caption"><div class="cap-title">Mac — Ziel-Detail</div><div class="cap-body">Vereinte Glas-Titelleiste, Inhalt (Ring, Statistik, Verlauf, Aufgabenliste) matt.</div></div>
+    </div>
+  </div>
+
+  <!-- ============ 7: ONBOARDING ============ -->
+  <div class="section-tag"><span class="n">7</span> iPhone — Onboarding</div>
+  <div class="gallery">
+    <div class="frame-block">
+      <div class="iphone">
+        <div class="iphone-screen">
+          <div class="dynamic-island"></div>
+          <div class="onboard-wrap">
+            <div class="onboard-icon"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8"><path d="M12 3v14M8 7a4 4 0 0 0 8 0M5 13a7 7 0 0 0 14 0M12 21c-2 0-3.5-1-3.5-1"/><circle cx="12" cy="4.2" r="1.4" fill="#fff" stroke="none"/></svg></div>
+            <h2>Verankere deine Woche</h2>
+            <p>Setze bis zu vier Wochenziele. Jede Tagesaufgabe, die du erledigst, bleibt sichtbar
+               mit ihrem Ziel verbunden — damit der Tag nie den Bezug zur Woche verliert.</p>
+            <div class="onboard-dots"><span class="active"></span><span></span><span></span></div>
+            <div class="onboard-btn">Erstes Wochenziel setzen</div>
+          </div>
+        </div>
+      </div>
+      <div class="frame-caption"><div class="cap-title">iPhone — Onboarding</div><div class="cap-body">CTA-Button jetzt als leuchtendes Glas-Element statt Flatcolor.</div></div>
+    </div>
+  </div>
+
+  <!-- ============ 8: WIDGETS ============ -->
+  <div class="section-tag"><span class="n">8</span> Home Screen &amp; Sperrbildschirm-Widgets</div>
+  <div class="fix-list">Themeunabhängig (liegen immer auf dem Wallpaper des Nutzers). Neu: Checkbox im Home-Widget ist jetzt <b>antippbar</b> (App-Intent-Button) statt reiner Anzeige — schließt die im Audit genannte Innovation-Lücke.</div>
+  <div class="gallery">
+    <div class="frame-block">
+      <div class="wallpaper">
+        <div class="widget-medium">
+          <div class="wlbl">Heutiger Fokus</div>
+          <div class="wgoal">↳ Jahresplanung 2026</div>
+          <div class="wtask done-txt"><span class="wc done">✓</span> Team-Sync Produkt</div>
+          <div class="wtask"><span class="wc"></span> Executive Summary finalisieren</div>
+        </div>
+        <div class="lockrow">
+          <div class="widget-lock">
+            <svg viewBox="0 0 36 36"><circle cx="18" cy="18" r="15" fill="none" stroke="rgba(255,255,255,.25)" stroke-width="3.5"/><circle cx="18" cy="18" r="15" fill="none" stroke="#fff" stroke-width="3.5" stroke-dasharray="53 100" stroke-linecap="round" transform="rotate(-90 18 18)"/></svg>
+            <span class="wl-txt">2/4</span>
+          </div>
+          <div class="lock-caption">Sperrbildschirm-Widget —<br>Fortschritt Wochenziele</div>
+        </div>
+      </div>
+      <div class="frame-caption"><div class="cap-title">Widgets</div><div class="cap-body">Home-Widget-Checkbox jetzt interaktiv (App Intent), Lock-Screen-Ring bleibt monochrom lesbar.</div></div>
+    </div>
+  </div>
+
+  <!-- ============ 9: WATCH ============ -->
+  <div class="section-tag"><span class="n">9</span> Apple Watch</div>
+  <div class="fix-list">Themeunabhängig (OLED-Schwarz aus Energiegründen immer aktiv, unabhängig vom iPhone-Theme).</div>
+  <div class="gallery">
+    <div class="frame-block">
+      <div class="watch">
+        <div class="watch-screen">
+          <div class="watch-time">9:41</div>
+          <div class="watch-ring-row"><svg width="44" height="44" viewBox="0 0 36 36"><circle cx="18" cy="18" r="15" fill="none" stroke="#26272E" stroke-width="4"/><circle cx="18" cy="18" r="15" fill="none" stroke="#5B6EE8" stroke-width="4" stroke-dasharray="53 100" stroke-linecap="round" transform="rotate(-90 18 18)"/></svg></div>
+          <div class="watch-title">Jahresplanung 2026</div>
+          <div class="watch-sub">2 von 4 Aufgaben heute</div>
+          <div class="watch-task"><span class="wc2 done"></span> Executive Summary</div>
+          <div class="watch-task"><span class="wc2 done"></span> Team-Sync</div>
+          <div class="watch-task"><span class="wc2"></span> Rückmeldung R+V</div>
+        </div>
+      </div>
+      <div class="frame-caption"><div class="cap-title">Apple Watch</div><div class="cap-body">Komplikation + Mini-App zum Abhaken.</div></div>
+    </div>
+  </div>
+
+<script>
+function toggleTheme(){
+  const b = document.body;
+  const isDark = b.classList.toggle('dark');
+  document.getElementById('modeToggle').classList.toggle('is-dark', isDark);
+  document.getElementById('segLight').classList.toggle('active', !isDark);
+  document.getElementById('segDark').classList.toggle('active', isDark);
+}
+</script>
+</body>
+</html>

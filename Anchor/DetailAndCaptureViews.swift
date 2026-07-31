@@ -3,6 +3,7 @@ import SwiftUI
 
 struct NewTaskSheet: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.modelContext) private var modelContext
     @Bindable var day: Day
     let goals: [Goal]
 
@@ -79,15 +80,41 @@ struct NewTaskSheet: View {
             day: day,
             linkedGoal: goal
         )
+        modelContext.insert(task)
         day.tasks.append(task)
     }
 }
 
 #if os(macOS)
 struct QuickCapturePopover: View {
+    @Environment(\.modelContext) private var modelContext
+    @Query(sort: \Week.monday) private var weeks: [Week]
+
     @State private var title = "Foliensatz für Steering-Meeting"
     @State private var priority: Priority = .a
-    let goals: [Goal]
+    @State private var selectedGoalID: UUID?
+
+    private var currentWeek: Week? {
+        let today = Date()
+        let sortedWeeks = weeks.sorted { $0.monday < $1.monday }
+
+        if let matchingWeek = sortedWeeks.first(where: { week in
+            (week.monday...week.sunday).contains(today)
+        }) {
+            return matchingWeek
+        }
+
+        return sortedWeeks.last
+    }
+
+    private var currentDay: Day? {
+        currentWeek?.days.first { AnkerCalendar.isSameDay($0.date, Date()) }
+            ?? currentWeek?.days.sorted { $0.date < $1.date }.first
+    }
+
+    private var goals: [Goal] {
+        Array((currentWeek?.goals ?? []).prefix(4))
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -120,23 +147,55 @@ struct QuickCapturePopover: View {
                 .foregroundStyle(AnkerColor.muted)
 
             FlowLayout(spacing: 6) {
-                ForEach(goals.prefix(2), id: \.id) { goal in
-                    CaptureChip(title: goal.title, isSelected: goal.id == goals.first?.id, selectedColor: AnkerColor.indigo) {}
+                ForEach(goals, id: \.id) { goal in
+                    CaptureChip(title: goal.title, isSelected: selectedGoalID == goal.id, selectedColor: AnkerColor.indigo) {
+                        selectedGoalID = goal.id
+                    }
                 }
-                CaptureChip(title: "Kein Ziel", isSelected: false, selectedColor: AnkerColor.indigo) {}
+                CaptureChip(title: "Kein Ziel", isSelected: selectedGoalID == nil, selectedColor: AnkerColor.indigo) {
+                    selectedGoalID = nil
+                }
             }
 
             HStack {
                 Spacer()
-                Button("Abbrechen") {}
-                Button("Sichern") {}
+                Button("Abbrechen") {
+                    title = ""
+                    selectedGoalID = nil
+                }
+                Button("Sichern") {
+                    save()
+                }
                     .buttonStyle(.borderedProminent)
+                    .disabled(currentDay == nil || title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }
             .font(.system(size: 12, weight: .semibold))
             .padding(.top, 2)
         }
+        .onAppear {
+            selectedGoalID = selectedGoalID ?? goals.first?.id
+        }
         .padding(16)
         .frame(width: 300)
+    }
+
+    private func save() {
+        guard let currentDay else { return }
+        let cleanTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !cleanTitle.isEmpty else { return }
+
+        let goal = goals.first { $0.id == selectedGoalID }
+        let task = AnkerTask(
+            title: cleanTitle,
+            priority: priority,
+            order: currentDay.tasks.count,
+            day: currentDay,
+            linkedGoal: goal
+        )
+        modelContext.insert(task)
+        currentDay.tasks.append(task)
+        title = ""
+        selectedGoalID = goals.first?.id
     }
 }
 #endif
