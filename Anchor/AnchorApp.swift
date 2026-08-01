@@ -7,6 +7,9 @@
 
 import SwiftUI
 import SwiftData
+#if os(macOS)
+import AppKit
+#endif
 
 private enum CloudSyncConfiguration {
     static let containerIdentifier = "iCloud.com.marcomeisen.Anchor"
@@ -14,6 +17,10 @@ private enum CloudSyncConfiguration {
 
 @main
 struct AnchorApp: App {
+#if os(macOS)
+    @NSApplicationDelegateAdaptor(AnchorAppDelegate.self) private var appDelegate
+#endif
+
     var sharedModelContainer: ModelContainer = {
         let schema = Schema(AnkerSchema.models)
         let modelConfiguration = ModelConfiguration(
@@ -31,18 +38,68 @@ struct AnchorApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
-        }
-        .modelContainer(sharedModelContainer)
-
 #if os(macOS)
-        MenuBarExtra("Anker", systemImage: "anchor") {
-            QuickCapturePopover()
+                .onAppear {
+                    appDelegate.configure(modelContainer: sharedModelContainer)
+                }
+#endif
         }
         .modelContainer(sharedModelContainer)
-        .menuBarExtraStyle(.window)
-#endif
     }
 }
+
+#if os(macOS)
+@MainActor
+final class AnchorAppDelegate: NSObject, NSApplicationDelegate {
+    private var statusItemController: AnchorStatusItemController?
+
+    func configure(modelContainer: ModelContainer) {
+        guard statusItemController == nil else { return }
+        statusItemController = AnchorStatusItemController(modelContainer: modelContainer)
+    }
+}
+
+@MainActor
+private final class AnchorStatusItemController: NSObject {
+    private let statusItem: NSStatusItem
+    private let popover: NSPopover
+
+    init(modelContainer: ModelContainer) {
+        statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
+        popover = NSPopover()
+        super.init()
+
+        if let button = statusItem.button {
+            if let image = NSImage(systemSymbolName: "anchor", accessibilityDescription: "Anker") {
+                button.image = image
+                button.imagePosition = .imageOnly
+            } else {
+                button.title = "A"
+            }
+            button.action = #selector(togglePopover(_:))
+            button.target = self
+        }
+
+        let rootView = QuickCapturePopover()
+            .modelContainer(modelContainer)
+        popover.behavior = .transient
+        popover.contentSize = NSSize(width: 300, height: 252)
+        popover.contentViewController = NSHostingController(rootView: rootView)
+    }
+
+    @objc
+    private func togglePopover(_ sender: AnyObject?) {
+        guard let button = statusItem.button else { return }
+
+        if popover.isShown {
+            popover.performClose(sender)
+        } else {
+            popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+            popover.contentViewController?.view.window?.makeKey()
+        }
+    }
+}
+#endif
 
 enum AnkerSchema {
     static let models: [any PersistentModel.Type] = [

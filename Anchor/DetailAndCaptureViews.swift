@@ -95,11 +95,8 @@ struct QuickCapturePopover: View {
     @State private var selectedGoalID: UUID?
 
     private var currentWeek: Week? {
-        let today = Date()
-        let sortedWeeks = weeks.sorted { $0.monday < $1.monday }
-        return sortedWeeks.first(where: { week in
-            (week.monday...week.sunday).contains(today)
-        })
+        let interval = AnkerCalendar.weekInterval(containing: Date())
+        return weeks.first { AnkerCalendar.isSameDay($0.monday, interval.monday) }
     }
 
     private var currentDay: Day? {
@@ -162,13 +159,15 @@ struct QuickCapturePopover: View {
                     save()
                 }
                     .buttonStyle(.borderedProminent)
-                    .disabled(currentDay == nil || title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    .disabled(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }
             .font(.system(size: 12, weight: .semibold))
             .padding(.top, 2)
         }
         .onAppear {
-            selectedGoalID = selectedGoalID ?? goals.first?.id
+            let week = ensureCurrentWeek()
+            selectedGoalID = selectedGoalID ?? week.goalList.first?.id
+            try? modelContext.save()
         }
         .padding(16)
         .frame(width: 300)
@@ -176,11 +175,13 @@ struct QuickCapturePopover: View {
     }
 
     private func save() {
-        guard let currentDay else { return }
+        let week = ensureCurrentWeek()
+        guard let currentDay = week.dayList.first(where: { AnkerCalendar.isSameDay($0.date, Date()) })
+            ?? week.dayList.sorted(by: { $0.date < $1.date }).first else { return }
         let cleanTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !cleanTitle.isEmpty else { return }
 
-        let goal = goals.first { $0.id == selectedGoalID }
+        let goal = week.goalList.first { $0.id == selectedGoalID }
         let task = AnkerTask(
             title: cleanTitle,
             priority: priority,
@@ -190,8 +191,39 @@ struct QuickCapturePopover: View {
         )
         modelContext.insert(task)
         currentDay.appendTask(task)
+        try? modelContext.save()
         title = ""
-        selectedGoalID = goals.first?.id
+        selectedGoalID = week.goalList.first?.id
+    }
+
+    @discardableResult
+    private func ensureCurrentWeek() -> Week {
+        let interval = AnkerCalendar.weekInterval(containing: Date())
+
+        if let existingWeek = weeks.first(where: { AnkerCalendar.isSameDay($0.monday, interval.monday) }) {
+            ensureWeekDays(in: existingWeek)
+            return existingWeek
+        }
+
+        let week = Week(
+            isoYear: interval.isoYear,
+            isoWeek: interval.isoWeek,
+            monday: interval.monday,
+            sunday: interval.sunday
+        )
+        week.days = AnkerCalendar.daysInWeek(starting: interval.monday).map { date in
+            Day(date: date, week: week)
+        }
+        modelContext.insert(week)
+        return week
+    }
+
+    private func ensureWeekDays(in week: Week) {
+        if week.dayList.isEmpty {
+            week.days = AnkerCalendar.daysInWeek(starting: week.monday).map { date in
+                Day(date: date, week: week)
+            }
+        }
     }
 }
 #endif
