@@ -1,9 +1,39 @@
 import SwiftData
 import SwiftUI
 
+struct TaskSnapshot: Identifiable {
+    let id: UUID
+    let title: String
+    let priority: Priority
+    let isDone: Bool
+    let order: Int
+    let dayID: UUID?
+    let goalID: UUID?
+}
+
+struct TaskUndoNotice: Identifiable {
+    let id = UUID()
+    let message: String
+    let snapshots: [TaskSnapshot]
+    var operation: TaskUndoOperation = .restore
+}
+
+enum TaskUndoOperation {
+    case restore
+    case deleteCreated
+}
+
 enum TaskActions {
     static func toggleDone(_ task: AnkerTask, modelContext: ModelContext) {
+        let wasDone = task.isDone
         task.isDone.toggle()
+
+        if !wasDone, let day = task.day {
+            task.order = (day.taskList.map(\.order).max() ?? task.order) + 1
+            day.tasks = day.taskList.filter { $0.id != task.id } + [task]
+            normalizeOrders(in: day)
+        }
+
         try? modelContext.save()
     }
 
@@ -48,6 +78,137 @@ enum TaskActions {
     static func link(_ task: AnkerTask, to goal: Goal?, modelContext: ModelContext) {
         task.linkedGoal = goal
         try? modelContext.save()
+    }
+
+    static func snapshot(_ task: AnkerTask) -> TaskSnapshot {
+        TaskSnapshot(
+            id: task.id,
+            title: task.title,
+            priority: task.priority,
+            isDone: task.isDone,
+            order: task.order,
+            dayID: task.day?.id,
+            goalID: task.linkedGoal?.id
+        )
+    }
+
+    static func undo(_ notice: TaskUndoNotice, weeks: [Week], modelContext: ModelContext) {
+        switch notice.operation {
+        case .restore:
+            restore(notice.snapshots, weeks: weeks, modelContext: modelContext)
+        case .deleteCreated:
+            deleteCreatedTasks(notice.snapshots, weeks: weeks, modelContext: modelContext)
+        }
+    }
+
+    static func restore(_ snapshots: [TaskSnapshot], weeks: [Week], modelContext: ModelContext) {
+        let allDays = weeks.flatMap(\.dayList)
+        let allGoals = weeks.flatMap(\.goalList)
+        let existingTasks = allDays.flatMap(\.taskList)
+        var targetDaysByID: [UUID: Day] = [:]
+        var touchedOldDays: [UUID: Day] = [:]
+        var restoredTasksByID: [UUID: AnkerTask] = [:]
+        var snapshotsByTaskID: [UUID: TaskSnapshot] = [:]
+
+        for snapshot in snapshots {
+            guard let dayID = snapshot.dayID,
+                  let day = allDays.first(where: { $0.id == dayID }) else { continue }
+            let goal = snapshot.goalID.flatMap { goalID in allGoals.first { $0.id == goalID } }
+            snapshotsByTaskID[snapshot.id] = snapshot
+            targetDaysByID[day.id] = day
+
+            if let existingTask = existingTasks.first(where: { $0.id == snapshot.id }) {
+                existingTask.title = snapshot.title
+                existingTask.priority = snapshot.priority
+                existingTask.isDone = snapshot.isDone
+                existingTask.order = snapshot.order
+                existingTask.linkedGoal = goal
+
+                if existingTask.day?.id != day.id {
+                    if let oldDay = existingTask.day {
+                        oldDay.tasks = oldDay.taskList.filter { $0.id != existingTask.id }
+                        touchedOldDays[oldDay.id] = oldDay
+                    }
+                    existingTask.day = day
+                }
+                restoredTasksByID[existingTask.id] = existingTask
+            } else {
+                let task = AnkerTask(
+                    id: snapshot.id,
+                    title: snapshot.title,
+                    priority: snapshot.priority,
+                    isDone: snapshot.isDone,
+                    order: snapshot.order,
+                    day: day,
+                    linkedGoal: goal
+                )
+                modelContext.insert(task)
+                restoredTasksByID[task.id] = task
+            }
+        }
+
+        for day in touchedOldDays.values where targetDaysByID[day.id] == nil {
+            normalizeOrders(in: day)
+        }
+
+        for day in targetDaysByID.values {
+            restoreTaskOrder(
+                in: day,
+                restoredTasks: restoredTasksByID,
+                snapshots: snapshotsByTaskID
+            )
+        }
+
+        try? modelContext.save()
+    }
+
+    private static func deleteCreatedTasks(_ snapshots: [TaskSnapshot], weeks: [Week], modelContext: ModelContext) {
+        let createdIDs = Set(snapshots.map(\.id))
+        let allDays = weeks.flatMap(\.dayList)
+        let tasks = allDays.flatMap(\.taskList).filter { createdIDs.contains($0.id) }
+
+        for task in tasks {
+            delete(task, modelContext: modelContext)
+        }
+
+        try? modelContext.save()
+    }
+
+    private static func restoreTaskOrder(
+        in day: Day,
+        restoredTasks: [UUID: AnkerTask],
+        snapshots: [UUID: TaskSnapshot]
+    ) {
+        var orderedTasks = day.taskList
+            .filter { restoredTasks[$0.id] == nil }
+            .sorted {
+                if $0.order == $1.order {
+                    return $0.title.localizedStandardCompare($1.title) == .orderedAscending
+                }
+                return $0.order < $1.order
+            }
+
+        let daySnapshots = snapshots.values
+            .filter { $0.dayID == day.id }
+            .sorted {
+                if $0.order == $1.order {
+                    return $0.title.localizedStandardCompare($1.title) == .orderedAscending
+                }
+                return $0.order < $1.order
+            }
+
+        for snapshot in daySnapshots {
+            guard let task = restoredTasks[snapshot.id] else { continue }
+            let insertionIndex = min(max(snapshot.order, 0), orderedTasks.count)
+            orderedTasks.insert(task, at: insertionIndex)
+        }
+
+        for (index, task) in orderedTasks.enumerated() {
+            task.order = index
+            task.day = day
+        }
+
+        day.tasks = orderedTasks
     }
 
     static func move(_ task: AnkerTask, to targetDate: Date, weeks: [Week], modelContext: ModelContext) {
@@ -406,6 +567,154 @@ struct TaskEditorSheet: View {
         task.isDone = isDone
         task.linkedGoal = task.day?.week?.goalList.first { $0.id == selectedGoalID }
         try? modelContext.save()
+    }
+
+    private func shortDate(_ date: Date) -> String {
+        date.formatted(.dateTime.locale(Locale(identifier: "de_DE")).day(.twoDigits).month(.twoDigits))
+    }
+}
+
+struct TaskMoveSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.modelContext) private var modelContext
+    @Query(sort: \Week.monday) private var weeks: [Week]
+
+    let tasks: [AnkerTask]
+    var onMoved: (([TaskSnapshot]) -> Void)?
+
+    @State private var selectedWeekStart = AnkerCalendar.weekInterval(containing: Date()).monday
+    @State private var selectedDate = Date()
+    @State private var hasLoaded = false
+
+    private var selectedWeekInterval: (monday: Date, sunday: Date, isoYear: Int, isoWeek: Int) {
+        AnkerCalendar.weekInterval(containing: selectedWeekStart)
+    }
+
+    private var cleanTasks: [AnkerTask] {
+        tasks.filter { $0.day != nil }
+    }
+
+    var body: some View {
+        NavigationStack {
+            VStack(alignment: .leading, spacing: 16) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(cleanTasks.count == 1 ? "Aufgabe verschieben" : "\(cleanTasks.count) Aufgaben verschieben")
+                        .font(.system(size: 17, weight: .bold))
+                        .foregroundStyle(AnkerColor.ink)
+                    Text("Wähle Woche und Zieltag.")
+                        .font(.system(size: 12))
+                        .foregroundStyle(AnkerColor.muted)
+                }
+
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Woche".uppercased())
+                        .font(.system(size: 10.5, weight: .bold))
+                        .foregroundStyle(AnkerColor.muted)
+
+                    HStack(spacing: 8) {
+                        moveButton(systemName: "chevron.left", label: "Vorherige Woche") {
+                            moveSelectedWeek(by: -1)
+                        }
+
+                        VStack(spacing: 2) {
+                            Text("KW \(String(format: "%02d", selectedWeekInterval.isoWeek))")
+                                .font(.system(size: 13, weight: .bold))
+                                .foregroundStyle(AnkerColor.ink)
+                            Text("\(shortDate(selectedWeekInterval.monday)) - \(shortDate(selectedWeekInterval.sunday))")
+                                .font(.system(size: 10.5, weight: .medium, design: .monospaced))
+                                .foregroundStyle(AnkerColor.muted)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 10)
+                        .background(AnkerColor.card, in: RoundedRectangle(cornerRadius: 10))
+                        .overlay(RoundedRectangle(cornerRadius: 10).stroke(AnkerColor.line))
+
+                        moveButton(systemName: "chevron.right", label: "Nächste Woche") {
+                            moveSelectedWeek(by: 1)
+                        }
+                    }
+                }
+
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Tag".uppercased())
+                        .font(.system(size: 10.5, weight: .bold))
+                        .foregroundStyle(AnkerColor.muted)
+
+                    HStack(spacing: 6) {
+                        ForEach(AnkerCalendar.daysInWeek(starting: selectedWeekStart), id: \.self) { date in
+                            Button {
+                                selectedDate = date
+                            } label: {
+                                VStack(spacing: 3) {
+                                    Text(date.formatted(.dateTime.locale(Locale(identifier: "de_DE")).weekday(.abbreviated)).replacing(".", with: ""))
+                                        .font(.system(size: 9.5, weight: .bold))
+                                    Text(date.formatted(.dateTime.day(.twoDigits)))
+                                        .font(.system(size: 12.5, weight: .bold, design: .monospaced))
+                                }
+                                .foregroundStyle(AnkerCalendar.isSameDay(date, selectedDate) ? .white : AnkerColor.ink)
+                                .frame(maxWidth: .infinity, minHeight: 46)
+                                .background(AnkerCalendar.isSameDay(date, selectedDate) ? AnkerColor.indigo : AnkerColor.card)
+                                .overlay(RoundedRectangle(cornerRadius: 9).stroke(AnkerCalendar.isSameDay(date, selectedDate) ? Color.clear : AnkerColor.line))
+                                .clipShape(RoundedRectangle(cornerRadius: 9))
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                }
+
+                Spacer(minLength: 0)
+            }
+            .padding(18)
+            .background(AnkerColor.paper)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Abbrechen") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Verschieben") {
+                        moveTasks()
+                        dismiss()
+                    }
+                    .disabled(cleanTasks.isEmpty)
+                }
+            }
+            .onAppear(perform: loadInitialDate)
+        }
+    }
+
+    private func loadInitialDate() {
+        guard !hasLoaded else { return }
+        selectedDate = cleanTasks.first?.day?.date ?? Date()
+        selectedWeekStart = AnkerCalendar.weekInterval(containing: selectedDate).monday
+        hasLoaded = true
+    }
+
+    private func moveTasks() {
+        let snapshots = cleanTasks.map { TaskActions.snapshot($0) }
+        for task in cleanTasks {
+            TaskActions.move(task, to: selectedDate, weeks: weeks, modelContext: modelContext)
+        }
+        onMoved?(snapshots)
+    }
+
+    private func moveSelectedWeek(by offset: Int) {
+        guard let newWeekStart = AnkerCalendar.iso.date(byAdding: .weekOfYear, value: offset, to: selectedWeekStart),
+              let newSelectedDate = AnkerCalendar.iso.date(byAdding: .weekOfYear, value: offset, to: selectedDate) else { return }
+
+        selectedWeekStart = AnkerCalendar.weekInterval(containing: newWeekStart).monday
+        selectedDate = newSelectedDate
+    }
+
+    private func moveButton(systemName: String, label: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: systemName)
+                .font(.system(size: 12, weight: .bold))
+                .frame(width: 38, height: 38)
+                .background(AnkerColor.card, in: RoundedRectangle(cornerRadius: 9))
+                .overlay(RoundedRectangle(cornerRadius: 9).stroke(AnkerColor.line))
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(label)
     }
 
     private func shortDate(_ date: Date) -> String {

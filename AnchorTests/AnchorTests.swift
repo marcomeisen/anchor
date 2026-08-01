@@ -62,9 +62,95 @@ final class AnchorTests: XCTestCase {
     }
 
     @MainActor
+    func testCompletingTaskMovesItToEndOfDayOrder() throws {
+        let container = try makeContainer()
+        let context = container.mainContext
+        let week = makeWeek(in: context)
+        let day = try XCTUnwrap(week.dayList.first)
+
+        let first = AnkerTask(title: "Erste Aufgabe", priority: .a, order: 0, day: day)
+        let second = AnkerTask(title: "Zweite Aufgabe", priority: .a, order: 1, day: day)
+        let third = AnkerTask(title: "Dritte Aufgabe", priority: .a, order: 2, day: day)
+        context.insert(first)
+        context.insert(second)
+        context.insert(third)
+        day.tasks = [first, second, third]
+
+        TaskActions.toggleDone(first, modelContext: context)
+
+        let orderedTitles = day.taskList.sorted { $0.order < $1.order }.map(\.title)
+        XCTAssertEqual(orderedTitles, ["Zweite Aufgabe", "Dritte Aufgabe", "Erste Aufgabe"])
+        XCTAssertTrue(first.isDone)
+    }
+
+    @MainActor
+    func testTaskUndoRestoresDeletedTaskAtOriginalPosition() throws {
+        let container = try makeContainer()
+        let context = container.mainContext
+        let week = makeWeek(in: context)
+        let day = try XCTUnwrap(week.dayList.first)
+
+        let first = AnkerTask(title: "Erste Aufgabe", priority: .a, order: 0, day: day)
+        let second = AnkerTask(title: "Zweite Aufgabe", priority: .b, order: 1, day: day)
+        let third = AnkerTask(title: "Dritte Aufgabe", priority: .c, order: 2, day: day)
+        context.insert(first)
+        context.insert(second)
+        context.insert(third)
+        day.tasks = [first, second, third]
+
+        let snapshot = TaskActions.snapshot(second)
+        TaskActions.delete(second, modelContext: context)
+
+        TaskActions.restore([snapshot], weeks: [week], modelContext: context)
+
+        let restoredTitles = day.taskList.sorted { $0.order < $1.order }.map(\.title)
+        XCTAssertEqual(restoredTitles, ["Erste Aufgabe", "Zweite Aufgabe", "Dritte Aufgabe"])
+    }
+
+    @MainActor
+    func testDuplicateUndoDeletesCreatedCopy() throws {
+        let container = try makeContainer()
+        let context = container.mainContext
+        let week = makeWeek(in: context)
+        let day = try XCTUnwrap(week.dayList.first)
+
+        let original = AnkerTask(title: "Original", priority: .b, order: 0, day: day)
+        context.insert(original)
+        day.tasks = [original]
+
+        let copy = try XCTUnwrap(TaskActions.duplicate(original, modelContext: context))
+        let notice = TaskUndoNotice(
+            message: "Aufgabe dupliziert",
+            snapshots: [TaskActions.snapshot(copy)],
+            operation: .deleteCreated
+        )
+
+        TaskActions.undo(notice, weeks: [week], modelContext: context)
+
+        let remainingTasks = try context.fetch(FetchDescriptor<AnkerTask>())
+        XCTAssertTrue(remainingTasks.contains { $0.id == original.id })
+        XCTAssertFalse(remainingTasks.contains { $0.id == copy.id })
+    }
+
+    @MainActor
     private func makeContainer() throws -> ModelContainer {
         let schema = Schema(AnkerSchema.models)
         let configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
         return try ModelContainer(for: schema, configurations: [configuration])
+    }
+
+    @MainActor
+    private func makeWeek(in context: ModelContext) -> Week {
+        let interval = AnkerCalendar.weekInterval(containing: AnkerCalendar.date(year: 2026, month: 8, day: 3))
+        let week = Week(
+            isoYear: interval.isoYear,
+            isoWeek: interval.isoWeek,
+            monday: interval.monday,
+            sunday: interval.sunday
+        )
+        let day = Day(date: interval.monday, week: week)
+        week.days = [day]
+        context.insert(week)
+        return week
     }
 }

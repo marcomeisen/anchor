@@ -1,5 +1,8 @@
 import SwiftData
 import SwiftUI
+#if os(iOS)
+import UIKit
+#endif
 
 struct AnchorGlyph: View {
     var stroke: Color = .white
@@ -183,13 +186,20 @@ struct TaskCheckmark: View {
 
 struct TaskCard: View {
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Query(sort: \Week.monday) private var weeks: [Week]
 
     let task: AnkerTask
     var showPriority = true
     var onToggle: (() -> Void)?
+    var isSelectionMode = false
+    var isSelected = false
+    var onSelectionToggle: (() -> Void)?
+    var onStartSelection: (() -> Void)?
+    var onUndoableAction: ((TaskUndoNotice) -> Void)?
 
     @State private var showingEditor = false
+    @State private var showingMoveSheet = false
     @State private var confirmingDelete = false
     @State private var isHovering = false
 
@@ -199,24 +209,33 @@ struct TaskCard: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: 9) {
+            if isSelectionMode {
+                Button {
+                    onSelectionToggle?()
+                } label: {
+                    SelectionCheckmark(isSelected: isSelected)
+                }
+                .buttonStyle(.plain)
+                .padding(.top, 1)
+                .onLongPressGesture {
+                    onStartSelection?()
+                }
+            }
+
             if showPriority {
                 PriorityTag(priority: task.priority)
                     .padding(.top, 1)
             }
 
-            Button {
-                if let onToggle {
-                    onToggle()
-                } else {
-                    withAnimation(.snappy) {
-                        TaskActions.toggleDone(task, modelContext: modelContext)
-                    }
+            if !isSelectionMode {
+                Button {
+                    performToggleDone()
+                } label: {
+                    TaskCheckmark(isDone: task.isDone)
                 }
-            } label: {
-                TaskCheckmark(isDone: task.isDone)
+                .buttonStyle(.plain)
+                .padding(.top, 1)
             }
-            .buttonStyle(.plain)
-            .padding(.top, 1)
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(task.title)
@@ -239,7 +258,7 @@ struct TaskCard: View {
             }
             Spacer(minLength: 0)
 
-            if isActionable {
+            if isActionable && !isSelectionMode {
 #if os(macOS)
                 hoverActions
 #else
@@ -262,11 +281,58 @@ struct TaskCard: View {
             }
         }
         .contextMenu {
-            if isActionable {
+            if isActionable && !isSelectionMode {
                 taskMenuItems
             }
+        } preview: {
+            if isActionable && !isSelectionMode {
+                TaskContextPreviewCard(task: task)
+            }
         }
-        .conditionalDrag(taskID: task.id.uuidString, isEnabled: isActionable)
+        .conditionalDrag(taskID: task.id.uuidString, isEnabled: isActionable && !isSelectionMode)
+#if os(iOS)
+        .swipeActions(edge: .leading, allowsFullSwipe: true) {
+            if isActionable && !isSelectionMode {
+                Button {
+                    performToggleDone()
+                } label: {
+                    Label(task.isDone ? "Offen" : "Erledigt", systemImage: task.isDone ? "arrow.uturn.backward" : "checkmark")
+                }
+                .tint(AnkerColor.success)
+            }
+        }
+        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+            if isActionable && !isSelectionMode {
+                Button(role: .destructive) {
+                    performDelete()
+                } label: {
+                    Label("Aufgabe löschen", systemImage: "trash")
+                }
+
+                Button {
+                    iOSImpact(.medium)
+                    showingMoveSheet = true
+                } label: {
+                    Label("Verschieben", systemImage: "calendar")
+                }
+                .tint(AnkerColor.indigo)
+            }
+        }
+        .accessibilityAction(named: task.isDone ? "Als offen markieren" : "Als erledigt markieren") {
+            performToggleDone()
+        }
+        .accessibilityAction(named: "Aufgabe verschieben") {
+            showingMoveSheet = true
+        }
+        .accessibilityAction(named: "Aufgabe löschen") {
+            confirmingDelete = true
+        }
+#endif
+        .onTapGesture {
+            if isSelectionMode {
+                onSelectionToggle?()
+            }
+        }
 #if os(macOS)
         .onHover { isInside in
             withAnimation(.easeOut(duration: 0.12)) {
@@ -278,9 +344,15 @@ struct TaskCard: View {
             TaskEditorSheet(task: task)
                 .presentationDetents([.medium, .large])
         }
+        .sheet(isPresented: $showingMoveSheet) {
+            TaskMoveSheet(tasks: [task]) { snapshots in
+                notifyUndo(message: "Aufgabe verschoben", snapshots: snapshots)
+            }
+                .presentationDetents([.medium])
+        }
         .confirmationDialog("Aufgabe löschen?", isPresented: $confirmingDelete, titleVisibility: .visible) {
             Button("Löschen", role: .destructive) {
-                TaskActions.delete(task, modelContext: modelContext)
+                performDelete()
             }
             Button("Abbrechen", role: .cancel) {}
         } message: {
@@ -296,13 +368,11 @@ struct TaskCard: View {
                 tint: AnkerColor.success,
                 help: task.isDone ? "Als offen markieren (⌘.)" : "Als erledigt markieren (⌘.)"
             ) {
-                withAnimation(.snappy) {
-                    TaskActions.toggleDone(task, modelContext: modelContext)
-                }
+                performToggleDone()
             }
 
             hoverAction(systemName: "calendar", tint: AnkerColor.indigo, help: "Aufgabe verschieben oder planen (⌘⇧M)") {
-                showingEditor = true
+                showingMoveSheet = true
             }
 
             hoverAction(systemName: "trash", tint: Color(hex: "#E0392E"), help: "Aufgabe löschen (⌘⌫)", isDestructive: true) {
@@ -352,38 +422,51 @@ struct TaskCard: View {
     @ViewBuilder
     private var taskMenuItems: some View {
         Button {
-            withAnimation(.snappy) {
-                TaskActions.toggleDone(task, modelContext: modelContext)
-            }
+            performToggleDone()
         } label: {
             Label(task.isDone ? "Als offen markieren" : "Als erledigt markieren", systemImage: task.isDone ? "circle" : "checkmark.circle")
         }
         .keyboardShortcut(".", modifiers: .command)
 
-        Button {
-            showingEditor = true
-        } label: {
-            Label("Bearbeiten", systemImage: "pencil")
-        }
-
         Menu {
             Button {
-                TaskActions.move(task, byDays: 1, weeks: weeks, modelContext: modelContext)
+                let snapshot = TaskActions.snapshot(task)
+                TaskActions.move(task, to: Date(), weeks: weeks, modelContext: modelContext)
+                notifyUndo(message: "Aufgabe verschoben", snapshots: [snapshot])
+            } label: {
+                Label("Heute", systemImage: "calendar")
+            }
+
+            Button {
+                performMoveByDays(1)
             } label: {
                 Label("Morgen", systemImage: "sunrise")
             }
 
+            Menu {
+                ForEach(currentWeekDates, id: \.self) { date in
+                    Button {
+                        performMove(to: date)
+                    } label: {
+                        Label(date.formatted(.dateTime.locale(Locale(identifier: "de_DE")).weekday(.wide).day().month()), systemImage: "calendar")
+                    }
+                }
+            } label: {
+                Label("Diese Woche", systemImage: "calendar")
+            }
+
             Button {
-                TaskActions.move(task, byDays: 7, weeks: weeks, modelContext: modelContext)
+                performMoveByDays(7)
             } label: {
                 Label("Nächste Woche", systemImage: "calendar.badge.plus")
             }
 
             Button {
-                TaskActions.move(task, byDays: -7, weeks: weeks, modelContext: modelContext)
+                showingMoveSheet = true
             } label: {
-                Label("Vorherige Woche", systemImage: "calendar.badge.minus")
+                Label("Datum wählen ...", systemImage: "calendar.badge.clock")
             }
+            .keyboardShortcut("m", modifiers: [.command, .shift])
         } label: {
             Label("Verschieben", systemImage: "arrow.right.square")
         }
@@ -392,7 +475,10 @@ struct TaskCard: View {
             if let goals = task.day?.week?.goalList, !goals.isEmpty {
                 ForEach(goals, id: \.id) { goal in
                     Button {
+                        let snapshot = TaskActions.snapshot(task)
                         TaskActions.link(task, to: goal, modelContext: modelContext)
+                        iOSImpact(.light)
+                        notifyUndo(message: "Ziel verknüpft", snapshots: [snapshot])
                     } label: {
                         Label(goal.title, systemImage: task.linkedGoal?.id == goal.id ? "checkmark" : "target")
                     }
@@ -401,7 +487,10 @@ struct TaskCard: View {
             }
 
             Button {
+                let snapshot = TaskActions.snapshot(task)
                 TaskActions.link(task, to: nil, modelContext: modelContext)
+                iOSImpact(.light)
+                notifyUndo(message: "Ziel gelöst", snapshots: [snapshot])
             } label: {
                 Label("Kein Ziel", systemImage: task.linkedGoal == nil ? "checkmark" : "xmark.circle")
             }
@@ -412,17 +501,28 @@ struct TaskCard: View {
         Menu {
             ForEach(Priority.allCases, id: \.self) { priority in
                 Button {
+                    let snapshot = TaskActions.snapshot(task)
                     TaskActions.setPriority(task, to: priority, modelContext: modelContext)
+                    iOSImpact(.light)
+                    notifyUndo(message: "Priorität geändert", snapshots: [snapshot])
                 } label: {
                     Label("Priorität \(priority.label)", systemImage: task.priority == priority ? "checkmark" : "flag")
                 }
+                .keyboardShortcut(priority.shortcutKey, modifiers: .command)
             }
         } label: {
             Label("Priorität", systemImage: "flag")
         }
 
         Button {
-            _ = TaskActions.duplicate(task, modelContext: modelContext)
+            if let copy = TaskActions.duplicate(task, modelContext: modelContext) {
+                iOSImpact(.light)
+                onUndoableAction?(TaskUndoNotice(
+                    message: "Aufgabe dupliziert",
+                    snapshots: [TaskActions.snapshot(copy)],
+                    operation: .deleteCreated
+                ))
+            }
         } label: {
             Label("Duplizieren", systemImage: "doc.on.doc")
         }
@@ -431,11 +531,145 @@ struct TaskCard: View {
         Divider()
 
         Button(role: .destructive) {
-            confirmingDelete = true
+            performDelete()
         } label: {
-            Label("Löschen", systemImage: "trash")
+            Label("Aufgabe löschen", systemImage: "trash")
         }
         .keyboardShortcut(.delete, modifiers: .command)
+    }
+
+    private var currentWeekDates: [Date] {
+        guard let week = task.day?.week else { return [] }
+        return AnkerCalendar.daysInWeek(starting: week.monday)
+    }
+
+    private func performToggleDone() {
+        if let onToggle {
+            onToggle()
+            return
+        }
+
+        let snapshot = TaskActions.snapshot(task)
+        withAnimation(taskAnimation) {
+            TaskActions.toggleDone(task, modelContext: modelContext)
+        }
+        iOSImpact(.light)
+        notifyUndo(message: task.isDone ? "Aufgabe erledigt" : "Aufgabe wieder offen", snapshots: [snapshot])
+    }
+
+    private func performDelete() {
+        let snapshot = TaskActions.snapshot(task)
+        TaskActions.delete(task, modelContext: modelContext)
+        iOSNotificationSuccess()
+        notifyUndo(message: "Aufgabe gelöscht", snapshots: [snapshot])
+    }
+
+    private func performMoveByDays(_ offset: Int) {
+        let snapshot = TaskActions.snapshot(task)
+        TaskActions.move(task, byDays: offset, weeks: weeks, modelContext: modelContext)
+        iOSImpact(.medium)
+        notifyUndo(message: "Aufgabe verschoben", snapshots: [snapshot])
+    }
+
+    private func performMove(to date: Date) {
+        let snapshot = TaskActions.snapshot(task)
+        TaskActions.move(task, to: date, weeks: weeks, modelContext: modelContext)
+        iOSImpact(.medium)
+        notifyUndo(message: "Aufgabe verschoben", snapshots: [snapshot])
+    }
+
+    private func notifyUndo(message: String, snapshots: [TaskSnapshot]) {
+        guard !snapshots.isEmpty else { return }
+        onUndoableAction?(TaskUndoNotice(message: message, snapshots: snapshots))
+    }
+
+    private func iOSImpact(_ style: TaskHapticStyle) {
+#if os(iOS)
+        switch style {
+        case .light:
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        case .medium:
+            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        }
+#endif
+    }
+
+    private func iOSNotificationSuccess() {
+#if os(iOS)
+        UINotificationFeedbackGenerator().notificationOccurred(.success)
+#endif
+    }
+
+    private var taskAnimation: Animation {
+        reduceMotion ? .easeOut(duration: 0.15) : .snappy
+    }
+}
+
+private extension Priority {
+    var shortcutKey: KeyEquivalent {
+        switch self {
+        case .a: "1"
+        case .b: "2"
+        case .c: "3"
+        }
+    }
+}
+
+private enum TaskHapticStyle {
+    case light
+    case medium
+}
+
+private struct TaskContextPreviewCard: View {
+    let task: AnkerTask
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 8) {
+                PriorityTag(priority: task.priority)
+                TaskCheckmark(isDone: task.isDone)
+                Spacer(minLength: 0)
+            }
+
+            Text(task.title)
+                .font(.system(size: 15, weight: .bold))
+                .foregroundStyle(AnkerColor.ink)
+                .lineLimit(3)
+
+            if let goal = task.linkedGoal {
+                HStack(spacing: 5) {
+                    Image(systemName: "target")
+                        .font(.system(size: 11, weight: .bold))
+                    Text(goal.title)
+                        .lineLimit(1)
+                }
+                .font(.system(size: 11.5, weight: .semibold))
+                .foregroundStyle(AnkerColor.indigoText)
+            }
+        }
+        .padding(14)
+        .frame(width: 260, alignment: .leading)
+        .background(AnkerColor.card)
+        .clipShape(RoundedRectangle(cornerRadius: 14))
+    }
+}
+
+private struct SelectionCheckmark: View {
+    let isSelected: Bool
+
+    var body: some View {
+        Circle()
+            .fill(isSelected ? AnkerColor.indigo : Color.clear)
+            .overlay(Circle().stroke(isSelected ? AnkerColor.indigo : AnkerColor.line, lineWidth: 1.6))
+            .overlay {
+                if isSelected {
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundStyle(.white)
+                }
+            }
+            .frame(width: 20, height: 20)
+            .accessibilityLabel(isSelected ? "Ausgewählt" : "Nicht ausgewählt")
     }
 }
 
