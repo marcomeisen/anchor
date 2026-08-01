@@ -15,6 +15,7 @@ struct AnkerRootView: View {
     @AppStorage("onboardingVersion") private var onboardingVersion = 0
 
     let weeks: [Week]
+    @State private var selectedWeekStart = AnkerCalendar.weekInterval(containing: Date()).monday
     @State private var selectedDestination: AppDestination = .week
     @State private var showingNewTask = false
     @State private var showingNewGoal = false
@@ -28,13 +29,17 @@ struct AnkerRootView: View {
         return sortedWeeks.first(where: { contains(today, in: $0) })
     }
 
-    private var today: Day? {
-        currentWeek?.dayList.first { AnkerCalendar.isSameDay($0.date, Date()) }
-            ?? currentWeek?.dayList.sorted { $0.date < $1.date }.first
+    private var selectedWeek: Week? {
+        weeks.first { AnkerCalendar.isSameDay($0.monday, selectedWeekStart) }
+    }
+
+    private var selectedDay: Day? {
+        let sortedDays = selectedWeek?.dayList.sorted { $0.date < $1.date }
+        return sortedDays?.first { AnkerCalendar.isSameDay($0.date, Date()) } ?? sortedDays?.first
     }
 
     private var needsOnboarding: Bool {
-        guard let currentWeek else { return true }
+        guard let currentWeek else { return !hasCompletedOnboarding }
         return currentWeek.goalList.filter(isUserCreatedGoal).isEmpty
     }
 
@@ -44,40 +49,40 @@ struct AnkerRootView: View {
                 OnboardingView(weekIntervalTitle: currentWeekTitle) { title in
                     completeOnboarding(with: title)
                 }
-            } else if let currentWeek, let today {
+            } else if let selectedWeek, let selectedDay {
 #if os(macOS)
-                splitContent(week: currentWeek, day: today)
+                splitContent(week: selectedWeek, day: selectedDay)
 #else
                 if horizontalClass == .regular {
-                    splitContent(week: currentWeek, day: today)
+                    splitContent(week: selectedWeek, day: selectedDay)
                 } else {
-                    phoneContent(week: currentWeek, day: today)
+                    phoneContent(week: selectedWeek, day: selectedDay)
                 }
 #endif
             } else {
-                OnboardingView(weekIntervalTitle: currentWeekTitle) { title in
-                    completeOnboarding(with: title)
-                }
+                ProgressView()
+                    .task {
+                        ensureSelectedWeek()
+                    }
             }
         }
         .sheet(isPresented: $showingNewTask) {
-            if let currentWeek, let today {
-                NewTaskSheet(day: today, goals: currentWeek.goalList)
+            if let selectedWeek, let selectedDay {
+                NewTaskSheet(day: selectedDay, goals: selectedWeek.goalList)
                     .presentationDetents([.medium])
             }
         }
         .sheet(isPresented: $showingNewGoal) {
-            if let currentWeek {
-                NewGoalSheet(week: currentWeek)
+            if let selectedWeek {
+                NewGoalSheet(week: selectedWeek)
                     .presentationDetents([.medium])
             }
         }
         .task {
             removeReferenceDataIfNeeded()
-            if hasCompletedOnboarding {
-                ensureCurrentWeek()
-                try? modelContext.save()
-            }
+            ensureCurrentWeek()
+            ensureSelectedWeek()
+            try? modelContext.save()
         }
     }
 
@@ -97,6 +102,12 @@ struct AnkerRootView: View {
                             showingNewTask = true
                         }, onAddGoal: {
                             showingNewGoal = true
+                        }, onCurrentWeek: {
+                            moveToCurrentWeek()
+                        }, onPreviousWeek: {
+                            moveWeek(by: -1)
+                        }, onNextWeek: {
+                            moveWeek(by: 1)
                         })
                     case .year:
                         YearOverviewView(week: week)
@@ -117,19 +128,21 @@ struct AnkerRootView: View {
             .toolbarBackground(.visible, for: .navigationBar)
             .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
 #endif
-            .onAppear {
-                if selectedDestination == .week {
-                    selectedDestination = .today
-                }
-            }
         }
     }
 
     private func splitContent(week: Week, day: Day) -> some View {
         NavigationSplitView {
-            SidebarView(week: week, selection: $selectedDestination) {
-                showingNewGoal = true
-            }
+            SidebarView(
+                week: week,
+                selection: $selectedDestination,
+                onPreviousMonth: { moveMonth(by: -1) },
+                onNextMonth: { moveMonth(by: 1) },
+                onCurrentWeek: { moveToCurrentWeek() },
+                onAddGoal: {
+                    showingNewGoal = true
+                }
+            )
         } detail: {
             Group {
                 switch selectedDestination {
@@ -144,6 +157,12 @@ struct AnkerRootView: View {
                         showingNewTask = true
                     }, onAddGoal: {
                         showingNewGoal = true
+                    }, onCurrentWeek: {
+                        moveToCurrentWeek()
+                    }, onPreviousWeek: {
+                        moveWeek(by: -1)
+                    }, onNextWeek: {
+                        moveWeek(by: 1)
                     })
                 case .review:
                     WeeklyReviewView(week: week)
@@ -155,6 +174,12 @@ struct AnkerRootView: View {
                             showingNewTask = true
                         }, onAddGoal: {
                             showingNewGoal = true
+                        }, onCurrentWeek: {
+                            moveToCurrentWeek()
+                        }, onPreviousWeek: {
+                            moveWeek(by: -1)
+                        }, onNextWeek: {
+                            moveWeek(by: 1)
                         })
                     }
                 }
@@ -195,6 +220,7 @@ struct AnkerRootView: View {
         let goal = upsertOnboardingGoal(title: title, in: week)
         hasCompletedOnboarding = true
         onboardingVersion = requiredOnboardingVersion
+        selectedWeekStart = week.monday
         selectedDestination = .goal(goal.id)
         try? modelContext.save()
     }
@@ -218,14 +244,24 @@ struct AnkerRootView: View {
 
     @discardableResult
     private func ensureCurrentWeek() -> Week {
-        let today = Date()
+        ensureWeek(containing: Date())
+    }
 
-        if let existingWeek = weeks.first(where: { contains(today, in: $0) }) {
+    @discardableResult
+    private func ensureSelectedWeek() -> Week {
+        ensureWeek(containing: selectedWeekStart)
+    }
+
+    @discardableResult
+    private func ensureWeek(containing date: Date) -> Week {
+        let interval = AnkerCalendar.weekInterval(containing: date)
+
+        if let existingWeek = weeks.first(where: { AnkerCalendar.isSameDay($0.monday, interval.monday) }) {
             ensureWeekDays(in: existingWeek)
             return existingWeek
         }
 
-        return insertWeek(containing: today)
+        return insertWeek(containing: date)
     }
 
     @discardableResult
@@ -277,13 +313,41 @@ struct AnkerRootView: View {
     }
 
     private func contains(_ date: Date, in week: Week) -> Bool {
-        (week.monday...week.sunday).contains(date)
+        let nextMonday = AnkerCalendar.iso.date(byAdding: .day, value: 7, to: week.monday) ?? week.sunday
+        return date >= week.monday && date < nextMonday
+    }
+
+    private func moveWeek(by offset: Int) {
+        let target = AnkerCalendar.iso.date(byAdding: .weekOfYear, value: offset, to: selectedWeekStart) ?? selectedWeekStart
+        selectedWeekStart = AnkerCalendar.weekInterval(containing: target).monday
+        selectedDestination = .week
+        ensureSelectedWeek()
+        try? modelContext.save()
+    }
+
+    private func moveMonth(by offset: Int) {
+        let calendar = AnkerCalendar.iso
+        let target = calendar.date(byAdding: .month, value: offset, to: selectedWeekStart) ?? selectedWeekStart
+        selectedWeekStart = AnkerCalendar.weekInterval(containing: target).monday
+        selectedDestination = .week
+        ensureSelectedWeek()
+        try? modelContext.save()
+    }
+
+    private func moveToCurrentWeek() {
+        selectedWeekStart = AnkerCalendar.weekInterval(containing: Date()).monday
+        selectedDestination = .week
+        ensureSelectedWeek()
+        try? modelContext.save()
     }
 }
 
 struct SidebarView: View {
     let week: Week
     @Binding var selection: AppDestination
+    var onPreviousMonth: () -> Void = {}
+    var onNextMonth: () -> Void = {}
+    var onCurrentWeek: () -> Void = {}
     var onAddGoal: () -> Void = {}
 
     private var monthGroups: [SidebarMonthGroup] {
@@ -315,6 +379,24 @@ struct SidebarView: View {
                     .background(AnkerColor.card, in: RoundedRectangle(cornerRadius: 7))
                     .overlay(RoundedRectangle(cornerRadius: 7).stroke(AnkerColor.line))
                     .listRowBackground(Color.clear)
+
+                HStack(spacing: 8) {
+                    monthNavigationButton(systemName: "chevron.left", help: "Vorheriger Monat", action: onPreviousMonth)
+
+                    Button(action: onCurrentWeek) {
+                        Image(systemName: "calendar")
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundStyle(AnkerColor.indigoText)
+                            .frame(width: 28, height: 26)
+                            .background(AnkerColor.card, in: RoundedRectangle(cornerRadius: 7))
+                            .overlay(RoundedRectangle(cornerRadius: 7).stroke(AnkerColor.line))
+                    }
+                    .buttonStyle(.plain)
+                    .help("Laufende Woche")
+
+                    monthNavigationButton(systemName: "chevron.right", help: "Nächster Monat", action: onNextMonth)
+                }
+                .listRowBackground(Color.clear)
             }
 
             Section {
@@ -397,6 +479,19 @@ struct SidebarView: View {
     private var weekMonthIndex: Int {
         Calendar.current.component(.month, from: week.monday) - 1
     }
+
+    private func monthNavigationButton(systemName: String, help: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: systemName)
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(AnkerColor.ink)
+                .frame(width: 28, height: 26)
+                .background(AnkerColor.card, in: RoundedRectangle(cornerRadius: 7))
+                .overlay(RoundedRectangle(cornerRadius: 7).stroke(AnkerColor.line))
+        }
+        .buttonStyle(.plain)
+        .help(help)
+    }
 }
 
 private struct NavigationItemRow: View {
@@ -432,13 +527,16 @@ struct WeekOverviewView: View {
     let selectedDay: Day
     var onAddTask: () -> Void = {}
     var onAddGoal: () -> Void = {}
+    var onCurrentWeek: () -> Void = {}
+    var onPreviousWeek: () -> Void = {}
+    var onNextWeek: () -> Void = {}
 
     var body: some View {
         VStack(spacing: 0) {
             HStack(spacing: 8) {
-                ChipButton(title: "◀ Index", isPrimary: true)
-                ChipButton(title: "« KW 52")
-                ChipButton(title: "KW 02 »")
+                ChipButton(title: "Heute", isPrimary: true, action: onCurrentWeek)
+                ChipButton(title: "« KW \(weekLabel(offset: -1))", action: onPreviousWeek)
+                ChipButton(title: "KW \(weekLabel(offset: 1)) »", action: onNextWeek)
                 Spacer()
                 Text("\(shortDate(week.monday)) – \(shortDate(week.sunday))")
                     .font(.system(size: 11, weight: .regular, design: .monospaced))
@@ -504,6 +602,12 @@ struct WeekOverviewView: View {
 
     private func shortDate(_ date: Date) -> String {
         date.formatted(.dateTime.locale(Locale(identifier: "de_DE")).day(.twoDigits).month(.twoDigits).year())
+    }
+
+    private func weekLabel(offset: Int) -> String {
+        let target = AnkerCalendar.iso.date(byAdding: .weekOfYear, value: offset, to: week.monday) ?? week.monday
+        let interval = AnkerCalendar.weekInterval(containing: target)
+        return String(format: "%02d", interval.isoWeek)
     }
 }
 
