@@ -4,9 +4,40 @@ struct AnchorGlyph: View {
     var stroke: Color = .white
 
     var body: some View {
-        Image(systemName: "anchor")
-            .font(.system(size: 14, weight: .semibold))
-            .foregroundStyle(stroke)
+        GeometryReader { proxy in
+            let side = min(proxy.size.width, proxy.size.height)
+            let lineWidth = max(side * 0.08, 1.2)
+            let center = CGPoint(x: proxy.size.width / 2, y: proxy.size.height / 2)
+
+            ZStack {
+                Circle()
+                    .stroke(stroke, lineWidth: lineWidth)
+                    .frame(width: side * 0.24, height: side * 0.24)
+                    .position(x: center.x, y: center.y - side * 0.28)
+
+                Path { path in
+                    path.move(to: CGPoint(x: center.x, y: center.y - side * 0.16))
+                    path.addLine(to: CGPoint(x: center.x, y: center.y + side * 0.28))
+
+                    path.move(to: CGPoint(x: center.x - side * 0.20, y: center.y + side * 0.02))
+                    path.addLine(to: CGPoint(x: center.x + side * 0.20, y: center.y + side * 0.02))
+
+                    path.move(to: CGPoint(x: center.x - side * 0.34, y: center.y + side * 0.14))
+                    path.addLine(to: CGPoint(x: center.x - side * 0.23, y: center.y + side * 0.27))
+                    path.addQuadCurve(
+                        to: CGPoint(x: center.x, y: center.y + side * 0.32),
+                        control: CGPoint(x: center.x - side * 0.08, y: center.y + side * 0.36)
+                    )
+                    path.addQuadCurve(
+                        to: CGPoint(x: center.x + side * 0.23, y: center.y + side * 0.27),
+                        control: CGPoint(x: center.x + side * 0.08, y: center.y + side * 0.36)
+                    )
+                    path.addLine(to: CGPoint(x: center.x + side * 0.34, y: center.y + side * 0.14))
+                }
+                .stroke(stroke, style: StrokeStyle(lineWidth: lineWidth, lineCap: .round, lineJoin: .round))
+            }
+        }
+            .aspectRatio(1, contentMode: .fit)
             .accessibilityHidden(true)
     }
 }
@@ -169,8 +200,8 @@ struct TaskCard: View {
 
                 if let goal = task.linkedGoal {
                     HStack(spacing: 4) {
-                        Image(systemName: "anchor")
-                            .font(.system(size: 10, weight: .semibold))
+                        AnchorGlyph(stroke: AnkerColor.indigoText)
+                            .frame(width: 10, height: 10)
                         Text(goal.title)
                             .lineLimit(1)
                     }
