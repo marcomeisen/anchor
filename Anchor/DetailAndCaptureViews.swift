@@ -34,7 +34,7 @@ struct NewTaskSheet: View {
                     }
                 }
 
-                Text("Wochenziel verankern".uppercased())
+                Text("Wochenziel zuordnen".uppercased())
                     .font(.system(size: 10.5, weight: .bold))
                     .foregroundStyle(AnkerColor.muted)
                     .padding(.top, 4)
@@ -134,7 +134,7 @@ struct QuickCapturePopover: View {
                 }
             }
 
-            Text("Wochenziel verankern".uppercased())
+            Text("Wochenziel zuordnen".uppercased())
                 .font(.system(size: 10.5, weight: .bold))
                 .foregroundStyle(AnkerColor.muted)
 
@@ -305,7 +305,7 @@ struct NewGoalSheet: View {
     }
 }
 
-private struct CaptureChip: View {
+struct CaptureChip: View {
     let title: String
     let isSelected: Bool
     let selectedColor: Color
@@ -415,7 +415,7 @@ struct GoalDetailView: View {
                     Text(goal.title)
                         .font(.system(size: 17, weight: .bold))
                         .foregroundStyle(AnkerColor.ink)
-                    Text("Wochenziel · KW \(String(format: "%02d", week.isoWeek)) · verankert seit \(shortDate(week.monday))")
+                    Text("Wochenziel · KW \(String(format: "%02d", week.isoWeek)) · geplant seit \(shortDate(week.monday))")
                         .font(.system(size: 11.5))
                         .foregroundStyle(AnkerColor.muted)
                 }
@@ -459,19 +459,8 @@ struct GoalDetailView: View {
                                 .padding(.bottom, 6)
 
                             ForEach(dayTasks.sorted { $0.order < $1.order }, id: \.id) { task in
-                                HStack(spacing: 9) {
-                                    TaskCheckmark(isDone: task.isDone)
-                                        .frame(width: 15, height: 15)
-                                    Text(task.title)
-                                        .font(.system(size: 12.5))
-                                        .foregroundStyle(task.isDone ? AnkerColor.muted : AnkerColor.ink)
-                                        .strikethrough(task.isDone, color: AnkerColor.muted)
-                                    Spacer()
-                                }
-                                .padding(.vertical, 6)
-                                .overlay(alignment: .bottom) {
-                                    Rectangle().fill(AnkerColor.lineSoft).frame(height: 1)
-                                }
+                                TaskCard(task: task)
+                                    .padding(.bottom, 7)
                             }
                         }
                     }
@@ -553,13 +542,13 @@ struct OnboardingView: View {
         VStack(spacing: 0) {
             Spacer()
             RoundedRectangle(cornerRadius: 22)
-                .fill(LinearGradient(colors: [AnkerColor.indigo, AnkerColor.indigoDark], startPoint: .topLeading, endPoint: .bottomTrailing))
+                .fill(AnkerColor.surfaceRaised)
                 .frame(width: 78, height: 78)
-                .overlay(AnchorGlyph(stroke: .white).font(.system(size: 34)))
+                .overlay(FyndaraLogo().padding(8))
                 .shadow(color: AnkerColor.indigo.opacity(0.45), radius: 15, x: 0, y: 8)
                 .padding(.bottom, 26)
 
-            Text("Verankere deine Woche")
+            Text("Plane deine Woche")
                 .font(.system(size: 21, weight: .bold))
                 .foregroundStyle(AnkerColor.ink)
                 .padding(.bottom, 10)

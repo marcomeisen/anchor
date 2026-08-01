@@ -1,6 +1,6 @@
 //
 //  AnchorUITests.swift
-//  AnchorUITests
+//  FyndaraUITests
 //
 //  Created by Marco Meisen on 31.07.26.
 //

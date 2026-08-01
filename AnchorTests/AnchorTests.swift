@@ -1,6 +1,6 @@
 import SwiftData
 import XCTest
-@testable import Anchor
+@testable import Fyndara
 
 final class AnchorTests: XCTestCase {
     @MainActor
@@ -28,6 +28,37 @@ final class AnchorTests: XCTestCase {
         let sunday = interval.sunday.formatted(.dateTime.locale(Locale(identifier: "de_DE")).day(.twoDigits).month(.twoDigits).year())
         XCTAssertEqual(monday, "29.12.2025")
         XCTAssertEqual(sunday, "04.01.2026")
+    }
+
+    @MainActor
+    func testTaskActionsToggleMoveAndDeleteTask() throws {
+        let container = try makeContainer()
+        let context = container.mainContext
+        let week = SampleData.insertReferenceWeek(in: context)
+        try context.save()
+
+        let task = try XCTUnwrap(week.dayList.flatMap(\.taskList).first { $0.isDone && $0.linkedGoal != nil })
+        let sourceDay = try XCTUnwrap(task.day)
+
+        XCTAssertTrue(task.isDone)
+
+        TaskActions.toggleDone(task, modelContext: context)
+        XCTAssertFalse(task.isDone)
+
+        TaskActions.move(task, byDays: 7, weeks: [week], modelContext: context)
+
+        let targetDay = try XCTUnwrap(task.day)
+        let targetWeek = try XCTUnwrap(targetDay.week)
+        XCTAssertEqual(targetWeek.isoWeek, 2)
+        XCTAssertFalse(sourceDay.taskList.contains { $0.id == task.id })
+        XCTAssertTrue(targetDay.taskList.contains { $0.id == task.id })
+        XCTAssertNil(task.linkedGoal)
+
+        TaskActions.delete(task, modelContext: context)
+
+        let remainingTasks = try context.fetch(FetchDescriptor<AnkerTask>())
+        XCTAssertFalse(remainingTasks.contains { $0.id == task.id })
+        XCTAssertFalse(targetDay.taskList.contains { $0.id == task.id })
     }
 
     @MainActor

@@ -1,3 +1,4 @@
+import SwiftData
 import SwiftUI
 
 struct AnchorGlyph: View {
@@ -42,14 +43,23 @@ struct AnchorGlyph: View {
     }
 }
 
+struct FyndaraLogo: View {
+    var body: some View {
+        Image("FokusringB")
+            .resizable()
+            .scaledToFit()
+            .accessibilityHidden(true)
+    }
+}
+
 struct AnchorBadge: View {
     var color: Color = AnkerColor.indigo
 
     var body: some View {
         RoundedRectangle(cornerRadius: 8)
-            .fill(color)
+            .fill(color.opacity(0.12))
             .frame(width: 26, height: 26)
-            .overlay(AnchorGlyph())
+            .overlay(FyndaraLogo().padding(3))
     }
 }
 
@@ -172,9 +182,20 @@ struct TaskCheckmark: View {
 }
 
 struct TaskCard: View {
+    @Environment(\.modelContext) private var modelContext
+    @Query(sort: \Week.monday) private var weeks: [Week]
+
     let task: AnkerTask
     var showPriority = true
     var onToggle: (() -> Void)?
+
+    @State private var showingEditor = false
+    @State private var confirmingDelete = false
+    @State private var isHovering = false
+
+    private var isActionable: Bool {
+        task.day != nil
+    }
 
     var body: some View {
         HStack(alignment: .top, spacing: 9) {
@@ -184,7 +205,13 @@ struct TaskCard: View {
             }
 
             Button {
-                onToggle?()
+                if let onToggle {
+                    onToggle()
+                } else {
+                    withAnimation(.snappy) {
+                        TaskActions.toggleDone(task, modelContext: modelContext)
+                    }
+                }
             } label: {
                 TaskCheckmark(isDone: task.isDone)
             }
@@ -200,17 +227,25 @@ struct TaskCard: View {
 
                 if let goal = task.linkedGoal {
                     HStack(spacing: 4) {
-                        AnchorGlyph(stroke: AnkerColor.indigoText)
+                        FyndaraLogo()
                             .frame(width: 10, height: 10)
                         Text(goal.title)
                             .lineLimit(1)
                     }
                     .font(.system(size: 10, weight: .semibold))
                     .foregroundStyle(AnkerColor.indigoText)
-                    .accessibilityLabel("Verankert an \(goal.title)")
+                    .accessibilityLabel("Zugeordnet zu \(goal.title)")
                 }
             }
             Spacer(minLength: 0)
+
+            if isActionable {
+#if os(macOS)
+                hoverActions
+#else
+                taskMenu
+#endif
+            }
         }
         .padding(.horizontal, 11)
         .padding(.vertical, 10)
@@ -220,7 +255,200 @@ struct TaskCard: View {
                 .stroke(AnkerColor.line, lineWidth: 1)
         )
         .clipShape(RoundedRectangle(cornerRadius: AnkerRadius.card))
+        .overlay {
+            if isHovering && isActionable {
+                RoundedRectangle(cornerRadius: AnkerRadius.card)
+                    .stroke(AnkerColor.indigo.opacity(0.34), lineWidth: 1.5)
+            }
+        }
+        .contextMenu {
+            if isActionable {
+                taskMenuItems
+            }
+        }
+        .conditionalDrag(taskID: task.id.uuidString, isEnabled: isActionable)
+#if os(macOS)
+        .onHover { isInside in
+            withAnimation(.easeOut(duration: 0.12)) {
+                isHovering = isInside
+            }
+        }
+#endif
+        .sheet(isPresented: $showingEditor) {
+            TaskEditorSheet(task: task)
+                .presentationDetents([.medium, .large])
+        }
+        .confirmationDialog("Aufgabe löschen?", isPresented: $confirmingDelete, titleVisibility: .visible) {
+            Button("Löschen", role: .destructive) {
+                TaskActions.delete(task, modelContext: modelContext)
+            }
+            Button("Abbrechen", role: .cancel) {}
+        } message: {
+            Text("Diese Aufgabe wird dauerhaft entfernt.")
+        }
         .accessibilityElement(children: .combine)
+    }
+
+    private var hoverActions: some View {
+        HStack(spacing: 6) {
+            hoverAction(
+                systemName: task.isDone ? "circle" : "checkmark",
+                tint: AnkerColor.success,
+                help: task.isDone ? "Als offen markieren (⌘.)" : "Als erledigt markieren (⌘.)"
+            ) {
+                withAnimation(.snappy) {
+                    TaskActions.toggleDone(task, modelContext: modelContext)
+                }
+            }
+
+            hoverAction(systemName: "calendar", tint: AnkerColor.indigo, help: "Aufgabe verschieben oder planen (⌘⇧M)") {
+                showingEditor = true
+            }
+
+            hoverAction(systemName: "trash", tint: Color(hex: "#E0392E"), help: "Aufgabe löschen (⌘⌫)", isDestructive: true) {
+                confirmingDelete = true
+            }
+        }
+        .opacity(isHovering ? 1 : 0)
+        .allowsHitTesting(isHovering)
+        .frame(width: 90, alignment: .trailing)
+        .accessibilityHidden(!isHovering)
+    }
+
+    private func hoverAction(
+        systemName: String,
+        tint: Color,
+        help: String,
+        isDestructive: Bool = false,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            Image(systemName: systemName)
+                .font(.system(size: 12, weight: .bold))
+                .foregroundStyle(tint)
+                .frame(width: 26, height: 26)
+                .background((isDestructive ? tint.opacity(0.10) : AnkerColor.lineSoft), in: RoundedRectangle(cornerRadius: 7))
+        }
+        .buttonStyle(.plain)
+        .help(help)
+        .accessibilityLabel(help)
+    }
+
+    private var taskMenu: some View {
+        Menu {
+            taskMenuItems
+        } label: {
+            Image(systemName: "ellipsis")
+                .font(.system(size: 12, weight: .bold))
+                .foregroundStyle(AnkerColor.muted)
+                .frame(width: 26, height: 26)
+                .background(AnkerColor.surfaceRaised, in: RoundedRectangle(cornerRadius: 7))
+                .overlay(RoundedRectangle(cornerRadius: 7).stroke(AnkerColor.line))
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Aufgabenaktionen")
+    }
+
+    @ViewBuilder
+    private var taskMenuItems: some View {
+        Button {
+            withAnimation(.snappy) {
+                TaskActions.toggleDone(task, modelContext: modelContext)
+            }
+        } label: {
+            Label(task.isDone ? "Als offen markieren" : "Als erledigt markieren", systemImage: task.isDone ? "circle" : "checkmark.circle")
+        }
+        .keyboardShortcut(".", modifiers: .command)
+
+        Button {
+            showingEditor = true
+        } label: {
+            Label("Bearbeiten", systemImage: "pencil")
+        }
+
+        Menu {
+            Button {
+                TaskActions.move(task, byDays: 1, weeks: weeks, modelContext: modelContext)
+            } label: {
+                Label("Morgen", systemImage: "sunrise")
+            }
+
+            Button {
+                TaskActions.move(task, byDays: 7, weeks: weeks, modelContext: modelContext)
+            } label: {
+                Label("Nächste Woche", systemImage: "calendar.badge.plus")
+            }
+
+            Button {
+                TaskActions.move(task, byDays: -7, weeks: weeks, modelContext: modelContext)
+            } label: {
+                Label("Vorherige Woche", systemImage: "calendar.badge.minus")
+            }
+        } label: {
+            Label("Verschieben", systemImage: "arrow.right.square")
+        }
+
+        Menu {
+            if let goals = task.day?.week?.goalList, !goals.isEmpty {
+                ForEach(goals, id: \.id) { goal in
+                    Button {
+                        TaskActions.link(task, to: goal, modelContext: modelContext)
+                    } label: {
+                        Label(goal.title, systemImage: task.linkedGoal?.id == goal.id ? "checkmark" : "target")
+                    }
+                }
+                Divider()
+            }
+
+            Button {
+                TaskActions.link(task, to: nil, modelContext: modelContext)
+            } label: {
+                Label("Kein Ziel", systemImage: task.linkedGoal == nil ? "checkmark" : "xmark.circle")
+            }
+        } label: {
+            Label("Mit Ziel verknüpfen", systemImage: "target")
+        }
+
+        Menu {
+            ForEach(Priority.allCases, id: \.self) { priority in
+                Button {
+                    TaskActions.setPriority(task, to: priority, modelContext: modelContext)
+                } label: {
+                    Label("Priorität \(priority.label)", systemImage: task.priority == priority ? "checkmark" : "flag")
+                }
+            }
+        } label: {
+            Label("Priorität", systemImage: "flag")
+        }
+
+        Button {
+            _ = TaskActions.duplicate(task, modelContext: modelContext)
+        } label: {
+            Label("Duplizieren", systemImage: "doc.on.doc")
+        }
+        .keyboardShortcut("d", modifiers: .command)
+
+        Divider()
+
+        Button(role: .destructive) {
+            confirmingDelete = true
+        } label: {
+            Label("Löschen", systemImage: "trash")
+        }
+        .keyboardShortcut(.delete, modifiers: .command)
+    }
+}
+
+private extension View {
+    @ViewBuilder
+    func conditionalDrag(taskID: String, isEnabled: Bool) -> some View {
+        if isEnabled {
+            self.onDrag {
+                NSItemProvider(object: taskID as NSString)
+            }
+        } else {
+            self
+        }
     }
 }
 

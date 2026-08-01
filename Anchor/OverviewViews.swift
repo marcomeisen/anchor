@@ -1,5 +1,6 @@
 import SwiftData
 import SwiftUI
+import UniformTypeIdentifiers
 
 enum AppDestination: Hashable {
     case today
@@ -98,11 +99,7 @@ struct AnkerRootView: View {
                             showingNewTask = true
                         }
                     case .week:
-                        WeekOverviewView(week: week, selectedDay: day, onAddTask: {
-                            showingNewTask = true
-                        }, onAddGoal: {
-                            showingNewGoal = true
-                        }, onCurrentWeek: {
+                        WeekOverviewView(week: week, selectedDay: day, onCurrentWeek: {
                             moveToCurrentWeek()
                         }, onPreviousWeek: {
                             moveWeek(by: -1)
@@ -124,6 +121,9 @@ struct AnkerRootView: View {
                     .padding(.horizontal, 18)
                     .padding(.bottom, 16)
             }
+            .toolbar {
+                creationToolbarItems
+            }
 #if os(iOS)
             .toolbarBackground(.visible, for: .navigationBar)
             .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
@@ -135,13 +135,11 @@ struct AnkerRootView: View {
         NavigationSplitView {
             SidebarView(
                 week: week,
+                weeks: weeks,
                 selection: $selectedDestination,
                 onPreviousMonth: { moveMonth(by: -1) },
                 onNextMonth: { moveMonth(by: 1) },
-                onCurrentWeek: { moveToCurrentWeek() },
-                onAddGoal: {
-                    showingNewGoal = true
-                }
+                onCurrentWeek: { moveToCurrentWeek() }
             )
         } detail: {
             Group {
@@ -153,11 +151,7 @@ struct AnkerRootView: View {
                 case .year:
                     YearOverviewView(week: week)
                 case .week:
-                    WeekOverviewView(week: week, selectedDay: day, onAddTask: {
-                        showingNewTask = true
-                    }, onAddGoal: {
-                        showingNewGoal = true
-                    }, onCurrentWeek: {
+                    WeekOverviewView(week: week, selectedDay: day, onCurrentWeek: {
                         moveToCurrentWeek()
                     }, onPreviousWeek: {
                         moveWeek(by: -1)
@@ -170,11 +164,7 @@ struct AnkerRootView: View {
                     if let goal = week.goalList.first(where: { $0.id == id }) {
                         GoalDetailView(goal: goal, week: week)
                     } else {
-                        WeekOverviewView(week: week, selectedDay: day, onAddTask: {
-                            showingNewTask = true
-                        }, onAddGoal: {
-                            showingNewGoal = true
-                        }, onCurrentWeek: {
+                        WeekOverviewView(week: week, selectedDay: day, onCurrentWeek: {
                             moveToCurrentWeek()
                         }, onPreviousWeek: {
                             moveWeek(by: -1)
@@ -185,20 +175,7 @@ struct AnkerRootView: View {
                 }
             }
             .toolbar {
-                ToolbarItem {
-                    Button {
-                        showingNewGoal = true
-                    } label: {
-                        Label("Neues Wochenziel", systemImage: "target")
-                    }
-                }
-                ToolbarItem {
-                    Button {
-                        showingNewTask = true
-                    } label: {
-                        Label("Neue Aufgabe", systemImage: "plus")
-                    }
-                }
+                creationToolbarItems
             }
 #if os(macOS)
             .toolbarBackground(.visible, for: .windowToolbar)
@@ -212,6 +189,28 @@ struct AnkerRootView: View {
         let start = interval.monday.formatted(.dateTime.locale(Locale(identifier: "de_DE")).day(.twoDigits).month(.twoDigits))
         let end = interval.sunday.formatted(.dateTime.locale(Locale(identifier: "de_DE")).day(.twoDigits).month(.twoDigits).year())
         return "\(start) - \(end)"
+    }
+
+    @ToolbarContentBuilder
+    private var creationToolbarItems: some ToolbarContent {
+        ToolbarItemGroup(placement: .primaryAction) {
+            Button {
+                showingNewGoal = true
+            } label: {
+                Image(systemName: "target")
+            }
+            .help((selectedWeek?.goalList.count ?? 0) >= 4 ? "Maximal 4 Wochenziele pro Woche" : "Neues Wochenziel erstellen")
+            .accessibilityLabel("Neues Wochenziel erstellen")
+            .disabled((selectedWeek?.goalList.count ?? 0) >= 4)
+
+            Button {
+                showingNewTask = true
+            } label: {
+                Image(systemName: "plus")
+            }
+            .help("Neue Aufgabe erstellen")
+            .accessibilityLabel("Neue Aufgabe erstellen")
+        }
     }
 
     private func completeOnboarding(with title: String) {
@@ -343,12 +342,16 @@ struct AnkerRootView: View {
 }
 
 struct SidebarView: View {
+    @Environment(\.modelContext) private var modelContext
+
     let week: Week
+    let weeks: [Week]
     @Binding var selection: AppDestination
     var onPreviousMonth: () -> Void = {}
     var onNextMonth: () -> Void = {}
     var onCurrentWeek: () -> Void = {}
-    var onAddGoal: () -> Void = {}
+
+    @State private var targetedWeekStart: Date?
 
     private var monthGroups: [SidebarMonthGroup] {
         let calendar = Calendar.current
@@ -365,6 +368,22 @@ struct SidebarView: View {
             } else {
                 groups.append(SidebarMonthGroup(year: year, month: month, days: [day]))
             }
+        }
+    }
+
+    private var sidebarWeekTargets: [SidebarWeekTarget] {
+        (-1...2).compactMap { offset in
+            guard let date = AnkerCalendar.iso.date(byAdding: .weekOfYear, value: offset, to: week.monday) else { return nil }
+            let interval = AnkerCalendar.weekInterval(containing: date)
+            let existingWeek = weeks.first { AnkerCalendar.isSameDay($0.monday, interval.monday) }
+            return SidebarWeekTarget(
+                id: interval.monday,
+                monday: interval.monday,
+                isoYear: interval.isoYear,
+                isoWeek: interval.isoWeek,
+                isActive: AnkerCalendar.isSameDay(interval.monday, week.monday),
+                isExisting: existingWeek != nil
+            )
         }
     }
 
@@ -407,14 +426,28 @@ struct SidebarView: View {
                 }
                 .buttonStyle(.plain)
 
-                Button {
-                    selection = .week
-                } label: {
-                    Text("Woche \(String(format: "%02d", week.isoWeek))")
-                        .font(.system(size: 11.5, weight: selection == .week ? .bold : .semibold))
-                        .foregroundStyle(selection == .week ? AnkerColor.indigoDark : AnkerColor.ink)
+                ForEach(sidebarWeekTargets) { target in
+                    Button {
+                        selection = .week
+                    } label: {
+                        SidebarWeekDropRow(
+                            target: target,
+                            isSelected: target.isActive && selection == .week,
+                            isDropTarget: targetedWeekStart.map { AnkerCalendar.isSameDay($0, target.monday) } ?? false
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    .help("Aufgabe auf Woche \(String(format: "%02d", target.isoWeek)) verschieben")
+                    .onDrop(
+                        of: [UTType.plainText],
+                        isTargeted: Binding(
+                            get: { targetedWeekStart.map { AnkerCalendar.isSameDay($0, target.monday) } ?? false },
+                            set: { isTargeted in targetedWeekStart = isTargeted ? target.monday : nil }
+                        )
+                    ) { providers in
+                        dropTask(from: providers, on: target)
+                    }
                 }
-                .buttonStyle(.plain)
 
                 ForEach(monthGroups) { group in
                     NavigationItemRow(color: AnkerColor.month[group.month - 1], title: group.title(in: week.isoYear))
@@ -442,13 +475,6 @@ struct SidebarView: View {
                     .buttonStyle(.plain)
                 }
 
-                Button(action: onAddGoal) {
-                    Label("Neues Wochenziel", systemImage: "plus.circle")
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(AnkerColor.indigoText)
-                }
-                .buttonStyle(.plain)
-                .disabled(week.goalList.count >= 4)
             }
 
             Section {
@@ -473,7 +499,7 @@ struct SidebarView: View {
             .frame(width: 18)
             .allowsHitTesting(false)
         }
-        .navigationTitle("Anker")
+        .navigationTitle("Fyndara")
     }
 
     private var weekMonthIndex: Int {
@@ -491,6 +517,86 @@ struct SidebarView: View {
         }
         .buttonStyle(.plain)
         .help(help)
+    }
+
+    private func dropTask(from providers: [NSItemProvider], on target: SidebarWeekTarget) -> Bool {
+        guard let provider = providers.first(where: { $0.canLoadObject(ofClass: NSString.self) }) else { return false }
+
+        provider.loadObject(ofClass: NSString.self) { object, _ in
+            guard let rawID = object as? String ?? (object as? NSString)?.description,
+                  let taskID = UUID(uuidString: rawID) else { return }
+
+            Task { @MainActor in
+                guard let task = task(with: taskID) else { return }
+                TaskActions.move(task, to: target.monday, weeks: weeks, modelContext: modelContext)
+                selection = .week
+                targetedWeekStart = nil
+            }
+        }
+
+        return true
+    }
+
+    private func task(with id: UUID) -> AnkerTask? {
+        weeks
+            .flatMap(\.dayList)
+            .flatMap(\.taskList)
+            .first { $0.id == id }
+    }
+}
+
+private struct SidebarWeekTarget: Identifiable {
+    let id: Date
+    let monday: Date
+    let isoYear: Int
+    let isoWeek: Int
+    let isActive: Bool
+    let isExisting: Bool
+}
+
+private struct SidebarWeekDropRow: View {
+    let target: SidebarWeekTarget
+    let isSelected: Bool
+    let isDropTarget: Bool
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Text("Woche \(String(format: "%02d", target.isoWeek))")
+                .font(.system(size: 11.5, weight: isSelected || isDropTarget ? .bold : .semibold))
+            if isDropTarget {
+                Text("Ziel")
+                    .font(.system(size: 9.5, weight: .bold))
+                    .foregroundStyle(AnkerColor.indigoText)
+            } else if !target.isExisting {
+                Image(systemName: "plus.circle")
+                    .font(.system(size: 9.5, weight: .bold))
+                    .foregroundStyle(AnkerColor.muted)
+                    .help("Woche wird beim Ablegen angelegt")
+            }
+        }
+        .foregroundStyle(isSelected ? .white : (isDropTarget ? AnkerColor.indigoText : AnkerColor.ink))
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 5)
+        .background(backgroundStyle, in: RoundedRectangle(cornerRadius: 7))
+        .overlay(
+            RoundedRectangle(cornerRadius: 7)
+                .stroke(isDropTarget ? AnkerColor.indigo : Color.clear, lineWidth: 2)
+        )
+        .scaleEffect(isDropTarget ? 1.03 : 1)
+        .animation(.easeOut(duration: 0.12), value: isDropTarget)
+    }
+
+    private var backgroundStyle: some ShapeStyle {
+        if isDropTarget {
+            return AnyShapeStyle(AnkerColor.indigo.opacity(0.16))
+        }
+
+        if isSelected {
+            return AnyShapeStyle(LinearGradient(colors: [Color(hex: "#7688EE"), AnkerColor.indigo], startPoint: .topLeading, endPoint: .bottomTrailing))
+        }
+
+        return AnyShapeStyle(Color.clear)
     }
 }
 
@@ -525,8 +631,6 @@ private struct SidebarMonthGroup: Identifiable {
 struct WeekOverviewView: View {
     let week: Week
     let selectedDay: Day
-    var onAddTask: () -> Void = {}
-    var onAddGoal: () -> Void = {}
     var onCurrentWeek: () -> Void = {}
     var onPreviousWeek: () -> Void = {}
     var onNextWeek: () -> Void = {}
@@ -541,22 +645,6 @@ struct WeekOverviewView: View {
                 Text("\(shortDate(week.monday)) – \(shortDate(week.sunday))")
                     .font(.system(size: 11, weight: .regular, design: .monospaced))
                     .foregroundStyle(AnkerColor.muted)
-                Button(action: onAddTask) {
-                    Label("Neue Aufgabe", systemImage: "plus")
-                        .labelStyle(.titleAndIcon)
-                        .font(.system(size: 11, weight: .semibold))
-                }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.small)
-                Button(action: onAddGoal) {
-                    Image(systemName: "target")
-                        .font(.system(size: 12, weight: .semibold))
-                        .frame(width: 28, height: 28)
-                }
-                .buttonStyle(.bordered)
-                .controlSize(.small)
-                .help("Neues Wochenziel")
-                .disabled(week.goalList.count >= 4)
             }
             .padding(.horizontal, 18)
             .padding(.vertical, 11)
@@ -566,19 +654,6 @@ struct WeekOverviewView: View {
             HStack(spacing: 10) {
                 ForEach(week.goalList.prefix(4), id: \.id) { goal in
                     GoalPill(goal: goal)
-                }
-                if week.goalList.count < 4 {
-                    Button(action: onAddGoal) {
-                        Image(systemName: "plus")
-                            .font(.system(size: 16, weight: .semibold))
-                            .foregroundStyle(AnkerColor.indigoText)
-                            .frame(maxWidth: .infinity, minHeight: 82)
-                            .background(AnkerColor.card)
-                            .overlay(RoundedRectangle(cornerRadius: 12).stroke(AnkerColor.line, style: StrokeStyle(lineWidth: 1, dash: [5, 4])))
-                            .clipShape(RoundedRectangle(cornerRadius: 12))
-                    }
-                    .buttonStyle(.plain)
-                    .help("Neues Wochenziel")
                 }
             }
             .padding(.horizontal, 18)
@@ -596,6 +671,10 @@ struct WeekOverviewView: View {
                 .padding(.vertical, 12)
             }
             .background(AnkerColor.paper)
+
+#if os(macOS)
+            TaskShortcutHintBar()
+#endif
         }
         .navigationTitle("Wochenübersicht")
     }
@@ -676,25 +755,125 @@ private struct WeekGridRow: View {
 }
 
 private struct MiniTask: View {
+    @Environment(\.modelContext) private var modelContext
+    @Query(sort: \Week.monday) private var weeks: [Week]
+
     let task: AnkerTask
+    @State private var showingEditor = false
+    @State private var confirmingDelete = false
 
     var body: some View {
-        HStack(spacing: 5) {
-            Circle()
-                .fill(task.linkedGoal.map { Color(hex: $0.colorHex) } ?? AnkerColor.muted)
-                .frame(width: 6, height: 6)
-            Text(task.title)
-                .font(.system(size: 10.5))
-                .foregroundStyle(Color(hex: "#3A3D4A", darkHex: "#D8D9E0"))
-                .lineLimit(1)
+        Button {
+            showingEditor = true
+        } label: {
+            HStack(spacing: 5) {
+                Circle()
+                    .fill(task.isDone ? AnkerColor.success : task.linkedGoal.map { Color(hex: $0.colorHex) } ?? AnkerColor.muted)
+                    .frame(width: 6, height: 6)
+                Text(task.title)
+                    .font(.system(size: 10.5))
+                    .foregroundStyle(task.isDone ? AnkerColor.muted : Color(hex: "#3A3D4A", darkHex: "#D8D9E0"))
+                    .strikethrough(task.isDone, color: AnkerColor.muted)
+                    .lineLimit(1)
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(AnkerColor.card)
+            .overlay(RoundedRectangle(cornerRadius: 6).stroke(AnkerColor.line))
+            .clipShape(RoundedRectangle(cornerRadius: 6))
         }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 4)
-        .background(AnkerColor.card)
-        .overlay(RoundedRectangle(cornerRadius: 6).stroke(AnkerColor.line))
-        .clipShape(RoundedRectangle(cornerRadius: 6))
+        .buttonStyle(.plain)
+        .contextMenu { taskMenuItems }
+        .sheet(isPresented: $showingEditor) {
+            TaskEditorSheet(task: task)
+                .presentationDetents([.medium, .large])
+        }
+        .confirmationDialog("Aufgabe löschen?", isPresented: $confirmingDelete, titleVisibility: .visible) {
+            Button("Löschen", role: .destructive) {
+                TaskActions.delete(task, modelContext: modelContext)
+            }
+            Button("Abbrechen", role: .cancel) {}
+        } message: {
+            Text("Diese Aufgabe wird dauerhaft entfernt.")
+        }
+        .onDrag {
+            NSItemProvider(object: task.id.uuidString as NSString)
+        }
+    }
+
+    @ViewBuilder
+    private var taskMenuItems: some View {
+        Button {
+            withAnimation(.snappy) {
+                TaskActions.toggleDone(task, modelContext: modelContext)
+            }
+        } label: {
+            Label(task.isDone ? "Als offen markieren" : "Als erledigt markieren", systemImage: task.isDone ? "circle" : "checkmark.circle")
+        }
+
+        Button {
+            showingEditor = true
+        } label: {
+            Label("Bearbeiten", systemImage: "pencil")
+        }
+
+        Button {
+            TaskActions.move(task, byDays: 7, weeks: weeks, modelContext: modelContext)
+        } label: {
+            Label("Nächste Woche", systemImage: "calendar.badge.plus")
+        }
+
+        Divider()
+
+        Button(role: .destructive) {
+            confirmingDelete = true
+        } label: {
+            Label("Löschen", systemImage: "trash")
+        }
     }
 }
+
+#if os(macOS)
+private struct TaskShortcutHintBar: View {
+    var body: some View {
+        HStack(spacing: 10) {
+            shortcut("⌘.", "Erledigt")
+            divider
+            shortcut("⌘⌫", "Löschen")
+            divider
+            shortcut("⌘⇧M", "Verschieben")
+            divider
+            shortcut("⌘D", "Duplizieren")
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 18)
+        .padding(.vertical, 9)
+        .background(.regularMaterial)
+        .overlay(alignment: .top) {
+            Rectangle().fill(AnkerColor.lineSoft).frame(height: 1)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Tastaturkurzbefehle: Command Punkt erledigt, Command Rückschritt löschen, Command Shift M verschieben, Command D duplizieren")
+    }
+
+    private func shortcut(_ keys: String, _ label: String) -> some View {
+        HStack(spacing: 4) {
+            Text(keys)
+                .font(.system(size: 10, weight: .semibold, design: .monospaced))
+                .foregroundStyle(AnkerColor.muted)
+            Text(label)
+                .font(.system(size: 10.5, weight: .medium))
+                .foregroundStyle(AnkerColor.muted)
+        }
+    }
+
+    private var divider: some View {
+        Text("·")
+            .font(.system(size: 10.5, weight: .bold))
+            .foregroundStyle(AnkerColor.muted.opacity(0.72))
+    }
+}
+#endif
 
 struct YearOverviewView: View {
     let week: Week

@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<title>Fyndara — Task-Flow Mac</title>
+<style>
+  :root{
+    --indigo:#5B6EE8; --indigo-badge:#4D61E6; --indigo-text:#3F4FBF;
+    --brass:#C9974B; --ink:#1C1E27; --paper:#F7F7FA;
+    --line:#E4E5EA; --line-soft:#EDEEF2; --muted:#8A8D98;
+    --success:#2A9F47; --danger:#E0392E; --prio-a:#D93327;
+    --font-ui: -apple-system,"SF Pro Text","SF Pro Display","Helvetica Neue",Arial,sans-serif;
+    --font-mono: ui-monospace,"SF Mono",Menlo,monospace;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background: radial-gradient(1200px 800px at 20% -10%, #1B1D28 0%, #101116 55%, #0B0C10 100%);
+    font-family: var(--font-ui); color:var(--ink); padding:56px 32px 100px;
+  }
+  .page-head{ max-width:1180px; margin:0 auto 20px; color:#EDEEF4; }
+  .eyebrow{ font-family:var(--font-mono); font-size:12px; letter-spacing:.12em; text-transform:uppercase; color:var(--brass); margin-bottom:10px; }
+  .page-head h1{ font-size:30px; margin:0 0 12px; font-weight:700; }
+  .page-head p{ max-width:760px; color:#B7B9C6; font-size:14px; line-height:1.6; margin:0; }
+  .section-tag{ max-width:1180px; margin:46px auto 14px; color:#EDEEF4; font-size:13px; font-weight:700; display:flex; gap:10px; align-items:center; }
+  .section-tag .n{ width:22px; height:22px; border-radius:50%; background:var(--indigo); color:#fff; font-size:11px; display:flex; align-items:center; justify-content:center; flex:0 0 auto; }
+  .note{ max-width:1180px; margin:0 auto 18px; color:#9598A6; font-size:12.5px; line-height:1.6; }
+  .note b{ color:#D7D9E2; }
+  .gallery{ max-width:1180px; margin:0 auto; display:flex; flex-wrap:wrap; gap:40px; align-items:flex-start; }
+  .frame-block{ display:flex; flex-direction:column; align-items:center; gap:14px; }
+  .frame-caption{ max-width:340px; text-align:center; }
+  .frame-caption .cap-title{ color:#F1F2F7; font-weight:600; font-size:14px; margin-bottom:4px; }
+  .frame-caption .cap-body{ color:#9598A6; font-size:12.5px; line-height:1.5; }
+
+  .mac-window{ width:720px; border-radius:16px; overflow:hidden; background:var(--paper);
+    box-shadow:0 50px 90px -30px rgba(0,0,0,.65), 0 0 0 1px #2A2C36; position:relative; }
+  .unified-bar{ background: linear-gradient(180deg, rgba(255,255,255,.72), rgba(255,255,255,.42));
+    backdrop-filter: blur(22px) saturate(160%); border-bottom:1px solid rgba(255,255,255,.5); }
+  .titlebar{ height:36px; display:flex; align-items:center; gap:8px; padding:0 14px; }
+  .traffic{ width:11px; height:11px; border-radius:50%; }
+  .t-red{background:#FF5F57;} .t-yellow{background:#FEBC2E;} .t-green{background:#28C840;}
+  .titlebar .wtitle{ margin-left:8px; font-size:12px; color:var(--muted); font-weight:600; }
+
+  .mac-body{ display:flex; height:460px; }
+  .sidebar{ width:206px; background: linear-gradient(180deg, rgba(255,255,255,.72), rgba(255,255,255,.42));
+    backdrop-filter: blur(24px) saturate(150%); padding:14px 10px; box-shadow: inset -1px 0 0 rgba(255,255,255,.5); }
+  .sb-search{ background:#fff; border:1px solid var(--line); border-radius:8px; padding:6px 9px; font-size:11px; color:var(--muted); margin-bottom:12px; }
+  .sb-year{ font-size:10.5px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; padding:4px 6px; }
+  .sb-month{ display:flex; align-items:center; gap:8px; padding:6px 8px; border-radius:8px; font-size:12px; color:var(--ink); }
+  .sb-month.open{ background:rgba(91,110,232,.14); font-weight:700; }
+  .sb-dot{ width:8px; height:8px; border-radius:50%; flex:0 0 auto; }
+  .sb-week{ padding:4px 8px 4px 28px; font-size:11px; color:var(--muted); border-radius:7px; }
+  .sb-week.active{ background:linear-gradient(160deg,#7688EE,var(--indigo)); color:#fff; font-weight:600; }
+  .sb-week.drop-target{ background:rgba(91,110,232,.16); box-shadow:0 0 0 2px var(--indigo) inset; transform:scale(1.03); font-weight:700; color:var(--indigo-text); }
+  .sb-day{ padding:3px 8px 3px 42px; font-size:10.5px; color:var(--muted); }
+  .sb-day.active{ color:var(--indigo-text); font-weight:700; }
+
+  .main-pane{ flex:1; padding:16px 18px; background:var(--paper); position:relative; }
+  .main-pane h3{ margin:0 0 12px; font-size:13px; color:var(--muted); font-weight:700; text-transform:uppercase; letter-spacing:.04em; }
+
+  .task-row{ display:flex; align-items:center; gap:10px; background:#fff; border:1px solid var(--line); border-radius:10px; padding:11px 12px; margin-bottom:8px; position:relative; }
+  .prio-tag{ font-size:9px; font-weight:800; color:#fff; border-radius:5px; padding:2px 5px; }
+  .prio-a{ background:var(--prio-a);} .prio-b{ background:var(--indigo-badge);}
+  .task-check{ width:17px; height:17px; border-radius:5px; border:1.6px solid var(--line); flex:0 0 auto; }
+  .task-title{ font-size:12.5px; font-weight:600; color:var(--ink); flex:1; }
+  .hover-actions{ display:flex; gap:6px; opacity:1; }
+  .hicon{ width:26px; height:26px; border-radius:7px; background:var(--line-soft); display:flex; align-items:center; justify-content:center; }
+  .hicon.danger:hover, .hicon.danger{ background:rgba(224,57,46,.1); }
+  .shortcut-hint{ font-size:10px; color:var(--muted); font-family:var(--font-mono); margin-left:4px; }
+
+  /* Context menu */
+  .ctx-menu{
+    position:absolute; top:70px; left:230px; width:230px; z-index:20;
+    background:rgba(255,255,255,.9); backdrop-filter:blur(24px) saturate(180%);
+    border:1px solid rgba(255,255,255,.6); border-radius:10px; padding:5px;
+    box-shadow:0 20px 40px -10px rgba(0,0,0,.35);
+  }
+  .ctx-item{ display:flex; align-items:center; justify-content:space-between; padding:6px 10px; border-radius:6px; font-size:12.5px; color:var(--ink); }
+  .ctx-item:hover, .ctx-item.hl{ background:var(--indigo); color:#fff; }
+  .ctx-item .kbd{ font-size:10.5px; color:var(--muted); font-family:var(--font-mono); }
+  .ctx-item.hl .kbd{ color:rgba(255,255,255,.75); }
+  .ctx-item .chev{ font-size:11px; color:var(--muted); }
+  .ctx-item.hl .chev{ color:#fff; }
+  .ctx-divider{ height:1px; background:rgba(0,0,0,.08); margin:5px 4px; }
+  .ctx-item.destructive{ color:var(--danger); }
+
+  /* Drag ghost */
+  .drag-ghost{
+    position:absolute; top:150px; left:400px; width:230px; z-index:25;
+    background:#fff; border-radius:10px; border:1px solid var(--line);
+    box-shadow:0 24px 40px -10px rgba(0,0,0,.4); padding:11px 12px;
+    display:flex; align-items:center; gap:9px; transform:rotate(-3deg); opacity:0.96;
+  }
+  .cursor{ position:absolute; top:130px; left:378px; z-index:26; font-size:22px; }
+</style>
+</head>
+<body>
+
+  <div class="page-head">
+    <div class="eyebrow">Interaktionskonzept · Mac-Variante</div>
+    <h1>Task-Flow auf macOS</h1>
+    <p>Kein Swipe auf dem Mac — stattdessen Hover-Reveal-Icons für die schnellen Aktionen,
+       Rechtsklick-Kontextmenü für alles Weitere, und Drag-and-Drop direkt auf die Sidebar zum Verschieben.</p>
+  </div>
+
+  <div class="section-tag"><span class="n">1</span> Hover-Aktionen (Ersatz für Swipe)</div>
+  <div class="note">Beim Überfahren einer Zeile mit der Maus erscheinen rechts die zwei häufigsten Aktionen als Icons — die Entsprechung zur iOS-Swipe-Geste, nur cursor-basiert statt touch-basiert.</div>
+  <div class="gallery">
+    <div class="frame-block">
+      <div class="mac-window">
+        <div class="unified-bar"><div class="titlebar"><span class="traffic t-red"></span><span class="traffic t-yellow"></span><span class="traffic t-green"></span><span class="wtitle">Fyndara — Heute</span></div></div>
+        <div class="mac-body">
+          <div class="sidebar">
+            <div class="sb-search">⌕ Ziele, Aufgaben, Notizen</div>
+            <div class="sb-year">2026</div>
+            <div class="sb-month open"><span class="sb-dot" style="background:#8FA8E8"></span>Januar</div>
+            <div class="sb-week active">Woche 01</div>
+            <div class="sb-day active">Do 01.01.</div>
+            <div class="sb-day">Fr 02.01.</div>
+            <div class="sb-week">Woche 02</div>
+          </div>
+          <div class="main-pane">
+            <h3>Prio A</h3>
+            <div class="task-row">
+              <span class="prio-tag prio-a">A</span><div class="task-check"></div>
+              <div class="task-title">Executive Summary finalisieren</div>
+              <div class="hover-actions">
+                <div class="hicon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2A9F47" stroke-width="2.4"><path d="M4 12l5 5L20 6"/></svg></div>
+                <div class="hicon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#5B6EE8" stroke-width="2"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16"/></svg></div>
+                <div class="hicon danger"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#E0392E" stroke-width="2"><path d="M4 7h16M9 7V5a2 2 0 012-2h2a2 2 0 012 2v2m-9 0v12a2 2 0 002 2h6a2 2 0 002-2V7"/></svg></div>
+              </div>
+            </div>
+            <div class="task-row">
+              <span class="prio-tag prio-b">B</span><div class="task-check"></div>
+              <div class="task-title">Rückmeldung an R+V senden</div>
+            </div>
+            <div style="margin-top:14px; font-size:11px; color:var(--muted);">
+              ⌘. Erledigt &nbsp;·&nbsp; ⌘⌫ Löschen &nbsp;·&nbsp; ⌘⇧M Verschieben &nbsp;·&nbsp; ⌘D Duplizieren
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="frame-caption"><div class="cap-title">Hover-Reveal + Tastaturkürzel</div><div class="cap-body">Nur bei Mauskontakt sichtbar, damit die Liste im Ruhezustand aufgeräumt bleibt. Kürzel-Leiste unten als Lernhilfe für Power-User.</div></div>
+    </div>
+  </div>
+
+  <div class="section-tag"><span class="n">2</span> Rechtsklick-Kontextmenü</div>
+  <div class="note">Native macOS-Menükonvention: Icon + Label links, Tastaturkürzel rechts, Untermenüs mit Pfeil, destruktive Aktion isoliert unten.</div>
+  <div class="gallery">
+    <div class="frame-block">
+      <div class="mac-window">
+        <div class="unified-bar"><div class="titlebar"><span class="traffic t-red"></span><span class="traffic t-yellow"></span><span class="traffic t-green"></span><span class="wtitle">Fyndara — Heute</span></div></div>
+        <div class="mac-body">
+          <div class="sidebar">
+            <div class="sb-search">⌕ Ziele, Aufgaben, Notizen</div>
+            <div class="sb-year">2026</div>
+            <div class="sb-month open"><span class="sb-dot" style="background:#8FA8E8"></span>Januar</div>
+            <div class="sb-week active">Woche 01</div>
+          </div>
+          <div class="main-pane">
+            <h3>Prio A</h3>
+            <div class="task-row" style="box-shadow:0 0 0 2px var(--indigo);">
+              <span class="prio-tag prio-a">A</span><div class="task-check"></div>
+              <div class="task-title">Executive Summary finalisieren</div>
+            </div>
+            <div class="task-row"><div class="task-check"></div><div class="task-title">Rückmeldung an R+V senden</div></div>
+
+            <div class="ctx-menu">
+              <div class="ctx-item hl"><span>✓ Als erledigt markieren</span><span class="kbd">⌘.</span></div>
+              <div class="ctx-item"><span>📅 Verschieben nach</span><span class="chev">›</span></div>
+              <div class="ctx-item"><span>🎯 Mit Ziel verknüpfen</span><span class="chev">›</span></div>
+              <div class="ctx-item"><span>⚑ Priorität</span><span class="chev">›</span></div>
+              <div class="ctx-item"><span>📋 Duplizieren</span><span class="kbd">⌘D</span></div>
+              <div class="ctx-divider"></div>
+              <div class="ctx-item destructive"><span>🗑 Löschen</span><span class="kbd">⌘⌫</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="frame-caption"><div class="cap-title">Kontextmenü (Rechtsklick)</div><div class="cap-body">Identische Aktionsliste wie auf iOS, aber mit sichtbaren Tastaturkürzeln — Mac-Nutzer:innen lernen Shortcuts genau hier.</div></div>
+    </div>
+  </div>
+
+  <div class="section-tag"><span class="n">3</span> Drag-and-Drop auf die Sidebar</div>
+  <div class="note">Ersatz für das „Verschieben"-Sheet auf iOS: Aufgabe direkt auf eine Woche in der Sidebar ziehen. Zielelement hebt sich optisch hervor (Glas-Highlight + leichte Vergrößerung), kein Sheet nötig.</div>
+  <div class="gallery">
+    <div class="frame-block">
+      <div class="mac-window">
+        <div class="unified-bar"><div class="titlebar"><span class="traffic t-red"></span><span class="traffic t-yellow"></span><span class="traffic t-green"></span><span class="wtitle">Fyndara — Heute</span></div></div>
+        <div class="mac-body">
+          <div class="sidebar">
+            <div class="sb-search">⌕ Ziele, Aufgaben, Notizen</div>
+            <div class="sb-year">2026</div>
+            <div class="sb-month open"><span class="sb-dot" style="background:#8FA8E8"></span>Januar</div>
+            <div class="sb-week active">Woche 01</div>
+            <div class="sb-day active">Do 01.01.</div>
+            <div class="sb-week drop-target">Woche 02 ← Ziel</div>
+            <div class="sb-month"><span class="sb-dot" style="background:#7FCDA8"></span>Februar</div>
+          </div>
+          <div class="main-pane">
+            <h3>Prio A</h3>
+            <div class="task-row" style="opacity:.35;">
+              <span class="prio-tag prio-a">A</span><div class="task-check"></div>
+              <div class="task-title">Executive Summary finalisieren</div>
+            </div>
+            <div class="task-row"><div class="task-check"></div><div class="task-title">Rückmeldung an R+V senden</div></div>
+          </div>
+        </div>
+        <div class="cursor">🖱️</div>
+        <div class="drag-ghost">
+          <span class="prio-tag prio-a">A</span><div class="task-check"></div>
+          <div class="task-title">Executive Summary finalisieren</div>
+        </div>
+      </div>
+      <div class="frame-caption"><div class="cap-title">Drag-and-Drop → Sidebar-Woche</div><div class="cap-body">Ursprungszeile wird während des Ziehens transparent, Zielwoche bekommt Glas-Highlight + Skalierung als Drop-Bestätigung.</div></div>
+    </div>
+  </div>
+
+</body>
+</html>

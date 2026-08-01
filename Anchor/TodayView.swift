@@ -41,11 +41,7 @@ struct TodayView: View {
 
                             VStack(spacing: 8) {
                                 ForEach(priorityTasks, id: \.id) { task in
-                                    TaskCard(task: task) {
-                                        withAnimation(.snappy) {
-                                            task.isDone.toggle()
-                                        }
-                                    }
+                                    TaskCard(task: task)
                                 }
                             }
                             .padding(.horizontal, AnkerSpacing.screenPadding)

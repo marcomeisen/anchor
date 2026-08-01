@@ -1,6 +1,6 @@
 //
 //  AnchorApp.swift
-//  Anchor
+//  Fyndara
 //
 //  Created by Marco Meisen on 31.07.26.
 //
@@ -70,11 +70,14 @@ private final class AnchorStatusItemController: NSObject {
         super.init()
 
         if let button = statusItem.button {
-            if let image = NSImage(systemSymbolName: "anchor", accessibilityDescription: "Anker") {
+            if let image = NSImage(named: "FokusringBMenu") {
+                image.size = NSSize(width: 18, height: 18)
+                image.isTemplate = true
+                image.accessibilityDescription = "Fyndara"
                 button.image = image
                 button.imagePosition = .imageOnly
             } else {
-                button.title = "A"
+                button.title = "F"
             }
             button.action = #selector(togglePopover(_:))
             button.target = self
