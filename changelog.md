@@ -36,6 +36,9 @@
 - Unit-Test fuer Wiederverwendung bereits gespeicherter Wochen bei verzoegerten Query-Listen ergaenzt.
 - Tagesauswahl fuer direkte Aufgabenanlage ergaenzt: Klick auf Wochentage in Sidebar, Wochenuebersicht oder Heute-Leiste setzt den Zieltag fuer die naechste neue Aufgabe.
 - Drag-and-Drop in der Wochenuebersicht ergaenzt: Mini-Aufgaben koennen direkt zwischen Tageszeilen verschoben werden, inklusive Drop-Highlight und Zieltag-Auswahl.
+- iCloud-Sync abgesichert: Debug-Start initialisiert das SwiftData/CloudKit-Schema explizit, die App registriert sich fuer Remote Notifications und die Push-Entitlements fuer macOS/iOS wurden vollstaendig gehalten.
+- iCloud-Sync-Status unten in der Sidebar ergaenzt, inklusive CloudKit-Event-Beobachtung, Import-/Export-Status, Fehlerzustand und Hover-Details.
+- Jahresuebersicht durch ein cleanes, datenbasiertes Monatsraster fuer iPhone und macOS ersetzt; iPhone-Menubar/Tabbar optisch beruhigt.
 - macOS- und iPhone-Simulator-Builds erfolgreich geprueft.
 - macOS-Unit-Tests erfolgreich geprueft.
 - iOS-Unit-Testlauf scheiterte einmal an einem CoreSimulator-Klonfehler fuer `iPhone 17`, nicht an einem Codefehler.

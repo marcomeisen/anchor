@@ -841,11 +841,10 @@ struct GlassTabBar: View {
             tab(.year, title: "Jahr", systemImage: "square.grid.2x2")
             tab(.review, title: "Mehr", systemImage: "ellipsis.circle")
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 9)
-        .background(.ultraThinMaterial, in: Capsule())
-        .overlay(Capsule().stroke(.white.opacity(0.28), lineWidth: 1))
-        .shadow(color: .black.opacity(0.22), radius: 24, x: 0, y: 14)
+        .padding(4)
+        .background(AnkerColor.card.opacity(0.96), in: RoundedRectangle(cornerRadius: 8))
+        .overlay(RoundedRectangle(cornerRadius: 8).stroke(AnkerColor.line, lineWidth: 1))
+        .shadow(color: .black.opacity(0.10), radius: 12, x: 0, y: 6)
         .accessibilityElement(children: .contain)
     }
 
@@ -857,12 +856,12 @@ struct GlassTabBar: View {
                 Image(systemName: systemImage)
                     .font(.system(size: 14, weight: .semibold))
                     .frame(width: 22, height: 20)
-                    .background(isSelected(destination) ? AnkerColor.indigo.opacity(0.16) : Color.clear, in: RoundedRectangle(cornerRadius: 7))
                 Text(title)
                     .font(.system(size: 9, weight: .semibold))
             }
             .foregroundStyle(isSelected(destination) ? AnkerColor.indigo : AnkerColor.muted)
-            .frame(maxWidth: .infinity)
+            .frame(maxWidth: .infinity, minHeight: 44)
+            .background(isSelected(destination) ? AnkerColor.indigo.opacity(0.10) : Color.clear, in: RoundedRectangle(cornerRadius: 6))
         }
         .buttonStyle(.plain)
         .accessibilityLabel(title)

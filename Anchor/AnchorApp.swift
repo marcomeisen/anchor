@@ -7,12 +7,68 @@
 
 import SwiftUI
 import SwiftData
+import CoreData
 #if os(macOS)
 import AppKit
+#elseif os(iOS)
+import UIKit
 #endif
 
 private enum CloudSyncConfiguration {
+    enum SyncError: Error {
+        case managedObjectModelUnavailable
+    }
+
     static let containerIdentifier = "iCloud.com.marcomeisen.Anchor"
+
+    static func modelConfiguration(schema: Schema) -> ModelConfiguration {
+        ModelConfiguration(
+            schema: schema,
+            cloudKitDatabase: .private(containerIdentifier)
+        )
+    }
+
+    @MainActor
+    static func registerForRemoteNotifications() {
+#if os(macOS)
+        NSApplication.shared.registerForRemoteNotifications()
+#elseif os(iOS)
+        UIApplication.shared.registerForRemoteNotifications()
+#endif
+    }
+
+#if DEBUG
+    static func initializeDevelopmentSchema(for configuration: ModelConfiguration) throws {
+        guard let managedObjectModel = NSManagedObjectModel.makeManagedObjectModel(for: AnkerSchema.models) else {
+            throw SyncError.managedObjectModelUnavailable
+        }
+
+        let persistentContainer = NSPersistentCloudKitContainer(
+            name: "Fyndara",
+            managedObjectModel: managedObjectModel
+        )
+
+        let storeDescription = NSPersistentStoreDescription(url: configuration.url)
+        storeDescription.cloudKitContainerOptions = NSPersistentCloudKitContainerOptions(
+            containerIdentifier: containerIdentifier
+        )
+        storeDescription.shouldAddStoreAsynchronously = false
+        storeDescription.setOption(true as NSNumber, forKey: NSPersistentHistoryTrackingKey)
+        storeDescription.setOption(true as NSNumber, forKey: NSPersistentStoreRemoteChangeNotificationPostOptionKey)
+        persistentContainer.persistentStoreDescriptions = [storeDescription]
+
+        var storeLoadError: Error?
+        persistentContainer.loadPersistentStores { _, error in
+            storeLoadError = error
+        }
+
+        if let storeLoadError {
+            throw storeLoadError
+        }
+
+        try persistentContainer.initializeCloudKitSchema(options: [])
+    }
+#endif
 }
 
 @main
@@ -23,10 +79,15 @@ struct AnchorApp: App {
 
     var sharedModelContainer: ModelContainer = {
         let schema = Schema(AnkerSchema.models)
-        let modelConfiguration = ModelConfiguration(
-            schema: schema,
-            cloudKitDatabase: .private(CloudSyncConfiguration.containerIdentifier)
-        )
+        let modelConfiguration = CloudSyncConfiguration.modelConfiguration(schema: schema)
+
+#if DEBUG
+        do {
+            try CloudSyncConfiguration.initializeDevelopmentSchema(for: modelConfiguration)
+        } catch {
+            print("CloudKit schema initialization skipped: \(error)")
+        }
+#endif
 
         do {
             return try ModelContainer(for: schema, configurations: [modelConfiguration])
@@ -38,6 +99,10 @@ struct AnchorApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
+                .onAppear {
+                    CloudSyncConfiguration.registerForRemoteNotifications()
+                    CloudSyncStatusCenter.shared.markReady()
+                }
 #if os(macOS)
                 .onAppear {
                     appDelegate.configure(modelContainer: sharedModelContainer)
