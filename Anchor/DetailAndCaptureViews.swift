@@ -787,7 +787,7 @@ struct OnboardingView: View {
             RoundedRectangle(cornerRadius: 22)
                 .fill(AnkerColor.surfaceRaised)
                 .frame(width: 78, height: 78)
-                .overlay(FyndaraLogo().padding(8))
+                .overlay(DaiventoLogo().padding(8))
                 .shadow(color: AnkerColor.indigo.opacity(0.45), radius: 15, x: 0, y: 8)
                 .padding(.bottom, 26)
 

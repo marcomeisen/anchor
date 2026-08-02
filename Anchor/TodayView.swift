@@ -108,7 +108,7 @@ struct TodayView: View {
             .padding(.bottom, 86)
         }
 #if os(macOS)
-        .navigationTitle("Fyndara — Heute")
+        .navigationTitle("Daivento — Heute")
 #else
         .navigationTitle("Heute")
 #endif

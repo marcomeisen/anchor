@@ -2,10 +2,10 @@
 
 ## 2026-08-01
 
-- App-Branding von Anchor/Anker auf Fyndara umgestellt.
-- `PRODUCT_NAME`, Bundle-Anzeigename und Bundle-Name auf `Fyndara` gesetzt.
-- App-Bundle wird als `Fyndara.app` gebaut; Test-Host-Pfade wurden darauf angepasst.
-- Sichtbare Navigation, Menubar-Beschriftung und Onboarding-Texte auf Fyndara bzw. neutrale Formulierungen umgestellt.
+- App-Branding von Anchor/Anker auf Daivento umgestellt.
+- `PRODUCT_NAME`, Bundle-Anzeigename und Bundle-Name auf `Daivento` gesetzt.
+- App-Bundle wird als `Daivento.app` gebaut; Test-Host-Pfade wurden darauf angepasst.
+- Sichtbare Navigation, Menubar-Beschriftung und Onboarding-Texte auf Daivento bzw. neutrale Formulierungen umgestellt.
 - Bundle-ID `com.marcomeisen.Anchor` und iCloud-Container `iCloud.com.marcomeisen.Anchor` bewusst beibehalten, damit bestehende Installationen, Provisioning und CloudKit-Sync stabil bleiben.
 - iCloud/CloudKit-Konfiguration in SwiftData aktiviert und Entitlements/Background-Remote-Notification-Konfiguration abgesichert.
 - Onboarding auf die laufende Woche ausgerichtet.
@@ -21,8 +21,8 @@
 - AppIcon-Warnung durch Entfernen einer unreferenzierten Datei im AppIcon-Set behoben.
 - Aufgaben-Bearbeitungsmodus eingefuehrt: Erledigt-Status, Bearbeiten, Verschieben in andere Wochen, Verschieben auf morgen und Loeschen direkt aus Task-Karten, Mini-Tasks und Detailansichten.
 - Redundante Erstellungsaktionen fuer Wochenziele und Aufgaben entfernt; Erstellung laeuft jetzt einheitlich ueber Icon-Buttons in der Toolbar mit Hover-Hilfen.
-- Mac-Task-Flow gemaess `Fyndara_Task_Flow_Mac_Visuals.html` umgesetzt: Hover-Reveal-Aktionen, erweitertes Kontextmenue mit Shortcuts/Untermenues, Shortcut-Hinweisleiste und Drag-and-Drop auf Sidebar-Wochen.
-- iPhone-Task-Interaktion gemaess `Fyndara_Task_Interaktionskonzept.md` umgesetzt: Leading-Swipe fuer Erledigt/Offen, Trailing-Swipe fuer Verschieben/Loeschen, Long-Press-Kontextmenue mit Preview und Untermenues, Mehrfachauswahl per Toolbar/Checkbox-Long-Press und Glas-Aktionsleiste.
+- Mac-Task-Flow gemaess `Daivento_Task_Flow_Mac_Visuals.html` umgesetzt: Hover-Reveal-Aktionen, erweitertes Kontextmenue mit Shortcuts/Untermenues, Shortcut-Hinweisleiste und Drag-and-Drop auf Sidebar-Wochen.
+- iPhone-Task-Interaktion gemaess `Daivento_Task_Interaktionskonzept.md` umgesetzt: Leading-Swipe fuer Erledigt/Offen, Trailing-Swipe fuer Verschieben/Loeschen, Long-Press-Kontextmenue mit Preview und Untermenues, Mehrfachauswahl per Toolbar/Checkbox-Long-Press und Glas-Aktionsleiste.
 - Rueckgaengig-Toast fuer iPhone-Task-Aktionen mit 4-Sekunden-Fortschritt und exakter Wiederherstellung der urspruenglichen Aufgabenposition ergaenzt.
 - Undo-Logik erweitert, damit Duplizieren rueckgaengig die erstellte Kopie entfernt statt sie nur neu zu speichern.
 - Erledigte Aufgaben wandern nach dem Abhaken ans Ende der Tagesreihenfolge, passend zur iPhone-Swipe-Spezifikation.
@@ -30,7 +30,7 @@
 - Unit-Tests fuer exakte Task-Undo-Positionierung und Undo von Duplikaten ergaenzt.
 - Mac-Task-Flow gemaess Screenshots nachgezogen: Start in der Heute-/Prio-Liste, custom Sidebar-Reihenfolge nach Monat/Woche/Tag, echte Wochen-Navigation aus Sidebar-Zielen, Drop-Ziel mit `← Ziel`-Highlight, Drag-Preview und transparente Ursprungszeile.
 - Mac-Schnellverschieben auf Sheet-freien Flow umgestellt: Hover-/Shortcut-Aktion verschiebt direkt in die naechste Woche, weitere Verschiebeziele bleiben im Kontext-Untermenue.
-- Mac-Heute-Titel auf `Fyndara — Heute` angepasst, passend zu den Task-Flow-Screenshots.
+- Mac-Heute-Titel auf `Daivento — Heute` angepasst, passend zu den Task-Flow-Screenshots.
 - Neuanlage von Aufgaben und Wochenzielen fuer Folgewochen und Folgemonate ermoeglicht: Erstell-Sheets enthalten jetzt Wochen-/Monatsspruenge, legen fehlende Wochen beim Sichern an und springen danach zur geplanten Woche.
 - Wochenanlage zentralisiert und um einen SwiftData-Fetch ergaenzt, damit geplante Folgewochen nicht doppelt entstehen, wenn Query-Updates verzoegert eintreffen.
 - Unit-Test fuer Wiederverwendung bereits gespeicherter Wochen bei verzoegerten Query-Listen ergaenzt.
@@ -39,6 +39,9 @@
 - iCloud-Sync abgesichert: Debug-Start initialisiert das SwiftData/CloudKit-Schema explizit, die App registriert sich fuer Remote Notifications und die Push-Entitlements fuer macOS/iOS wurden vollstaendig gehalten.
 - iCloud-Sync-Status unten in der Sidebar ergaenzt, inklusive CloudKit-Event-Beobachtung, Import-/Export-Status, Fehlerzustand und Hover-Details.
 - Jahresuebersicht durch ein cleanes, datenbasiertes Monatsraster fuer iPhone und macOS ersetzt; iPhone-Menubar/Tabbar optisch beruhigt.
+- Appname auf Daivento umgestellt: Produktname, Bundle-Anzeigename, Test-Host, sichtbare UI-Texte, Menubar-Accessibility, iCloud-Tooltip, Logo-Komponente und Konzeptdateien aktualisiert.
+- Jahresuebersicht auf macOS erreichbar gemacht: Sidebar-Navigation um Heute/Woche/Jahr mit direktem Jahr-Einstieg ergaenzt.
+- iCloud-Sync-Status erweitert: lokale SwiftData/CoreData-Saves werden als ausstehender Export angezeigt und nach Timeout als pruefbarer Sync-Hinweis markiert, statt weiter nur auf Aenderungen zu warten.
 - macOS- und iPhone-Simulator-Builds erfolgreich geprueft.
 - macOS-Unit-Tests erfolgreich geprueft.
 - iOS-Unit-Testlauf scheiterte einmal an einem CoreSimulator-Klonfehler fuer `iPhone 17`, nicht an einem Codefehler.

@@ -24,7 +24,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		561D77DB301D46CC0050FA37 /* Fyndara.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Fyndara.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		561D77DB301D46CC0050FA37 /* Daivento.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Daivento.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		561D77EC301D46CF0050FA37 /* AnchorTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = AnchorTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		561D77F6301D46CF0050FA37 /* AnchorUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = AnchorUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -100,7 +100,7 @@
 		561D77DC301D46CC0050FA37 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				561D77DB301D46CC0050FA37 /* Fyndara.app */,
+				561D77DB301D46CC0050FA37 /* Daivento.app */,
 				561D77EC301D46CF0050FA37 /* AnchorTests.xctest */,
 				561D77F6301D46CF0050FA37 /* AnchorUITests.xctest */,
 			);
@@ -129,7 +129,7 @@
 			packageProductDependencies = (
 			);
 			productName = Anchor;
-			productReference = 561D77DB301D46CC0050FA37 /* Fyndara.app */;
+			productReference = 561D77DB301D46CC0050FA37 /* Daivento.app */;
 			productType = "com.apple.product-type.application";
 		};
 		561D77EB301D46CF0050FA37 /* AnchorTests */ = {
@@ -307,8 +307,8 @@
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Anchor/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = Fyndara;
-				INFOPLIST_KEY_CFBundleName = Fyndara;
+				INFOPLIST_KEY_CFBundleDisplayName = Daivento;
+				INFOPLIST_KEY_CFBundleName = Daivento;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
@@ -326,7 +326,7 @@
 				MACOSX_DEPLOYMENT_TARGET = 26.5;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.marcomeisen.Anchor;
-				PRODUCT_NAME = Fyndara;
+				PRODUCT_NAME = Daivento;
 				REGISTER_APP_GROUPS = YES;
 				SDKROOT = auto;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -357,8 +357,8 @@
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Anchor/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = Fyndara;
-				INFOPLIST_KEY_CFBundleName = Fyndara;
+				INFOPLIST_KEY_CFBundleDisplayName = Daivento;
+				INFOPLIST_KEY_CFBundleName = Daivento;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
@@ -376,7 +376,7 @@
 				MACOSX_DEPLOYMENT_TARGET = 26.5;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.marcomeisen.Anchor;
-				PRODUCT_NAME = Fyndara;
+				PRODUCT_NAME = Daivento;
 				REGISTER_APP_GROUPS = YES;
 				SDKROOT = auto;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -529,7 +529,7 @@
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2,7";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Fyndara.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Fyndara";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Daivento.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Daivento";
 				XROS_DEPLOYMENT_TARGET = 26.5;
 			};
 			name = Debug;
@@ -555,7 +555,7 @@
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2,7";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Fyndara.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Fyndara";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Daivento.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Daivento";
 				XROS_DEPLOYMENT_TARGET = 26.5;
 			};
 			name = Release;

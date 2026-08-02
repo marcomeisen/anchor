@@ -10,6 +10,7 @@ final class CloudSyncStatusCenter: ObservableObject {
     enum Phase: Sendable {
         case starting
         case ready
+        case pendingExport
         case syncing
         case synced
         case issue
@@ -20,6 +21,8 @@ final class CloudSyncStatusCenter: ObservableObject {
                 "iCloud startet"
             case .ready:
                 "iCloud bereit"
+            case .pendingExport:
+                "Export ausstehend"
             case .syncing:
                 "Synchronisiert"
             case .synced:
@@ -33,6 +36,8 @@ final class CloudSyncStatusCenter: ObservableObject {
             switch self {
             case .starting, .ready:
                 "icloud"
+            case .pendingExport:
+                "icloud.and.arrow.up"
             case .syncing:
                 "arrow.triangle.2.circlepath"
             case .synced:
@@ -46,6 +51,8 @@ final class CloudSyncStatusCenter: ObservableObject {
             switch self {
             case .starting, .ready:
                 AnkerColor.muted
+            case .pendingExport:
+                AnkerColor.brass
             case .syncing:
                 AnkerColor.indigoText
             case .synced:
@@ -58,12 +65,13 @@ final class CloudSyncStatusCenter: ObservableObject {
 
     @Published private(set) var phase: Phase = .starting
     @Published private(set) var detail = "CloudKit wird vorbereitet"
-    @Published private(set) var tooltip = "Fyndara verbindet sich mit iCloud."
+    @Published private(set) var tooltip = "Daivento verbindet sich mit iCloud."
 
-    private var observer: NSObjectProtocol?
+    private var observers: [NSObjectProtocol] = []
+    private var pendingExportWatchdog: Task<Void, Never>?
 
     private init() {
-        observer = NotificationCenter.default.addObserver(
+        let cloudKitObserver = NotificationCenter.default.addObserver(
             forName: NSPersistentCloudKitContainer.eventChangedNotification,
             object: nil,
             queue: .main
@@ -77,25 +85,83 @@ final class CloudSyncStatusCenter: ObservableObject {
                 CloudSyncStatusCenter.shared.apply(update)
             }
         }
+
+        let localSaveObserver = NotificationCenter.default.addObserver(
+            forName: NSManagedObjectContext.didSaveObjectsNotification,
+            object: nil,
+            queue: .main
+        ) { _ in
+            Task { @MainActor in
+                CloudSyncStatusCenter.shared.markLocalChangeSaved()
+            }
+        }
+
+        let remoteChangeObserver = NotificationCenter.default.addObserver(
+            forName: .NSPersistentStoreRemoteChange,
+            object: nil,
+            queue: .main
+        ) { _ in
+            Task { @MainActor in
+                CloudSyncStatusCenter.shared.markRemoteChangeSeen()
+            }
+        }
+
+        observers = [cloudKitObserver, localSaveObserver, remoteChangeObserver]
     }
 
     deinit {
-        if let observer {
+        for observer in observers {
             NotificationCenter.default.removeObserver(observer)
         }
+        pendingExportWatchdog?.cancel()
     }
 
     func markReady() {
         guard phase == .starting else { return }
         phase = .ready
-        detail = "Wartet auf Aenderungen"
+        detail = "Wartet auf Änderungen"
         tooltip = "iCloud ist eingerichtet. Sobald CloudKit Import oder Export meldet, wird der Status hier aktualisiert."
     }
 
     private func apply(_ update: CloudSyncEventUpdate) {
+        pendingExportWatchdog?.cancel()
+        pendingExportWatchdog = nil
         phase = update.phase
         detail = update.detail
         tooltip = update.tooltip
+    }
+
+    private func markLocalChangeSaved() {
+        guard phase != .syncing else { return }
+
+        phase = .pendingExport
+        detail = "Lokale Änderung gesichert"
+        tooltip = "Daivento hat eine lokale Änderung gespeichert und wartet auf den CloudKit-Export."
+        startPendingExportWatchdog()
+    }
+
+    private func markRemoteChangeSeen() {
+        guard phase != .syncing else { return }
+
+        pendingExportWatchdog?.cancel()
+        pendingExportWatchdog = nil
+        phase = .synced
+        detail = "Remote-Änderung empfangen"
+        tooltip = "iCloud hat eine Änderung aus einem anderen Gerät gemeldet."
+    }
+
+    private func startPendingExportWatchdog() {
+        pendingExportWatchdog?.cancel()
+        pendingExportWatchdog = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(45))
+
+            await MainActor.run {
+                guard let self, self.phase == .pendingExport else { return }
+                self.phase = .issue
+                self.detail = "Export noch ausstehend"
+                self.tooltip = "Die Änderung ist lokal gespeichert, aber CloudKit hat noch keinen Export gemeldet. Prüfe iCloud-Account, Netzwerk, Provisioning und die CloudKit-Konsole."
+            }
+        }
     }
 }
 

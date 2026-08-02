@@ -1,4 +1,4 @@
-# Task-Interaktionskonzept — Fyndara
+# Task-Interaktionskonzept — Daivento
 
 Best-in-class-Referenz: die Gesten- und Menüsprache von Things 3, Apple Erinnerungen und Apple Mail — progressive Offenlegung statt einer einzigen überladenen Bearbeitungsseite. Eine Aufgabe wird nie über einen eigenen "Bearbeitungsmodus"-Screen bearbeitet, sondern direkt in der Liste, über drei sich ergänzende Zugriffswege.
 

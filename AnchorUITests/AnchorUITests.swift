@@ -1,6 +1,6 @@
 //
 //  AnchorUITests.swift
-//  FyndaraUITests
+//  DaiventoUITests
 //
 //  Created by Marco Meisen on 31.07.26.
 //

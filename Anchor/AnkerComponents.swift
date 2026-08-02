@@ -46,7 +46,7 @@ struct AnchorGlyph: View {
     }
 }
 
-struct FyndaraLogo: View {
+struct DaiventoLogo: View {
     var body: some View {
         Image("FokusringB")
             .resizable()
@@ -62,7 +62,7 @@ struct AnchorBadge: View {
         RoundedRectangle(cornerRadius: 8)
             .fill(color.opacity(0.12))
             .frame(width: 26, height: 26)
-            .overlay(FyndaraLogo().padding(3))
+            .overlay(DaiventoLogo().padding(3))
     }
 }
 
@@ -247,7 +247,7 @@ struct TaskCard: View {
 
                 if let goal = task.linkedGoal {
                     HStack(spacing: 4) {
-                        FyndaraLogo()
+                        DaiventoLogo()
                             .frame(width: 10, height: 10)
                         Text(goal.title)
                             .lineLimit(1)
@@ -634,7 +634,7 @@ private enum TaskHapticStyle {
 }
 
 enum TaskDragEvents {
-    static let didEnd = Notification.Name("FyndaraTaskDragDidEnd")
+    static let didEnd = Notification.Name("DaiventoTaskDragDidEnd")
 
     static func end(taskID: UUID) {
         NotificationCenter.default.post(name: didEnd, object: taskID.uuidString)

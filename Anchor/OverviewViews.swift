@@ -417,6 +417,7 @@ struct SidebarView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 10) {
                 searchField
+                primaryNavigation
                 monthNavigation
 
                 Text(verbatim: String(week.isoYear))
@@ -457,7 +458,59 @@ struct SidebarView: View {
             .frame(width: 18)
             .allowsHitTesting(false)
         }
-        .navigationTitle("Fyndara")
+            .navigationTitle("Daivento")
+    }
+
+    private var primaryNavigation: some View {
+        VStack(spacing: 4) {
+            sidebarNavigationButton(
+                title: "Heute",
+                systemImage: "sun.max",
+                isSelected: selection == .today,
+                help: "Heute anzeigen"
+            ) {
+                onCurrentWeek()
+                selection = .today
+            }
+
+            sidebarNavigationButton(
+                title: "Woche",
+                systemImage: "calendar",
+                isSelected: selection == .week,
+                help: "Wochenübersicht anzeigen"
+            ) {
+                selection = .week
+            }
+
+            sidebarNavigationButton(
+                title: "Jahr",
+                systemImage: "square.grid.2x2",
+                isSelected: selection == .year,
+                help: "Jahresübersicht anzeigen"
+            ) {
+                selection = .year
+            }
+        }
+        .padding(.vertical, 2)
+    }
+
+    private func sidebarNavigationButton(
+        title: String,
+        systemImage: String,
+        isSelected: Bool,
+        help: String,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            SidebarNavigationRow(
+                title: title,
+                systemImage: systemImage,
+                isSelected: isSelected
+            )
+        }
+        .buttonStyle(.plain)
+        .help(help)
+        .accessibilityLabel(help)
     }
 
     private var searchField: some View {
@@ -756,6 +809,40 @@ private struct SidebarWeekDropRow: View {
         }
 
         return AnyShapeStyle(Color.clear)
+    }
+}
+
+private struct SidebarNavigationRow: View {
+    let title: String
+    let systemImage: String
+    let isSelected: Bool
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Image(systemName: systemImage)
+                .font(.system(size: 12, weight: .semibold))
+                .frame(width: 18)
+            Text(title)
+                .font(.system(size: 12.5, weight: isSelected ? .bold : .semibold))
+            Spacer(minLength: 0)
+        }
+        .foregroundStyle(isSelected ? .white : AnkerColor.ink)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 7)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(backgroundStyle, in: RoundedRectangle(cornerRadius: 8))
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(isSelected ? Color.clear : AnkerColor.lineSoft)
+        )
+    }
+
+    private var backgroundStyle: some ShapeStyle {
+        if isSelected {
+            return AnyShapeStyle(LinearGradient(colors: [Color(hex: "#7688EE"), AnkerColor.indigo], startPoint: .topLeading, endPoint: .bottomTrailing))
+        }
+
+        return AnyShapeStyle(AnkerColor.card.opacity(0.58))
     }
 }
 

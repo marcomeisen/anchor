@@ -1,6 +1,6 @@
 import SwiftData
 import XCTest
-@testable import Fyndara
+@testable import Daivento
 
 final class AnchorTests: XCTestCase {
     @MainActor

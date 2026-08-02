@@ -1,6 +1,6 @@
 //
 //  AnchorApp.swift
-//  Fyndara
+//  Daivento
 //
 //  Created by Marco Meisen on 31.07.26.
 //
@@ -44,7 +44,7 @@ private enum CloudSyncConfiguration {
         }
 
         let persistentContainer = NSPersistentCloudKitContainer(
-            name: "Fyndara",
+            name: "Daivento",
             managedObjectModel: managedObjectModel
         )
 
@@ -138,7 +138,7 @@ private final class AnchorStatusItemController: NSObject {
             if let image = NSImage(named: "FokusringBMenu") {
                 image.size = NSSize(width: 18, height: 18)
                 image.isTemplate = true
-                image.accessibilityDescription = "Fyndara"
+                image.accessibilityDescription = "Daivento"
                 button.image = image
                 button.imagePosition = .imageOnly
             } else {
