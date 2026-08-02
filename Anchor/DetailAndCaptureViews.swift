@@ -4,55 +4,86 @@ import SwiftUI
 struct NewTaskSheet: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
-    @Bindable var day: Day
-    let goals: [Goal]
+    @Query(sort: \Week.monday) private var weeks: [Week]
+
+    var onScheduled: (Date) -> Void = { _ in }
 
     @State private var title = ""
     @State private var priority: Priority = .a
     @State private var selectedGoalID: UUID?
+    @State private var selectedWeekStart: Date
+    @State private var selectedDate: Date
+
+    init(day: Day, onScheduled: @escaping (Date) -> Void = { _ in }) {
+        self.onScheduled = onScheduled
+        _selectedDate = State(initialValue: day.date)
+        _selectedWeekStart = State(initialValue: AnkerCalendar.weekInterval(containing: day.date).monday)
+    }
+
+    private var selectedWeek: Week? {
+        weeks.first { AnkerCalendar.isSameDay($0.monday, selectedWeekStart) }
+    }
+
+    private var selectedWeekInterval: (monday: Date, sunday: Date, isoYear: Int, isoWeek: Int) {
+        AnkerCalendar.weekInterval(containing: selectedWeekStart)
+    }
+
+    private var selectedWeekGoals: [Goal] {
+        selectedWeek?.goalList ?? []
+    }
 
     var body: some View {
         NavigationStack {
-            VStack(alignment: .leading, spacing: 12) {
-                TextField("Was steht an?", text: $title)
-                    .textFieldStyle(.plain)
-                    .font(.system(size: 12.5))
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 9)
-                    .background(AnkerColor.surfaceRaised)
-                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(AnkerColor.line))
+            ScrollView {
+                VStack(alignment: .leading, spacing: 14) {
+                    TextField("Was steht an?", text: $title)
+                        .textFieldStyle(.plain)
+                        .font(.system(size: 12.5))
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 9)
+                        .background(AnkerColor.surfaceRaised)
+                        .overlay(RoundedRectangle(cornerRadius: 8).stroke(AnkerColor.line))
 
-                Text("Priorität".uppercased())
-                    .font(.system(size: 10.5, weight: .bold))
-                    .foregroundStyle(AnkerColor.muted)
+                    planningPicker
 
-                HStack(spacing: 6) {
-                    ForEach(Priority.allCases, id: \.self) { item in
-                        CaptureChip(title: item.label, isSelected: priority == item, selectedColor: PriorityTag(priority: item).color) {
-                            priority = item
+                    Text("Priorität".uppercased())
+                        .font(.system(size: 10.5, weight: .bold))
+                        .foregroundStyle(AnkerColor.muted)
+
+                    HStack(spacing: 6) {
+                        ForEach(Priority.allCases, id: \.self) { item in
+                            CaptureChip(title: item.label, isSelected: priority == item, selectedColor: PriorityTag(priority: item).color) {
+                                priority = item
+                            }
                         }
                     }
-                }
 
-                Text("Wochenziel zuordnen".uppercased())
-                    .font(.system(size: 10.5, weight: .bold))
-                    .foregroundStyle(AnkerColor.muted)
-                    .padding(.top, 4)
+                    Text("Wochenziel zuordnen".uppercased())
+                        .font(.system(size: 10.5, weight: .bold))
+                        .foregroundStyle(AnkerColor.muted)
+                        .padding(.top, 4)
 
-                FlowLayout(spacing: 6) {
-                    ForEach(goals.prefix(4), id: \.id) { goal in
-                        CaptureChip(title: goal.title, isSelected: selectedGoalID == goal.id, selectedColor: AnkerColor.indigoBadge) {
-                            selectedGoalID = goal.id
+                    FlowLayout(spacing: 6) {
+                        ForEach(selectedWeekGoals.prefix(4), id: \.id) { goal in
+                            CaptureChip(title: goal.title, isSelected: selectedGoalID == goal.id, selectedColor: Color(hex: goal.colorHex)) {
+                                selectedGoalID = goal.id
+                            }
+                        }
+                        CaptureChip(title: "Kein Ziel", isSelected: selectedGoalID == nil, selectedColor: AnkerColor.indigoBadge) {
+                            selectedGoalID = nil
                         }
                     }
-                    CaptureChip(title: "Kein Ziel", isSelected: selectedGoalID == nil, selectedColor: AnkerColor.indigoBadge) {
-                        selectedGoalID = nil
-                    }
-                }
 
-                Spacer()
+                    if selectedWeek == nil {
+                        Text("Die Woche wird beim Sichern angelegt. Wochenziele kannst du danach direkt fuer diese Woche erstellen.")
+                            .font(.system(size: 11.5))
+                            .foregroundStyle(AnkerColor.muted)
+                    }
+
+                    Spacer(minLength: 0)
+                }
+                .padding(16)
             }
-            .padding(16)
             .background(AnkerColor.card)
             .navigationTitle("Schnell erfassen")
             .toolbar {
@@ -70,9 +101,93 @@ struct NewTaskSheet: View {
         }
     }
 
+    private var planningPicker: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Planen".uppercased())
+                .font(.system(size: 10.5, weight: .bold))
+                .foregroundStyle(AnkerColor.muted)
+
+            planningNavigation
+            dayPicker
+        }
+    }
+
+    private var planningNavigation: some View {
+        HStack(spacing: 8) {
+            planningButton(systemName: "calendar.badge.minus", label: "Vorheriger Monat") {
+                moveSelectedMonth(by: -1)
+            }
+
+            planningButton(systemName: "chevron.left", label: "Vorherige Woche") {
+                moveSelectedWeek(by: -1)
+            }
+
+            VStack(spacing: 2) {
+                Text("KW \(String(format: "%02d", selectedWeekInterval.isoWeek))")
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundStyle(AnkerColor.ink)
+                Text("\(shortDate(selectedWeekInterval.monday)) - \(shortDate(selectedWeekInterval.sunday))")
+                    .font(.system(size: 10.5, weight: .medium, design: .monospaced))
+                    .foregroundStyle(AnkerColor.muted)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 9)
+            .background(AnkerColor.surfaceRaised, in: RoundedRectangle(cornerRadius: 10))
+            .overlay(RoundedRectangle(cornerRadius: 10).stroke(AnkerColor.line))
+
+            planningButton(systemName: "chevron.right", label: "Nächste Woche") {
+                moveSelectedWeek(by: 1)
+            }
+
+            planningButton(systemName: "calendar.badge.plus", label: "Nächster Monat") {
+                moveSelectedMonth(by: 1)
+            }
+        }
+    }
+
+    private var dayPicker: some View {
+        HStack(spacing: 6) {
+            ForEach(AnkerCalendar.daysInWeek(starting: selectedWeekStart), id: \.self) { date in
+                Button {
+                    selectedDate = date
+                } label: {
+                    VStack(spacing: 3) {
+                        Text(date.formatted(.dateTime.locale(Locale(identifier: "de_DE")).weekday(.abbreviated)).replacing(".", with: ""))
+                            .font(.system(size: 9.5, weight: .bold))
+                        Text(date.formatted(.dateTime.day(.twoDigits)))
+                            .font(.system(size: 12.5, weight: .bold, design: .monospaced))
+                    }
+                    .foregroundStyle(AnkerCalendar.isSameDay(date, selectedDate) ? .white : AnkerColor.ink)
+                    .frame(maxWidth: .infinity, minHeight: 44)
+                    .background(AnkerCalendar.isSameDay(date, selectedDate) ? AnkerColor.indigo : AnkerColor.surfaceRaised)
+                    .overlay(RoundedRectangle(cornerRadius: 9).stroke(AnkerCalendar.isSameDay(date, selectedDate) ? Color.clear : AnkerColor.line))
+                    .clipShape(RoundedRectangle(cornerRadius: 9))
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(date.formatted(.dateTime.locale(Locale(identifier: "de_DE")).weekday(.wide).day().month()))
+            }
+        }
+    }
+
+    private func planningButton(systemName: String, label: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: systemName)
+                .font(.system(size: 11, weight: .bold))
+                .frame(width: 34, height: 34)
+                .background(AnkerColor.surfaceRaised, in: RoundedRectangle(cornerRadius: 9))
+                .overlay(RoundedRectangle(cornerRadius: 9).stroke(AnkerColor.line))
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(label)
+        .help(label)
+    }
+
     private func save() {
         let cleanTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
-        let goal = goals.first { $0.id == selectedGoalID }
+        guard !cleanTitle.isEmpty else { return }
+        let week = ensureWeek(containing: selectedDate)
+        guard let day = week.dayList.first(where: { AnkerCalendar.isSameDay($0.date, selectedDate) }) else { return }
+        let goal = week.goalList.first { $0.id == selectedGoalID }
         let task = AnkerTask(
             title: cleanTitle,
             priority: priority,
@@ -82,6 +197,40 @@ struct NewTaskSheet: View {
         )
         modelContext.insert(task)
         day.appendTask(task)
+        try? modelContext.save()
+        onScheduled(selectedDate)
+    }
+
+    private func moveSelectedWeek(by offset: Int) {
+        guard let newWeekStart = AnkerCalendar.iso.date(byAdding: .weekOfYear, value: offset, to: selectedWeekStart),
+              let newSelectedDate = AnkerCalendar.iso.date(byAdding: .weekOfYear, value: offset, to: selectedDate) else { return }
+
+        selectedWeekStart = AnkerCalendar.weekInterval(containing: newWeekStart).monday
+        selectedDate = newSelectedDate
+        clearGoalIfNeeded()
+    }
+
+    private func moveSelectedMonth(by offset: Int) {
+        let calendar = AnkerCalendar.iso
+        guard let newSelectedDate = calendar.date(byAdding: .month, value: offset, to: selectedDate) else { return }
+        selectedDate = newSelectedDate
+        selectedWeekStart = AnkerCalendar.weekInterval(containing: newSelectedDate).monday
+        clearGoalIfNeeded()
+    }
+
+    private func clearGoalIfNeeded() {
+        if selectedWeekGoals.allSatisfy({ $0.id != selectedGoalID }) {
+            selectedGoalID = nil
+        }
+    }
+
+    @discardableResult
+    private func ensureWeek(containing date: Date) -> Week {
+        TaskActions.ensureWeek(containing: date, weeks: weeks, modelContext: modelContext)
+    }
+
+    private func shortDate(_ date: Date) -> String {
+        date.formatted(.dateTime.locale(Locale(identifier: "de_DE")).day(.twoDigits).month(.twoDigits))
     }
 }
 
@@ -231,12 +380,32 @@ struct QuickCapturePopover: View {
 struct NewGoalSheet: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
-    @Bindable var week: Week
+    @Query(sort: \Week.monday) private var weeks: [Week]
+
+    var onScheduled: (Date) -> Void = { _ in }
 
     @State private var title = ""
     @State private var selectedColor = "#5B6EE8"
+    @State private var selectedWeekStart: Date
 
     private let colorOptions = ["#5B6EE8", "#C9974B", "#7FCDA8", "#8FA8E8", "#F0C955", "#F09EA9"]
+
+    init(week: Week, onScheduled: @escaping (Date) -> Void = { _ in }) {
+        self.onScheduled = onScheduled
+        _selectedWeekStart = State(initialValue: week.monday)
+    }
+
+    private var selectedWeek: Week? {
+        weeks.first { AnkerCalendar.isSameDay($0.monday, selectedWeekStart) }
+    }
+
+    private var selectedWeekInterval: (monday: Date, sunday: Date, isoYear: Int, isoWeek: Int) {
+        AnkerCalendar.weekInterval(containing: selectedWeekStart)
+    }
+
+    private var selectedGoalCount: Int {
+        selectedWeek?.goalList.count ?? 0
+    }
 
     var body: some View {
         NavigationStack {
@@ -248,6 +417,12 @@ struct NewGoalSheet: View {
                     .padding(.vertical, 9)
                     .background(AnkerColor.surfaceRaised)
                     .overlay(RoundedRectangle(cornerRadius: 8).stroke(AnkerColor.line))
+
+                Text("Woche".uppercased())
+                    .font(.system(size: 10.5, weight: .bold))
+                    .foregroundStyle(AnkerColor.muted)
+
+                weekPicker
 
                 Text("Farbe".uppercased())
                     .font(.system(size: 10.5, weight: .bold))
@@ -268,7 +443,7 @@ struct NewGoalSheet: View {
                     }
                 }
 
-                Text("\(week.goalList.count)/4 Wochenziele")
+                Text("\(selectedGoalCount)/4 Wochenziele")
                     .font(.system(size: 11.5, weight: .medium))
                     .foregroundStyle(AnkerColor.muted)
 
@@ -286,10 +461,56 @@ struct NewGoalSheet: View {
                         save()
                         dismiss()
                     }
-                    .disabled(cleanTitle.isEmpty || week.goalList.count >= 4)
+                    .disabled(cleanTitle.isEmpty || selectedGoalCount >= 4)
                 }
             }
         }
+    }
+
+    private var weekPicker: some View {
+        HStack(spacing: 8) {
+            weekButton(systemName: "calendar.badge.minus", label: "Vorheriger Monat") {
+                moveSelectedMonth(by: -1)
+            }
+
+            weekButton(systemName: "chevron.left", label: "Vorherige Woche") {
+                moveSelectedWeek(by: -1)
+            }
+
+            VStack(spacing: 2) {
+                Text("KW \(String(format: "%02d", selectedWeekInterval.isoWeek))")
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundStyle(AnkerColor.ink)
+                Text("\(shortDate(selectedWeekInterval.monday)) - \(shortDate(selectedWeekInterval.sunday))")
+                    .font(.system(size: 10.5, weight: .medium, design: .monospaced))
+                    .foregroundStyle(AnkerColor.muted)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 9)
+            .background(AnkerColor.surfaceRaised, in: RoundedRectangle(cornerRadius: 10))
+            .overlay(RoundedRectangle(cornerRadius: 10).stroke(AnkerColor.line))
+
+            weekButton(systemName: "chevron.right", label: "Nächste Woche") {
+                moveSelectedWeek(by: 1)
+            }
+
+            weekButton(systemName: "calendar.badge.plus", label: "Nächster Monat") {
+                moveSelectedMonth(by: 1)
+            }
+        }
+    }
+
+    private func weekButton(systemName: String, label: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: systemName)
+                .font(.system(size: 11, weight: .bold))
+                .frame(width: 34, height: 34)
+                .background(AnkerColor.surfaceRaised, in: RoundedRectangle(cornerRadius: 9))
+                .overlay(RoundedRectangle(cornerRadius: 9).stroke(AnkerColor.line))
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(label)
+        .help(label)
     }
 
     private var cleanTitle: String {
@@ -297,11 +518,33 @@ struct NewGoalSheet: View {
     }
 
     private func save() {
+        let week = ensureWeek(containing: selectedWeekStart)
         guard !cleanTitle.isEmpty, week.goalList.count < 4 else { return }
         let goal = Goal(title: cleanTitle, colorHex: selectedColor, week: week)
         modelContext.insert(goal)
         week.appendGoal(goal)
         try? modelContext.save()
+        onScheduled(week.monday)
+    }
+
+    private func moveSelectedWeek(by offset: Int) {
+        guard let newWeekStart = AnkerCalendar.iso.date(byAdding: .weekOfYear, value: offset, to: selectedWeekStart) else { return }
+        selectedWeekStart = AnkerCalendar.weekInterval(containing: newWeekStart).monday
+    }
+
+    private func moveSelectedMonth(by offset: Int) {
+        let calendar = AnkerCalendar.iso
+        guard let newDate = calendar.date(byAdding: .month, value: offset, to: selectedWeekStart) else { return }
+        selectedWeekStart = AnkerCalendar.weekInterval(containing: newDate).monday
+    }
+
+    @discardableResult
+    private func ensureWeek(containing date: Date) -> Week {
+        TaskActions.ensureWeek(containing: date, weeks: weeks, modelContext: modelContext)
+    }
+
+    private func shortDate(_ date: Date) -> String {
+        date.formatted(.dateTime.locale(Locale(identifier: "de_DE")).day(.twoDigits).month(.twoDigits))
     }
 }
 

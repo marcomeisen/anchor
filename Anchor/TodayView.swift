@@ -9,6 +9,7 @@ struct TodayView: View {
     @Bindable var day: Day
     let week: Week
     var onAddTask: () -> Void
+    var onSelectDay: (Day) -> Void = { _ in }
 
     @State private var isSelecting = false
     @State private var selectedTaskIDs = Set<UUID>()
@@ -106,7 +107,11 @@ struct TodayView: View {
             .padding(.horizontal, 18)
             .padding(.bottom, 86)
         }
+#if os(macOS)
+        .navigationTitle("Fyndara — Heute")
+#else
         .navigationTitle("Heute")
+#endif
 #if os(iOS)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -173,11 +178,17 @@ struct TodayView: View {
     private var weekStrip: some View {
         HStack {
             ForEach(week.dayList.sorted { $0.date < $1.date }, id: \.id) { item in
-                WeekDot(
-                    date: item.date,
-                    isActive: AnkerCalendar.isSameDay(item.date, day.date),
-                    hasGoal: item.taskList.contains { $0.linkedGoal != nil }
-                )
+                Button {
+                    onSelectDay(item)
+                } label: {
+                    WeekDot(
+                        date: item.date,
+                        isActive: AnkerCalendar.isSameDay(item.date, day.date),
+                        hasGoal: item.taskList.contains { $0.linkedGoal != nil }
+                    )
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Tag \(item.date.formatted(.dateTime.locale(Locale(identifier: "de_DE")).weekday(.wide).day().month())) auswählen")
                 if item.id != week.dayList.sorted(by: { $0.date < $1.date }).last?.id {
                     Spacer(minLength: 0)
                 }

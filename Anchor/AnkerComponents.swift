@@ -202,6 +202,7 @@ struct TaskCard: View {
     @State private var showingMoveSheet = false
     @State private var confirmingDelete = false
     @State private var isHovering = false
+    @State private var isDragging = false
 
     private var isActionable: Bool {
         task.day != nil
@@ -280,7 +281,7 @@ struct TaskCard: View {
                     .stroke(AnkerColor.indigo.opacity(0.34), lineWidth: 1.5)
             }
         }
-        .contextMenu {
+        .platformTaskContextMenu {
             if isActionable && !isSelectionMode {
                 taskMenuItems
             }
@@ -289,7 +290,7 @@ struct TaskCard: View {
                 TaskContextPreviewCard(task: task)
             }
         }
-        .conditionalDrag(taskID: task.id.uuidString, isEnabled: isActionable && !isSelectionMode)
+        .conditionalTaskDrag(task: task, isEnabled: isActionable && !isSelectionMode, isDragging: $isDragging)
 #if os(iOS)
         .swipeActions(edge: .leading, allowsFullSwipe: true) {
             if isActionable && !isSelectionMode {
@@ -333,10 +334,18 @@ struct TaskCard: View {
                 onSelectionToggle?()
             }
         }
+        .opacity(isDragging ? 0.35 : 1)
 #if os(macOS)
         .onHover { isInside in
             withAnimation(.easeOut(duration: 0.12)) {
                 isHovering = isInside
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: TaskDragEvents.didEnd)) { notification in
+            guard let rawID = notification.object as? String,
+                  rawID == task.id.uuidString else { return }
+            withAnimation(.easeOut(duration: 0.12)) {
+                isDragging = false
             }
         }
 #endif
@@ -371,9 +380,10 @@ struct TaskCard: View {
                 performToggleDone()
             }
 
-            hoverAction(systemName: "calendar", tint: AnkerColor.indigo, help: "Aufgabe verschieben oder planen (⌘⇧M)") {
-                showingMoveSheet = true
+            hoverAction(systemName: "calendar", tint: AnkerColor.indigo, help: "In die nächste Woche verschieben (⌘⇧M)") {
+                performMoveByDays(7)
             }
+            .keyboardShortcut("m", modifiers: [.command, .shift])
 
             hoverAction(systemName: "trash", tint: Color(hex: "#E0392E"), help: "Aufgabe löschen (⌘⌫)", isDestructive: true) {
                 confirmingDelete = true
@@ -460,13 +470,16 @@ struct TaskCard: View {
             } label: {
                 Label("Nächste Woche", systemImage: "calendar.badge.plus")
             }
+            .keyboardShortcut("m", modifiers: [.command, .shift])
 
+#if !os(macOS)
             Button {
                 showingMoveSheet = true
             } label: {
                 Label("Datum wählen ...", systemImage: "calendar.badge.clock")
             }
             .keyboardShortcut("m", modifiers: [.command, .shift])
+#endif
         } label: {
             Label("Verschieben", systemImage: "arrow.right.square")
         }
@@ -620,6 +633,14 @@ private enum TaskHapticStyle {
     case medium
 }
 
+enum TaskDragEvents {
+    static let didEnd = Notification.Name("FyndaraTaskDragDidEnd")
+
+    static func end(taskID: UUID) {
+        NotificationCenter.default.post(name: didEnd, object: taskID.uuidString)
+    }
+}
+
 private struct TaskContextPreviewCard: View {
     let task: AnkerTask
 
@@ -654,6 +675,28 @@ private struct TaskContextPreviewCard: View {
     }
 }
 
+private struct TaskDragPreviewCard: View {
+    let task: AnkerTask
+
+    var body: some View {
+        HStack(spacing: 9) {
+            PriorityTag(priority: task.priority)
+            TaskCheckmark(isDone: task.isDone)
+            Text(task.title)
+                .font(.system(size: 12.5, weight: .bold))
+                .foregroundStyle(AnkerColor.ink)
+                .lineLimit(2)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 11)
+        .frame(width: 230, alignment: .leading)
+        .background(AnkerColor.card)
+        .overlay(RoundedRectangle(cornerRadius: 10).stroke(AnkerColor.line))
+        .clipShape(RoundedRectangle(cornerRadius: 10))
+        .shadow(color: .black.opacity(0.22), radius: 18, x: 0, y: 10)
+    }
+}
+
 private struct SelectionCheckmark: View {
     let isSelected: Bool
 
@@ -675,11 +718,41 @@ private struct SelectionCheckmark: View {
 
 private extension View {
     @ViewBuilder
-    func conditionalDrag(taskID: String, isEnabled: Bool) -> some View {
+    func platformTaskContextMenu<MenuItems: View, Preview: View>(
+        @ViewBuilder menuItems: @escaping () -> MenuItems,
+        @ViewBuilder preview: @escaping () -> Preview
+    ) -> some View {
+#if os(macOS)
+        self.contextMenu(menuItems: menuItems)
+#else
+        self.contextMenu(menuItems: menuItems, preview: preview)
+#endif
+    }
+
+    @ViewBuilder
+    func conditionalTaskDrag(task: AnkerTask, isEnabled: Bool, isDragging: Binding<Bool>) -> some View {
         if isEnabled {
+#if os(macOS)
             self.onDrag {
-                NSItemProvider(object: taskID as NSString)
+                withAnimation(.easeOut(duration: 0.12)) {
+                    isDragging.wrappedValue = true
+                }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 8) {
+                    if isDragging.wrappedValue {
+                        withAnimation(.easeOut(duration: 0.12)) {
+                            isDragging.wrappedValue = false
+                        }
+                    }
+                }
+                return NSItemProvider(object: task.id.uuidString as NSString)
+            } preview: {
+                TaskDragPreviewCard(task: task)
             }
+#else
+            self.onDrag {
+                NSItemProvider(object: task.id.uuidString as NSString)
+            }
+#endif
         } else {
             self
         }

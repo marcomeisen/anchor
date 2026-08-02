@@ -62,6 +62,24 @@ final class AnchorTests: XCTestCase {
     }
 
     @MainActor
+    func testEnsureWeekReusesPersistedWeekWhenQueryListIsStale() throws {
+        let container = try makeContainer()
+        let context = container.mainContext
+        let existingWeek = makeWeek(in: context)
+        try context.save()
+
+        let ensuredWeek = TaskActions.ensureWeek(
+            containing: existingWeek.monday,
+            weeks: [],
+            modelContext: context
+        )
+
+        let storedWeeks = try context.fetch(FetchDescriptor<Week>())
+        XCTAssertEqual(ensuredWeek.id, existingWeek.id)
+        XCTAssertEqual(storedWeeks.count, 1)
+    }
+
+    @MainActor
     func testCompletingTaskMovesItToEndOfDayOrder() throws {
         let container = try makeContainer()
         let context = container.mainContext

@@ -28,6 +28,14 @@
 - Erledigte Aufgaben wandern nach dem Abhaken ans Ende der Tagesreihenfolge, passend zur iPhone-Swipe-Spezifikation.
 - Task-Aktionen um iPhone-Haptik, Accessibility-Actions, klare destruktive Labels und reduzierte Bewegung bei aktivierter Bedienungshilfe ergaenzt.
 - Unit-Tests fuer exakte Task-Undo-Positionierung und Undo von Duplikaten ergaenzt.
+- Mac-Task-Flow gemaess Screenshots nachgezogen: Start in der Heute-/Prio-Liste, custom Sidebar-Reihenfolge nach Monat/Woche/Tag, echte Wochen-Navigation aus Sidebar-Zielen, Drop-Ziel mit `← Ziel`-Highlight, Drag-Preview und transparente Ursprungszeile.
+- Mac-Schnellverschieben auf Sheet-freien Flow umgestellt: Hover-/Shortcut-Aktion verschiebt direkt in die naechste Woche, weitere Verschiebeziele bleiben im Kontext-Untermenue.
+- Mac-Heute-Titel auf `Fyndara — Heute` angepasst, passend zu den Task-Flow-Screenshots.
+- Neuanlage von Aufgaben und Wochenzielen fuer Folgewochen und Folgemonate ermoeglicht: Erstell-Sheets enthalten jetzt Wochen-/Monatsspruenge, legen fehlende Wochen beim Sichern an und springen danach zur geplanten Woche.
+- Wochenanlage zentralisiert und um einen SwiftData-Fetch ergaenzt, damit geplante Folgewochen nicht doppelt entstehen, wenn Query-Updates verzoegert eintreffen.
+- Unit-Test fuer Wiederverwendung bereits gespeicherter Wochen bei verzoegerten Query-Listen ergaenzt.
+- Tagesauswahl fuer direkte Aufgabenanlage ergaenzt: Klick auf Wochentage in Sidebar, Wochenuebersicht oder Heute-Leiste setzt den Zieltag fuer die naechste neue Aufgabe.
+- Drag-and-Drop in der Wochenuebersicht ergaenzt: Mini-Aufgaben koennen direkt zwischen Tageszeilen verschoben werden, inklusive Drop-Highlight und Zieltag-Auswahl.
 - macOS- und iPhone-Simulator-Builds erfolgreich geprueft.
 - macOS-Unit-Tests erfolgreich geprueft.
 - iOS-Unit-Testlauf scheiterte einmal an einem CoreSimulator-Klonfehler fuer `iPhone 17`, nicht an einem Codefehler.

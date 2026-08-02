@@ -17,7 +17,8 @@ struct AnkerRootView: View {
 
     let weeks: [Week]
     @State private var selectedWeekStart = AnkerCalendar.weekInterval(containing: Date()).monday
-    @State private var selectedDestination: AppDestination = .week
+    @State private var selectedDayDate = Date()
+    @State private var selectedDestination: AppDestination = .today
     @State private var showingNewTask = false
     @State private var showingNewGoal = false
 
@@ -36,7 +37,9 @@ struct AnkerRootView: View {
 
     private var selectedDay: Day? {
         let sortedDays = selectedWeek?.dayList.sorted { $0.date < $1.date }
-        return sortedDays?.first { AnkerCalendar.isSameDay($0.date, Date()) } ?? sortedDays?.first
+        return sortedDays?.first { AnkerCalendar.isSameDay($0.date, selectedDayDate) }
+            ?? sortedDays?.first { AnkerCalendar.isSameDay($0.date, Date()) }
+            ?? sortedDays?.first
     }
 
     private var needsOnboarding: Bool {
@@ -68,14 +71,18 @@ struct AnkerRootView: View {
             }
         }
         .sheet(isPresented: $showingNewTask) {
-            if let selectedWeek, let selectedDay {
-                NewTaskSheet(day: selectedDay, goals: selectedWeek.goalList)
-                    .presentationDetents([.medium])
+            if let selectedDay {
+                NewTaskSheet(day: selectedDay) { date in
+                    moveToPlannedDate(date)
+                }
+                    .presentationDetents([.medium, .large])
             }
         }
         .sheet(isPresented: $showingNewGoal) {
             if let selectedWeek {
-                NewGoalSheet(week: selectedWeek)
+                NewGoalSheet(week: selectedWeek) { date in
+                    moveToPlannedDate(date)
+                }
                     .presentationDetents([.medium])
             }
         }
@@ -97,6 +104,8 @@ struct AnkerRootView: View {
                     case .today:
                         TodayView(day: day, week: week) {
                             showingNewTask = true
+                        } onSelectDay: { selectedDay in
+                            selectDay(selectedDay)
                         }
                     case .week:
                         WeekOverviewView(week: week, selectedDay: day, onCurrentWeek: {
@@ -105,6 +114,8 @@ struct AnkerRootView: View {
                             moveWeek(by: -1)
                         }, onNextWeek: {
                             moveWeek(by: 1)
+                        }, onSelectDay: { selectedDay in
+                            selectDay(selectedDay)
                         })
                     case .year:
                         YearOverviewView(week: week)
@@ -113,6 +124,8 @@ struct AnkerRootView: View {
                     case .goal:
                         TodayView(day: day, week: week) {
                             showingNewTask = true
+                        } onSelectDay: { selectedDay in
+                            selectDay(selectedDay)
                         }
                     }
                 }
@@ -137,9 +150,14 @@ struct AnkerRootView: View {
                 week: week,
                 weeks: weeks,
                 selection: $selectedDestination,
+                selectedDay: day,
                 onPreviousMonth: { moveMonth(by: -1) },
                 onNextMonth: { moveMonth(by: 1) },
-                onCurrentWeek: { moveToCurrentWeek() }
+                onCurrentWeek: { moveToCurrentWeek() },
+                onSelectWeek: { moveToWeek(starting: $0) },
+                onSelectDay: { selectedDay in
+                    selectDay(selectedDay)
+                }
             )
         } detail: {
             Group {
@@ -147,6 +165,8 @@ struct AnkerRootView: View {
                 case .today:
                     TodayView(day: day, week: week) {
                         showingNewTask = true
+                    } onSelectDay: { selectedDay in
+                        selectDay(selectedDay)
                     }
                 case .year:
                     YearOverviewView(week: week)
@@ -157,6 +177,8 @@ struct AnkerRootView: View {
                         moveWeek(by: -1)
                     }, onNextWeek: {
                         moveWeek(by: 1)
+                    }, onSelectDay: { selectedDay in
+                        selectDay(selectedDay)
                     })
                 case .review:
                     WeeklyReviewView(week: week)
@@ -170,6 +192,8 @@ struct AnkerRootView: View {
                             moveWeek(by: -1)
                         }, onNextWeek: {
                             moveWeek(by: 1)
+                        }, onSelectDay: { selectedDay in
+                            selectDay(selectedDay)
                         })
                     }
                 }
@@ -220,6 +244,7 @@ struct AnkerRootView: View {
         hasCompletedOnboarding = true
         onboardingVersion = requiredOnboardingVersion
         selectedWeekStart = week.monday
+        selectedDayDate = Date()
         selectedDestination = .goal(goal.id)
         try? modelContext.save()
     }
@@ -253,38 +278,7 @@ struct AnkerRootView: View {
 
     @discardableResult
     private func ensureWeek(containing date: Date) -> Week {
-        let interval = AnkerCalendar.weekInterval(containing: date)
-
-        if let existingWeek = weeks.first(where: { AnkerCalendar.isSameDay($0.monday, interval.monday) }) {
-            ensureWeekDays(in: existingWeek)
-            return existingWeek
-        }
-
-        return insertWeek(containing: date)
-    }
-
-    @discardableResult
-    private func insertWeek(containing date: Date) -> Week {
-        let interval = AnkerCalendar.weekInterval(containing: date)
-        let week = Week(
-            isoYear: interval.isoYear,
-            isoWeek: interval.isoWeek,
-            monday: interval.monday,
-            sunday: interval.sunday
-        )
-        week.days = AnkerCalendar.daysInWeek(starting: interval.monday).map { date in
-            Day(date: date, week: week)
-        }
-        modelContext.insert(week)
-        return week
-    }
-
-    private func ensureWeekDays(in week: Week) {
-        if week.dayList.isEmpty {
-            week.days = AnkerCalendar.daysInWeek(starting: week.monday).map { date in
-                Day(date: date, week: week)
-            }
-        }
+        TaskActions.ensureWeek(containing: date, weeks: weeks, modelContext: modelContext)
     }
 
     private func upsertOnboardingGoal(title: String, in week: Week) -> Goal {
@@ -318,7 +312,9 @@ struct AnkerRootView: View {
 
     private func moveWeek(by offset: Int) {
         let target = AnkerCalendar.iso.date(byAdding: .weekOfYear, value: offset, to: selectedWeekStart) ?? selectedWeekStart
+        let targetDay = AnkerCalendar.iso.date(byAdding: .weekOfYear, value: offset, to: selectedDayDate) ?? target
         selectedWeekStart = AnkerCalendar.weekInterval(containing: target).monday
+        selectedDayDate = targetDay
         selectedDestination = .week
         ensureSelectedWeek()
         try? modelContext.save()
@@ -327,7 +323,9 @@ struct AnkerRootView: View {
     private func moveMonth(by offset: Int) {
         let calendar = AnkerCalendar.iso
         let target = calendar.date(byAdding: .month, value: offset, to: selectedWeekStart) ?? selectedWeekStart
+        let targetDay = calendar.date(byAdding: .month, value: offset, to: selectedDayDate) ?? target
         selectedWeekStart = AnkerCalendar.weekInterval(containing: target).monday
+        selectedDayDate = targetDay
         selectedDestination = .week
         ensureSelectedWeek()
         try? modelContext.save()
@@ -335,6 +333,30 @@ struct AnkerRootView: View {
 
     private func moveToCurrentWeek() {
         selectedWeekStart = AnkerCalendar.weekInterval(containing: Date()).monday
+        selectedDayDate = Date()
+        selectedDestination = .today
+        ensureSelectedWeek()
+        try? modelContext.save()
+    }
+
+    private func moveToWeek(starting monday: Date) {
+        selectedWeekStart = AnkerCalendar.weekInterval(containing: monday).monday
+        selectedDayDate = monday
+        ensureSelectedWeek()
+        try? modelContext.save()
+    }
+
+    private func selectDay(_ day: Day) {
+        selectedWeekStart = AnkerCalendar.weekInterval(containing: day.date).monday
+        selectedDayDate = day.date
+        selectedDestination = .week
+        ensureSelectedWeek()
+        try? modelContext.save()
+    }
+
+    private func moveToPlannedDate(_ date: Date) {
+        selectedWeekStart = AnkerCalendar.weekInterval(containing: date).monday
+        selectedDayDate = date
         selectedDestination = .week
         ensureSelectedWeek()
         try? modelContext.save()
@@ -347,9 +369,12 @@ struct SidebarView: View {
     let week: Week
     let weeks: [Week]
     @Binding var selection: AppDestination
+    let selectedDay: Day
     var onPreviousMonth: () -> Void = {}
     var onNextMonth: () -> Void = {}
     var onCurrentWeek: () -> Void = {}
+    var onSelectWeek: (Date) -> Void = { _ in }
+    var onSelectDay: (Day) -> Void = { _ in }
 
     @State private var targetedWeekStart: Date?
 
@@ -388,107 +413,28 @@ struct SidebarView: View {
     }
 
     var body: some View {
-        List {
-            Section {
-                Text("⌕ Ziele, Aufgaben, Notizen")
-                    .font(.system(size: 11.5))
+        ScrollView {
+            VStack(alignment: .leading, spacing: 10) {
+                searchField
+                monthNavigation
+
+                Text(verbatim: String(week.isoYear))
+                    .font(.system(size: 12, weight: .bold))
                     .foregroundStyle(AnkerColor.muted)
-                    .padding(.vertical, 6)
-                    .padding(.horizontal, 9)
-                    .background(AnkerColor.card, in: RoundedRectangle(cornerRadius: 7))
-                    .overlay(RoundedRectangle(cornerRadius: 7).stroke(AnkerColor.line))
-                    .listRowBackground(Color.clear)
-
-                HStack(spacing: 8) {
-                    monthNavigationButton(systemName: "chevron.left", help: "Vorheriger Monat", action: onPreviousMonth)
-
-                    Button(action: onCurrentWeek) {
-                        Image(systemName: "calendar")
-                            .font(.system(size: 11, weight: .semibold))
-                            .foregroundStyle(AnkerColor.indigoText)
-                            .frame(width: 28, height: 26)
-                            .background(AnkerColor.card, in: RoundedRectangle(cornerRadius: 7))
-                            .overlay(RoundedRectangle(cornerRadius: 7).stroke(AnkerColor.line))
-                    }
-                    .buttonStyle(.plain)
-                    .help("Laufende Woche")
-
-                    monthNavigationButton(systemName: "chevron.right", help: "Nächster Monat", action: onNextMonth)
-                }
-                .listRowBackground(Color.clear)
-            }
-
-            Section {
-                Button {
-                    selection = .year
-                } label: {
-                    NavigationItemRow(color: AnkerColor.month[max(weekMonthIndex, 0)], title: "Jahr", isEmphasized: selection == .year)
-                }
-                .buttonStyle(.plain)
-
-                ForEach(sidebarWeekTargets) { target in
-                    Button {
-                        selection = .week
-                    } label: {
-                        SidebarWeekDropRow(
-                            target: target,
-                            isSelected: target.isActive && selection == .week,
-                            isDropTarget: targetedWeekStart.map { AnkerCalendar.isSameDay($0, target.monday) } ?? false
-                        )
-                    }
-                    .buttonStyle(.plain)
-                    .help("Aufgabe auf Woche \(String(format: "%02d", target.isoWeek)) verschieben")
-                    .onDrop(
-                        of: [UTType.plainText],
-                        isTargeted: Binding(
-                            get: { targetedWeekStart.map { AnkerCalendar.isSameDay($0, target.monday) } ?? false },
-                            set: { isTargeted in targetedWeekStart = isTargeted ? target.monday : nil }
-                        )
-                    ) { providers in
-                        dropTask(from: providers, on: target)
-                    }
-                }
+                    .tracking(0.48)
+                    .padding(.horizontal, 10)
+                    .padding(.top, 8)
 
                 ForEach(monthGroups) { group in
-                    NavigationItemRow(color: AnkerColor.month[group.month - 1], title: group.title(in: week.isoYear))
-                        .padding(.top, 5)
-                    ForEach(group.days, id: \.id) { day in
-                        Text(day.date.formatted(.dateTime.locale(Locale(identifier: "de_DE")).weekday(.abbreviated).day(.twoDigits).month(.twoDigits)))
-                            .font(.system(size: 11))
-                            .foregroundStyle(AnkerColor.muted)
-                            .padding(.leading, 18)
-                    }
-                }
-            } header: {
-                Text(verbatim: String(week.isoYear))
-            }
-
-            Section("Ziele") {
-                ForEach(week.goalList, id: \.id) { goal in
-                    Button {
-                        selection = .goal(goal.id)
-                    } label: {
-                        Text(goal.title)
-                            .font(.system(size: 12, weight: selection == .goal(goal.id) ? .bold : .medium))
-                            .foregroundStyle(selection == .goal(goal.id) ? AnkerColor.indigoDark : AnkerColor.ink)
-                    }
-                    .buttonStyle(.plain)
+                    monthSection(group)
                 }
 
+                goalsSection
+                reviewSection
             }
-
-            Section {
-                Button {
-                    selection = .review
-                } label: {
-                    Text("Wochenrückblick")
-                        .font(.system(size: 12, weight: selection == .review ? .bold : .medium))
-                        .foregroundStyle(selection == .review ? AnkerColor.indigoDark : AnkerColor.ink)
-                }
-                .buttonStyle(.plain)
-            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 14)
         }
-        .scrollContentBackground(.hidden)
         .background(.regularMaterial)
         .overlay(alignment: .trailing) {
             LinearGradient(
@@ -500,6 +446,154 @@ struct SidebarView: View {
             .allowsHitTesting(false)
         }
         .navigationTitle("Fyndara")
+    }
+
+    private var searchField: some View {
+        Text("⌕ Ziele, Aufgaben, Notizen")
+            .font(.system(size: 12, weight: .medium))
+            .foregroundStyle(AnkerColor.muted)
+            .lineLimit(1)
+            .padding(.vertical, 7)
+            .padding(.horizontal, 10)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(AnkerColor.card, in: RoundedRectangle(cornerRadius: 8))
+            .overlay(RoundedRectangle(cornerRadius: 8).stroke(AnkerColor.line))
+    }
+
+    private var monthNavigation: some View {
+        HStack(spacing: 8) {
+            monthNavigationButton(systemName: "chevron.left", help: "Vorheriger Monat", action: onPreviousMonth)
+
+            Button(action: onCurrentWeek) {
+                Image(systemName: "calendar")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(AnkerColor.indigoText)
+                    .frame(width: 28, height: 26)
+                    .background(AnkerColor.card, in: RoundedRectangle(cornerRadius: 7))
+                    .overlay(RoundedRectangle(cornerRadius: 7).stroke(AnkerColor.line))
+            }
+            .buttonStyle(.plain)
+            .help("Laufende Woche")
+
+            monthNavigationButton(systemName: "chevron.right", help: "Nächster Monat", action: onNextMonth)
+            Spacer(minLength: 0)
+        }
+    }
+
+    @ViewBuilder
+    private func monthSection(_ group: SidebarMonthGroup) -> some View {
+        let groupTargets = sidebarWeekTargets.filter { belongs($0, to: group) }
+
+        NavigationItemRow(
+            color: AnkerColor.month[group.month - 1],
+            title: group.title(in: week.isoYear),
+            isEmphasized: group.days.contains { day in
+                AnkerCalendar.isSameDay(day.date, selectedDay.date)
+            },
+            isOpen: true
+        )
+
+        ForEach(groupTargets) { target in
+            weekDropButton(target)
+
+            if target.isActive {
+                ForEach(group.days, id: \.id) { day in
+                    sidebarDayButton(day)
+                }
+            }
+        }
+
+        if !groupTargets.contains(where: \.isActive) {
+            ForEach(group.days, id: \.id) { day in
+                sidebarDayButton(day)
+            }
+        }
+    }
+
+    private func sidebarDayButton(_ day: Day) -> some View {
+        Button {
+            onSelectDay(day)
+        } label: {
+            SidebarDayRow(
+                day: day,
+                isSelected: AnkerCalendar.isSameDay(day.date, selectedDay.date)
+            )
+        }
+        .buttonStyle(.plain)
+        .help("Tag auswählen und Aufgabe mit + für diesen Tag anlegen")
+        .accessibilityLabel("Tag \(day.date.formatted(.dateTime.locale(Locale(identifier: "de_DE")).weekday(.wide).day().month())) auswählen")
+    }
+
+    private func weekDropButton(_ target: SidebarWeekTarget) -> some View {
+        Button {
+            onSelectWeek(target.monday)
+            selection = target.isActive ? .today : .week
+        } label: {
+            SidebarWeekDropRow(
+                target: target,
+                isSelected: target.isActive,
+                isDropTarget: targetedWeekStart.map { AnkerCalendar.isSameDay($0, target.monday) } ?? false
+            )
+        }
+        .buttonStyle(.plain)
+        .help("Aufgabe auf Woche \(String(format: "%02d", target.isoWeek)) verschieben")
+        .onDrop(
+            of: [UTType.plainText],
+            isTargeted: Binding(
+                get: { targetedWeekStart.map { AnkerCalendar.isSameDay($0, target.monday) } ?? false },
+                set: { isTargeted in targetedWeekStart = isTargeted ? target.monday : nil }
+            )
+        ) { providers in
+            dropTask(from: providers, on: target)
+        }
+    }
+
+    private var goalsSection: some View {
+        VStack(alignment: .leading, spacing: 7) {
+            if !week.goalList.isEmpty {
+                Text("Ziele")
+                    .font(.system(size: 10.5, weight: .bold))
+                    .foregroundStyle(AnkerColor.muted)
+                    .textCase(.uppercase)
+                    .padding(.horizontal, 10)
+                    .padding(.top, 8)
+            }
+
+            ForEach(week.goalList, id: \.id) { goal in
+                Button {
+                    selection = .goal(goal.id)
+                } label: {
+                    Text(goal.title)
+                        .font(.system(size: 12, weight: selection == .goal(goal.id) ? .bold : .medium))
+                        .foregroundStyle(selection == .goal(goal.id) ? AnkerColor.indigoDark : AnkerColor.ink)
+                        .lineLimit(1)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 5)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+    }
+
+    private var reviewSection: some View {
+        Button {
+            selection = .review
+        } label: {
+            Text("Wochenrückblick")
+                .font(.system(size: 12, weight: selection == .review ? .bold : .medium))
+                .foregroundStyle(selection == .review ? AnkerColor.indigoDark : AnkerColor.ink)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 5)
+        }
+        .buttonStyle(.plain)
+        .padding(.top, 4)
+    }
+
+    private func belongs(_ target: SidebarWeekTarget, to group: SidebarMonthGroup) -> Bool {
+        let calendar = Calendar.current
+        let targetMonth = calendar.component(.month, from: target.monday)
+        let targetYear = calendar.component(.year, from: target.monday)
+        return targetMonth == group.month && targetYear == group.year
     }
 
     private var weekMonthIndex: Int {
@@ -529,8 +623,10 @@ struct SidebarView: View {
             Task { @MainActor in
                 guard let task = task(with: taskID) else { return }
                 TaskActions.move(task, to: target.monday, weeks: weeks, modelContext: modelContext)
+                onSelectWeek(target.monday)
                 selection = .week
                 targetedWeekStart = nil
+                TaskDragEvents.end(taskID: taskID)
             }
         }
 
@@ -562,10 +658,10 @@ private struct SidebarWeekDropRow: View {
     var body: some View {
         HStack(spacing: 6) {
             Text("Woche \(String(format: "%02d", target.isoWeek))")
-                .font(.system(size: 11.5, weight: isSelected || isDropTarget ? .bold : .semibold))
+                .font(.system(size: 12, weight: isSelected || isDropTarget ? .bold : .semibold))
             if isDropTarget {
-                Text("Ziel")
-                    .font(.system(size: 9.5, weight: .bold))
+                Text("← Ziel")
+                    .font(.system(size: 11.5, weight: .bold))
                     .foregroundStyle(AnkerColor.indigoText)
             } else if !target.isExisting {
                 Image(systemName: "plus.circle")
@@ -576,7 +672,8 @@ private struct SidebarWeekDropRow: View {
         }
         .foregroundStyle(isSelected ? .white : (isDropTarget ? AnkerColor.indigoText : AnkerColor.ink))
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, 8)
+        .padding(.leading, 28)
+        .padding(.trailing, 8)
         .padding(.vertical, 5)
         .background(backgroundStyle, in: RoundedRectangle(cornerRadius: 7))
         .overlay(
@@ -604,6 +701,7 @@ private struct NavigationItemRow: View {
     let color: Color
     let title: String
     var isEmphasized = false
+    var isOpen = false
 
     var body: some View {
         HStack(spacing: 8) {
@@ -612,6 +710,26 @@ private struct NavigationItemRow: View {
                 .font(.system(size: 12.5, weight: isEmphasized ? .bold : .regular))
                 .foregroundStyle(AnkerColor.ink)
         }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 6)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(isOpen ? AnkerColor.indigo.opacity(0.13) : Color.clear, in: RoundedRectangle(cornerRadius: 8))
+    }
+}
+
+private struct SidebarDayRow: View {
+    let day: Day
+    let isSelected: Bool
+
+    var body: some View {
+        Text(day.date.formatted(.dateTime.locale(Locale(identifier: "de_DE")).weekday(.abbreviated).day(.twoDigits).month(.twoDigits)))
+            .font(.system(size: 11, weight: isSelected ? .bold : .medium))
+            .foregroundStyle(isSelected ? AnkerColor.indigoText : AnkerColor.muted)
+            .padding(.leading, 42)
+            .padding(.trailing, 8)
+            .padding(.vertical, 3)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(isSelected ? AnkerColor.indigo.opacity(0.10) : Color.clear, in: RoundedRectangle(cornerRadius: 7))
     }
 }
 
@@ -629,11 +747,17 @@ private struct SidebarMonthGroup: Identifiable {
 }
 
 struct WeekOverviewView: View {
+    @Environment(\.modelContext) private var modelContext
+    @Query(sort: \Week.monday) private var weeks: [Week]
+
     let week: Week
     let selectedDay: Day
     var onCurrentWeek: () -> Void = {}
     var onPreviousWeek: () -> Void = {}
     var onNextWeek: () -> Void = {}
+    var onSelectDay: (Day) -> Void = { _ in }
+
+    @State private var targetedDayID: UUID?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -664,7 +788,7 @@ struct WeekOverviewView: View {
             ScrollView {
                 VStack(spacing: 0) {
                     ForEach(week.dayList.sorted { $0.date < $1.date }, id: \.id) { day in
-                        WeekGridRow(day: day, isToday: AnkerCalendar.isSameDay(day.date, selectedDay.date))
+                        dayDropButton(day)
                     }
                 }
                 .padding(.horizontal, 18)
@@ -677,6 +801,55 @@ struct WeekOverviewView: View {
 #endif
         }
         .navigationTitle("Wochenübersicht")
+    }
+
+    private func dayDropButton(_ day: Day) -> some View {
+        Button {
+            onSelectDay(day)
+        } label: {
+            WeekGridRow(
+                day: day,
+                isSelected: AnkerCalendar.isSameDay(day.date, selectedDay.date),
+                isDropTarget: targetedDayID == day.id
+            )
+        }
+        .buttonStyle(.plain)
+        .help("Tag auswählen oder Aufgabe hierher ziehen")
+        .onDrop(
+            of: [UTType.plainText],
+            isTargeted: Binding(
+                get: { targetedDayID == day.id },
+                set: { isTargeted in targetedDayID = isTargeted ? day.id : nil }
+            )
+        ) { providers in
+            dropTask(from: providers, on: day)
+        }
+    }
+
+    private func dropTask(from providers: [NSItemProvider], on targetDay: Day) -> Bool {
+        guard let provider = providers.first(where: { $0.canLoadObject(ofClass: NSString.self) }) else { return false }
+
+        provider.loadObject(ofClass: NSString.self) { object, _ in
+            guard let rawID = object as? String ?? (object as? NSString)?.description,
+                  let taskID = UUID(uuidString: rawID) else { return }
+
+            Task { @MainActor in
+                guard let task = task(with: taskID) else { return }
+                TaskActions.move(task, to: targetDay.date, weeks: weeks, modelContext: modelContext)
+                targetedDayID = nil
+                onSelectDay(targetDay)
+                TaskDragEvents.end(taskID: taskID)
+            }
+        }
+
+        return true
+    }
+
+    private func task(with id: UUID) -> AnkerTask? {
+        weeks
+            .flatMap(\.dayList)
+            .flatMap(\.taskList)
+            .first { $0.id == id }
     }
 
     private func shortDate(_ date: Date) -> String {
@@ -726,14 +899,15 @@ private struct GoalPill: View {
 
 private struct WeekGridRow: View {
     let day: Day
-    let isToday: Bool
+    let isSelected: Bool
+    let isDropTarget: Bool
 
     var body: some View {
         HStack(alignment: .center, spacing: 12) {
             VStack(alignment: .leading, spacing: 2) {
                 Text(day.date.formatted(.dateTime.locale(Locale(identifier: "de_DE")).weekday(.wide)))
                     .font(.system(size: 12.5, weight: .bold))
-                    .foregroundStyle(AnkerColor.ink)
+                    .foregroundStyle(isSelected ? AnkerColor.indigoText : AnkerColor.ink)
                 Text(day.date.formatted(.dateTime.locale(Locale(identifier: "de_DE")).day(.twoDigits).month(.twoDigits)))
                     .font(.system(size: 10.5, weight: .regular, design: .monospaced))
                     .foregroundStyle(AnkerColor.muted)
@@ -747,10 +921,28 @@ private struct WeekGridRow: View {
             }
         }
         .padding(.vertical, 9)
-        .padding(.horizontal, isToday ? 18 : 0)
-        .background(isToday ? Color(hex: "#F3F4FF", darkHex: "#20243A") : Color.clear)
+        .padding(.horizontal, (isSelected || isDropTarget) ? 18 : 0)
+        .background(rowBackground)
         .clipShape(RoundedRectangle(cornerRadius: 8))
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(isDropTarget ? AnkerColor.indigo : Color.clear, lineWidth: 1.5)
+        )
         .overlay(alignment: .bottom) { Rectangle().fill(AnkerColor.lineSoft).frame(height: 1) }
+        .scaleEffect(isDropTarget ? 1.01 : 1)
+        .animation(.easeOut(duration: 0.12), value: isDropTarget)
+    }
+
+    private var rowBackground: some ShapeStyle {
+        if isDropTarget {
+            return AnyShapeStyle(AnkerColor.indigo.opacity(0.16))
+        }
+
+        if isSelected {
+            return AnyShapeStyle(Color(hex: "#F3F4FF", darkHex: "#20243A"))
+        }
+
+        return AnyShapeStyle(Color.clear)
     }
 }
 

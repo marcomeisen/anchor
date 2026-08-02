@@ -251,6 +251,11 @@ enum TaskActions {
             return existingWeek
         }
 
+        if let fetchedWeek = fetchWeek(starting: interval.monday, modelContext: modelContext) {
+            ensureWeekDays(in: fetchedWeek)
+            return fetchedWeek
+        }
+
         let week = Week(
             isoYear: interval.isoYear,
             isoWeek: interval.isoWeek,
@@ -262,6 +267,13 @@ enum TaskActions {
         }
         modelContext.insert(week)
         return week
+    }
+
+    private static func fetchWeek(starting monday: Date, modelContext: ModelContext) -> Week? {
+        let descriptor = FetchDescriptor<Week>(sortBy: [SortDescriptor(\.monday)])
+        return (try? modelContext.fetch(descriptor))?.first {
+            AnkerCalendar.isSameDay($0.monday, monday)
+        }
     }
 
     static func ensureWeekDays(in week: Week) {
