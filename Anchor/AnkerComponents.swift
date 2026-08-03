@@ -1,5 +1,6 @@
 import SwiftData
 import SwiftUI
+import UniformTypeIdentifiers
 #if os(iOS)
 import UIKit
 #endif
@@ -641,6 +642,64 @@ enum TaskDragEvents {
     }
 }
 
+/// Gemeinsame Behandlung von Task-Drops. Aufgaben werden als reine UUID-Zeichenkette
+/// gezogen (`conditionalTaskDrag`), also braucht jedes Drop-Ziel dieselben drei Schritte:
+/// ID laden, Aufgabe verschieben, Drag-Ende melden.
+enum TaskDropHandling {
+    static let draggedTypes = [UTType.plainText]
+
+    /// Laedt die Task-ID aus dem Provider und ruft `completion` auf dem Main Actor auf.
+    /// Ueber die Grenze geht bewusst nur die `UUID` — Modellobjekte sind nicht `Sendable`.
+    static func loadTaskID(
+        from providers: [NSItemProvider],
+        completion: @escaping @MainActor (UUID) -> Void
+    ) -> Bool {
+        guard let provider = providers.first(where: { $0.canLoadObject(ofClass: NSString.self) }) else {
+            return false
+        }
+
+        provider.loadObject(ofClass: NSString.self) { object, _ in
+            guard let rawID = object as? String ?? (object as? NSString)?.description,
+                  let taskID = UUID(uuidString: rawID) else { return }
+
+            Task { @MainActor in
+                completion(taskID)
+            }
+        }
+
+        return true
+    }
+
+    /// Verschiebt die Aufgabe auf `date` und meldet in jedem Fall das Drag-Ende, damit die
+    /// Ursprungszeile auf macOS ihre Transparenz verliert — auch wenn die Aufgabe
+    /// inzwischen geloescht wurde.
+    @MainActor
+    @discardableResult
+    static func moveTask(
+        id: UUID,
+        to date: Date,
+        weeks: [Week],
+        modelContext: ModelContext
+    ) -> TaskSnapshot? {
+        defer { TaskDragEvents.end(taskID: id) }
+
+        guard let task = task(with: id, in: weeks) else { return nil }
+
+        let snapshot = TaskActions.snapshot(task)
+        TaskActions.move(task, to: date, weeks: weeks, modelContext: modelContext)
+        return snapshot
+    }
+
+    @MainActor
+    private static func task(with id: UUID, in weeks: [Week]) -> AnkerTask? {
+        weeks
+            .lazy
+            .flatMap(\.dayList)
+            .flatMap(\.taskList)
+            .first { $0.id == id }
+    }
+}
+
 private struct TaskContextPreviewCard: View {
     let task: AnkerTask
 
@@ -763,6 +822,7 @@ struct WeekDot: View {
     let date: Date
     let isActive: Bool
     let hasGoal: Bool
+    var isDropTarget = false
 
     private var weekday: String {
         date.formatted(.dateTime.locale(Locale(identifier: "de_DE")).weekday(.abbreviated))
@@ -788,7 +848,11 @@ struct WeekDot: View {
                     )
                     .overlay(Circle().stroke(isActive ? Color.clear : AnkerColor.line, lineWidth: 1))
                     .overlay {
-                        if isActive {
+                        if isDropTarget {
+                            Circle()
+                                .stroke(AnkerColor.indigo, lineWidth: 2)
+                                .padding(-3)
+                        } else if isActive {
                             Circle()
                                 .stroke(AnkerColor.card, lineWidth: 2)
                                 .padding(-2)
@@ -807,6 +871,8 @@ struct WeekDot: View {
             }
             .frame(width: 32, height: 32)
         }
+        .scaleEffect(isDropTarget ? 1.12 : 1)
+        .animation(.easeOut(duration: 0.12), value: isDropTarget)
         .accessibilityElement(children: .combine)
     }
 }

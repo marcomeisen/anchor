@@ -90,7 +90,12 @@ final class CloudSyncStatusCenter: ObservableObject {
             forName: NSManagedObjectContext.didSaveObjectsNotification,
             object: nil,
             queue: .main
-        ) { _ in
+        ) { notification in
+            // CloudKit speichert seine Importe in eigenen Kontexten. Ohne diesen Filter
+            // gilt jeder empfangene Datensatz als neue lokale Aenderung, der Status faellt
+            // auf "Export ausstehend" zurueck und der Watchdog meldet faelschlich ein Problem.
+            guard !CloudSyncStatusCenter.isMirroringContext(notification.object) else { return }
+
             Task { @MainActor in
                 CloudSyncStatusCenter.shared.markLocalChangeSaved()
             }
@@ -123,6 +128,21 @@ final class CloudSyncStatusCenter: ObservableObject {
         tooltip = "iCloud ist eingerichtet. Sobald CloudKit Import oder Export meldet, wird der Status hier aktualisiert."
     }
 
+    /// Der Store laeuft ohne CloudKit weiter — sichtbar machen statt stillschweigend
+    /// nur lokal zu speichern.
+    func markCloudUnavailable(_ error: Error) {
+        pendingExportWatchdog?.cancel()
+        pendingExportWatchdog = nil
+        phase = .issue
+        detail = "Nur lokal gespeichert"
+        tooltip = "\(error.localizedDescription) Daivento arbeitet lokal weiter; Änderungen werden nicht synchronisiert. Prüfe iCloud-Account, Entitlements und Provisioning."
+    }
+
+    nonisolated static func isMirroringContext(_ object: Any?) -> Bool {
+        guard let context = object as? NSManagedObjectContext else { return false }
+        return context.name?.hasPrefix("NSCloudKitMirroringDelegate") ?? false
+    }
+
     private func apply(_ update: CloudSyncEventUpdate) {
         pendingExportWatchdog?.cancel()
         pendingExportWatchdog = nil
@@ -153,13 +173,16 @@ final class CloudSyncStatusCenter: ObservableObject {
     private func startPendingExportWatchdog() {
         pendingExportWatchdog?.cancel()
         pendingExportWatchdog = Task { [weak self] in
-            try? await Task.sleep(for: .seconds(45))
+            // CloudKit buendelt Exporte und verzoegert sie bei schlechter Verbindung deutlich.
+            // 45 Sekunden waren zu knapp und haben regelmaessig einen Fehler gemeldet,
+            // wo nur gewartet wurde.
+            try? await Task.sleep(for: .seconds(120))
 
             await MainActor.run {
                 guard let self, self.phase == .pendingExport else { return }
                 self.phase = .issue
                 self.detail = "Export noch ausstehend"
-                self.tooltip = "Die Änderung ist lokal gespeichert, aber CloudKit hat noch keinen Export gemeldet. Prüfe iCloud-Account, Netzwerk, Provisioning und die CloudKit-Konsole."
+                self.tooltip = "Die Änderung ist lokal gespeichert, aber CloudKit hat seit zwei Minuten keinen Export gemeldet. Das kann an fehlender Netzwerkverbindung liegen; sonst iCloud-Account, Provisioning und die CloudKit-Konsole prüfen."
             }
         }
     }

@@ -2,10 +2,17 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<!-- Debug und Release teilen sich diese Datei. Push- und CloudKit-Umgebung duerfen
+	     deshalb nicht festgeschrieben sein: TestFlight und App Store erwarten
+	     "production" bzw. "Production", sonst passt das signierte Entitlement nicht zum
+	     Distribution-Provisioning-Profil. Die Werte kommen aus APS_ENVIRONMENT und
+	     ICLOUD_CONTAINER_ENVIRONMENT je Build-Konfiguration. -->
 	<key>aps-environment</key>
-	<string>development</string>
+	<string>$(APS_ENVIRONMENT)</string>
 	<key>com.apple.developer.aps-environment</key>
-	<string>development</string>
+	<string>$(APS_ENVIRONMENT)</string>
+	<key>com.apple.developer.icloud-container-environment</key>
+	<string>$(ICLOUD_CONTAINER_ENVIRONMENT)</string>
 	<key>com.apple.developer.icloud-container-identifiers</key>
 	<array>
 		<string>iCloud.com.marcomeisen.Anchor</string>

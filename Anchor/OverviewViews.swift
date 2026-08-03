@@ -6,6 +6,10 @@ enum AppDestination: Hashable {
     case today
     case year
     case week
+    /// Detailansicht des aktuell gewaehlten Tages. Ohne Nutzlast, damit die Auswahl wie bei
+    /// `.week` allein aus `selectedDayDate` folgt und ein Zusammenfuehren doppelter
+    /// Tage nach einem iCloud-Import die Navigation nicht ins Leere laufen laesst.
+    case day
     case review
     case goal(UUID)
 }
@@ -92,6 +96,11 @@ struct AnkerRootView: View {
             ensureSelectedWeek()
             try? modelContext.save()
         }
+        // Laeuft erneut, sobald ein CloudKit-Import doppelte Wochen oder Tage einspielt.
+        // Bei sauberem Datenstand ist die Signatur leer und `normalize` ein No-op.
+        .task(id: StoreMaintenance.duplicateSignature(for: weeks)) {
+            StoreMaintenance.normalize(weeks: weeks, modelContext: modelContext)
+        }
     }
 
     @Environment(\.horizontalSizeClass) private var horizontalClass
@@ -102,31 +111,17 @@ struct AnkerRootView: View {
                 Group {
                     switch selectedDestination {
                     case .today:
-                        TodayView(day: day, week: week) {
-                            showingNewTask = true
-                        } onSelectDay: { selectedDay in
-                            selectDay(selectedDay)
-                        }
+                        todayView(day: day, week: week)
                     case .week:
-                        WeekOverviewView(week: week, selectedDay: day, onCurrentWeek: {
-                            moveToCurrentWeek()
-                        }, onPreviousWeek: {
-                            moveWeek(by: -1)
-                        }, onNextWeek: {
-                            moveWeek(by: 1)
-                        }, onSelectDay: { selectedDay in
-                            selectDay(selectedDay)
-                        })
+                        weekOverview(week: week, day: day)
+                    case .day:
+                        dayDetail(day: day, week: week)
                     case .year:
                         YearOverviewView(week: week, weeks: weeks)
                     case .review:
                         WeeklyReviewView(week: week)
                     case .goal:
-                        TodayView(day: day, week: week) {
-                            showingNewTask = true
-                        } onSelectDay: { selectedDay in
-                            selectDay(selectedDay)
-                        }
+                        todayView(day: day, week: week)
                     }
                 }
 
@@ -157,44 +152,29 @@ struct AnkerRootView: View {
                 onSelectWeek: { moveToWeek(starting: $0) },
                 onSelectDay: { selectedDay in
                     selectDay(selectedDay)
+                },
+                onFocusDay: { selectedDay in
+                    focusDay(selectedDay)
                 }
             )
         } detail: {
             Group {
                 switch selectedDestination {
                 case .today:
-                    TodayView(day: day, week: week) {
-                        showingNewTask = true
-                    } onSelectDay: { selectedDay in
-                        selectDay(selectedDay)
-                    }
+                    todayView(day: day, week: week)
                 case .year:
                     YearOverviewView(week: week, weeks: weeks)
                 case .week:
-                    WeekOverviewView(week: week, selectedDay: day, onCurrentWeek: {
-                        moveToCurrentWeek()
-                    }, onPreviousWeek: {
-                        moveWeek(by: -1)
-                    }, onNextWeek: {
-                        moveWeek(by: 1)
-                    }, onSelectDay: { selectedDay in
-                        selectDay(selectedDay)
-                    })
+                    weekOverview(week: week, day: day)
+                case .day:
+                    dayDetail(day: day, week: week)
                 case .review:
                     WeeklyReviewView(week: week)
                 case .goal(let id):
                     if let goal = week.goalList.first(where: { $0.id == id }) {
                         GoalDetailView(goal: goal, week: week)
                     } else {
-                        WeekOverviewView(week: week, selectedDay: day, onCurrentWeek: {
-                            moveToCurrentWeek()
-                        }, onPreviousWeek: {
-                            moveWeek(by: -1)
-                        }, onNextWeek: {
-                            moveWeek(by: 1)
-                        }, onSelectDay: { selectedDay in
-                            selectDay(selectedDay)
-                        })
+                        weekOverview(week: week, day: day)
                     }
                 }
             }
@@ -206,6 +186,38 @@ struct AnkerRootView: View {
             .toolbarBackground(.regularMaterial, for: .windowToolbar)
 #endif
         }
+    }
+
+    private func todayView(day: Day, week: Week) -> some View {
+        TodayView(
+            day: day,
+            week: week,
+            onAddTask: { showingNewTask = true },
+            onSelectDay: { selectDay($0) },
+            onFocusDay: { focusDay($0) }
+        )
+    }
+
+    private func weekOverview(week: Week, day: Day) -> some View {
+        WeekOverviewView(
+            week: week,
+            selectedDay: day,
+            onCurrentWeek: { moveToCurrentWeek() },
+            onPreviousWeek: { moveWeek(by: -1) },
+            onNextWeek: { moveWeek(by: 1) },
+            onSelectDay: { selectDay($0) },
+            onFocusDay: { focusDay($0) }
+        )
+    }
+
+    private func dayDetail(day: Day, week: Week) -> some View {
+        DayDetailView(
+            day: day,
+            week: week,
+            onAddTask: { showingNewTask = true },
+            onSelectGoal: { goal in selectedDestination = .goal(goal.id) },
+            onClose: { selectedDestination = .week }
+        )
     }
 
     private var currentWeekTitle: String {
@@ -346,10 +358,17 @@ struct AnkerRootView: View {
         try? modelContext.save()
     }
 
+    /// Klick auf einen Tag: oeffnet die Tagesdetailansicht.
     private func selectDay(_ day: Day) {
+        focusDay(day)
+        selectedDestination = .day
+    }
+
+    /// Setzt nur den Zieltag, ohne die Ansicht zu wechseln. Nach einem Drag-and-Drop soll der
+    /// Blick dort bleiben, wo gezogen wurde; der Tag ist danach aber das Ziel fuer neue Aufgaben.
+    private func focusDay(_ day: Day) {
         selectedWeekStart = AnkerCalendar.weekInterval(containing: day.date).monday
         selectedDayDate = day.date
-        selectedDestination = .week
         ensureSelectedWeek()
         try? modelContext.save()
     }
@@ -376,8 +395,10 @@ struct SidebarView: View {
     var onCurrentWeek: () -> Void = {}
     var onSelectWeek: (Date) -> Void = { _ in }
     var onSelectDay: (Day) -> Void = { _ in }
+    var onFocusDay: (Day) -> Void = { _ in }
 
     @State private var targetedWeekStart: Date?
+    @State private var targetedDayID: UUID?
 
     private var monthGroups: [SidebarMonthGroup] {
         let calendar = Calendar.current
@@ -581,12 +602,26 @@ struct SidebarView: View {
         } label: {
             SidebarDayRow(
                 day: day,
-                isSelected: AnkerCalendar.isSameDay(day.date, selectedDay.date)
+                isSelected: AnkerCalendar.isSameDay(day.date, selectedDay.date),
+                isDropTarget: targetedDayID == day.id
             )
         }
         .buttonStyle(.plain)
-        .help("Tag auswählen und Aufgabe mit + für diesen Tag anlegen")
-        .accessibilityLabel("Tag \(day.date.formatted(.dateTime.locale(Locale(identifier: "de_DE")).weekday(.wide).day().month())) auswählen")
+        .help("Tag öffnen oder Aufgabe auf diesen Tag ziehen")
+        .accessibilityLabel("Tag \(dayLabel(day)) öffnen")
+        .onDrop(
+            of: TaskDropHandling.draggedTypes,
+            isTargeted: Binding(
+                get: { targetedDayID == day.id },
+                set: { isTargeted in targetedDayID = isTargeted ? day.id : nil }
+            )
+        ) { providers in
+            dropTask(from: providers, on: day)
+        }
+    }
+
+    private func dayLabel(_ day: Day) -> String {
+        day.date.formatted(.dateTime.locale(Locale(identifier: "de_DE")).weekday(.wide).day().month())
     }
 
     private func weekDropButton(_ target: SidebarWeekTarget) -> some View {
@@ -679,30 +714,24 @@ struct SidebarView: View {
     }
 
     private func dropTask(from providers: [NSItemProvider], on target: SidebarWeekTarget) -> Bool {
-        guard let provider = providers.first(where: { $0.canLoadObject(ofClass: NSString.self) }) else { return false }
-
-        provider.loadObject(ofClass: NSString.self) { object, _ in
-            guard let rawID = object as? String ?? (object as? NSString)?.description,
-                  let taskID = UUID(uuidString: rawID) else { return }
-
-            Task { @MainActor in
-                guard let task = task(with: taskID) else { return }
-                TaskActions.move(task, to: target.monday, weeks: weeks, modelContext: modelContext)
-                onSelectWeek(target.monday)
-                selection = .week
-                targetedWeekStart = nil
-                TaskDragEvents.end(taskID: taskID)
-            }
+        TaskDropHandling.loadTaskID(from: providers) { taskID in
+            TaskDropHandling.moveTask(id: taskID, to: target.monday, weeks: weeks, modelContext: modelContext)
+            targetedWeekStart = nil
+            onSelectWeek(target.monday)
+            selection = .week
         }
-
-        return true
     }
 
-    private func task(with id: UUID) -> AnkerTask? {
-        weeks
-            .flatMap(\.dayList)
-            .flatMap(\.taskList)
-            .first { $0.id == id }
+    private func dropTask(from providers: [NSItemProvider], on day: Day) -> Bool {
+        let targetDate = day.date
+
+        return TaskDropHandling.loadTaskID(from: providers) { taskID in
+            TaskDropHandling.moveTask(id: taskID, to: targetDate, weeks: weeks, modelContext: modelContext)
+            targetedDayID = nil
+            // Absichtlich nur den Zieltag setzen statt zu navigieren: beim Ablegen soll der
+            // Blick dort bleiben, wo gezogen wurde.
+            onFocusDay(day)
+        }
     }
 }
 
@@ -869,16 +898,57 @@ private struct NavigationItemRow: View {
 private struct SidebarDayRow: View {
     let day: Day
     let isSelected: Bool
+    var isDropTarget = false
+
+    private var openTaskCount: Int {
+        day.taskList.filter { !$0.isDone }.count
+    }
 
     var body: some View {
-        Text(day.date.formatted(.dateTime.locale(Locale(identifier: "de_DE")).weekday(.abbreviated).day(.twoDigits).month(.twoDigits)))
-            .font(.system(size: 11, weight: isSelected ? .bold : .medium))
-            .foregroundStyle(isSelected ? AnkerColor.indigoText : AnkerColor.muted)
-            .padding(.leading, 42)
-            .padding(.trailing, 8)
-            .padding(.vertical, 3)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(isSelected ? AnkerColor.indigo.opacity(0.10) : Color.clear, in: RoundedRectangle(cornerRadius: 7))
+        HStack(spacing: 6) {
+            Text(day.date.formatted(.dateTime.locale(Locale(identifier: "de_DE")).weekday(.abbreviated).day(.twoDigits).month(.twoDigits)))
+                .font(.system(size: 11, weight: isSelected || isDropTarget ? .bold : .medium))
+
+            Spacer(minLength: 4)
+
+            if isDropTarget {
+                Text("← Tag")
+                    .font(.system(size: 10.5, weight: .bold))
+                    .foregroundStyle(AnkerColor.indigoText)
+            } else if openTaskCount > 0 {
+                Text(verbatim: String(openTaskCount))
+                    .font(.system(size: 9.5, weight: .bold, design: .monospaced))
+                    .foregroundStyle(AnkerColor.muted)
+                    .padding(.horizontal, 5)
+                    .padding(.vertical, 1)
+                    .background(AnkerColor.lineSoft, in: Capsule())
+                    .accessibilityLabel("\(openTaskCount) offene Aufgaben")
+            }
+        }
+        .foregroundStyle(isDropTarget ? AnkerColor.indigoText : (isSelected ? AnkerColor.indigoText : AnkerColor.muted))
+        .padding(.leading, 42)
+        .padding(.trailing, 8)
+        .padding(.vertical, 3)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(dayBackground, in: RoundedRectangle(cornerRadius: 7))
+        .overlay(
+            RoundedRectangle(cornerRadius: 7)
+                .stroke(isDropTarget ? AnkerColor.indigo : Color.clear, lineWidth: 2)
+        )
+        .scaleEffect(isDropTarget ? 1.03 : 1)
+        .animation(.easeOut(duration: 0.12), value: isDropTarget)
+    }
+
+    private var dayBackground: some ShapeStyle {
+        if isDropTarget {
+            return AnyShapeStyle(AnkerColor.indigo.opacity(0.16))
+        }
+
+        if isSelected {
+            return AnyShapeStyle(AnkerColor.indigo.opacity(0.10))
+        }
+
+        return AnyShapeStyle(Color.clear)
     }
 }
 
@@ -905,6 +975,7 @@ struct WeekOverviewView: View {
     var onPreviousWeek: () -> Void = {}
     var onNextWeek: () -> Void = {}
     var onSelectDay: (Day) -> Void = { _ in }
+    var onFocusDay: (Day) -> Void = { _ in }
 
     @State private var targetedDayID: UUID?
 
@@ -963,9 +1034,9 @@ struct WeekOverviewView: View {
             )
         }
         .buttonStyle(.plain)
-        .help("Tag auswählen oder Aufgabe hierher ziehen")
+        .help("Tag öffnen oder Aufgabe hierher ziehen")
         .onDrop(
-            of: [UTType.plainText],
+            of: TaskDropHandling.draggedTypes,
             isTargeted: Binding(
                 get: { targetedDayID == day.id },
                 set: { isTargeted in targetedDayID = isTargeted ? day.id : nil }
@@ -976,29 +1047,13 @@ struct WeekOverviewView: View {
     }
 
     private func dropTask(from providers: [NSItemProvider], on targetDay: Day) -> Bool {
-        guard let provider = providers.first(where: { $0.canLoadObject(ofClass: NSString.self) }) else { return false }
+        let targetDate = targetDay.date
 
-        provider.loadObject(ofClass: NSString.self) { object, _ in
-            guard let rawID = object as? String ?? (object as? NSString)?.description,
-                  let taskID = UUID(uuidString: rawID) else { return }
-
-            Task { @MainActor in
-                guard let task = task(with: taskID) else { return }
-                TaskActions.move(task, to: targetDay.date, weeks: weeks, modelContext: modelContext)
-                targetedDayID = nil
-                onSelectDay(targetDay)
-                TaskDragEvents.end(taskID: taskID)
-            }
+        return TaskDropHandling.loadTaskID(from: providers) { taskID in
+            TaskDropHandling.moveTask(id: taskID, to: targetDate, weeks: weeks, modelContext: modelContext)
+            targetedDayID = nil
+            onFocusDay(targetDay)
         }
-
-        return true
-    }
-
-    private func task(with id: UUID) -> AnkerTask? {
-        weeks
-            .flatMap(\.dayList)
-            .flatMap(\.taskList)
-            .first { $0.id == id }
     }
 
     private func shortDate(_ date: Date) -> String {

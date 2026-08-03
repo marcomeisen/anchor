@@ -1,5 +1,24 @@
 # Changelog
 
+## 2026-08-03
+
+- `CLAUDE.md` mit Projektueberblick, Dateikarte, Referenzdokumenten und Konventionen ergaenzt.
+- Projekt-Skills unter `.claude/skills/` angelegt: `daivento-build`, `daivento-swiftdata`, `daivento-design-system`, `daivento-task-interactions`.
+- iCloud-Sync-Ursache behoben: die sandboxed macOS-App hatte keine Netzwerk-Client-Berechtigung (`ENABLE_OUTGOING_NETWORK_CONNECTIONS` war `NO`), CloudKit kam damit nicht ins Netz und der Export blieb dauerhaft aus.
+- Falsche Sync-Warnung beseitigt: Saves aus den CloudKit-Import-Kontexten galten als neue lokale Aenderung und liessen den Status nach jedem Import auf "Export ausstehend" und dann auf "Sync pruefen" fallen.
+- Watchdog fuer ausstehende Exporte von 45 auf 120 Sekunden angehoben und Hinweistext um fehlende Netzwerkverbindung erweitert.
+- `initializeCloudKitSchema` laeuft nicht mehr bei jedem Debug-Start, sondern nur mit dem Startargument `-DaiventoInitializeCloudKitSchema`; der dabei geoeffnete zweite Store wird jetzt wieder freigegeben.
+- Zusammenfuehrung doppelter Datensaetze aus dem Sync ergaenzt (`StoreMaintenance`): legen zwei Geraete dieselbe Kalenderwoche an, werden Wochen, Tage, Aufgaben, Zeitbloecke und Notizen verlustfrei vereinigt, mit geraeteunabhaengig gleichem Gewinner.
+- Store-Erzeugung abgehaertet: ein nicht oeffenbarer CloudKit-Store fuehrt nicht mehr zu `fatalError`, sondern zum lokalen Fallback mit sichtbarem Sync-Hinweis. Der Testhost startet ohne CloudKit.
+- Neue Tagesdetailansicht (`DayDetailView`): Klick auf einen Tag oeffnet ihn jetzt vollstaendig, mit Kennzahlen, bearbeitbarem Tagesfokus, verankerten Wochenzielen, Zeitplan, Aufgaben nach Prioritaet und freien Notizen. `focusNote` und `notes` waren bisher nirgends bearbeitbar.
+- Drag-and-Drop von Aufgaben auf einzelne Tage ergaenzt: Sidebar-Tage, iPhone-Wochenstreifen und die Tagesdetailansicht sind Drop-Ziele, jeweils mit Highlight.
+- Drop-Behandlung in `TaskDropHandling` zusammengefasst, statt sie an jedem Ziel erneut zu implementieren; Undo-Toast-Mechanik in `TaskUndoCoordinator` ausgelagert.
+- Sidebar-Tage zeigen die Anzahl offener Aufgaben.
+- Unit-Tests fuer die Zusammenfuehrung doppelter Wochen und Tage, den geraeteunabhaengigen Gewinner und die leere Duplikat-Signatur ergaenzt.
+- macOS- und iPhone-Simulator-Builds sowie alle 11 Unit-Tests erfolgreich geprueft.
+- Push- und CloudKit-Umgebung in den Entitlements nicht mehr festgeschrieben: Debug und Release teilen dieselbe Datei, die bisher `development` erzwang. Werte kommen jetzt aus `APS_ENVIRONMENT` und `ICLOUD_CONTAINER_ENVIRONMENT` je Konfiguration, in Release also `production` bzw. `Production` — passend zu TestFlight und App Store.
+- Fehlendes `com.apple.developer.icloud-container-environment` fuer Distribution-Builds ergaenzt.
+
 ## 2026-08-01
 
 - App-Branding von Anchor/Anker auf Daivento umgestellt.

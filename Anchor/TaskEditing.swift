@@ -1,3 +1,4 @@
+import Combine
 import SwiftData
 import SwiftUI
 
@@ -21,6 +22,44 @@ struct TaskUndoNotice: Identifiable {
 enum TaskUndoOperation {
     case restore
     case deleteCreated
+}
+
+/// Haelt den aktuell sichtbaren Rueckgaengig-Hinweis.
+///
+/// Laut Interaktionskonzept verdraengt ein neuer Toast den vorherigen sofort statt sich zu
+/// stapeln, und er verschwindet nach vier Sekunden. Als eigener Typ, damit jede Ansicht mit
+/// Aufgabenliste dieselbe Mechanik nutzt statt sie zu kopieren.
+@MainActor
+final class TaskUndoCoordinator: ObservableObject {
+    @Published private(set) var notice: TaskUndoNotice?
+
+    private var dismissTask: Task<Void, Never>?
+
+    func present(_ notice: TaskUndoNotice) {
+        guard !notice.snapshots.isEmpty else { return }
+
+        dismissTask?.cancel()
+        self.notice = notice
+
+        dismissTask = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(4))
+            guard !Task.isCancelled else { return }
+            self?.dismiss(noticeID: notice.id)
+        }
+    }
+
+    func undo(weeks: [Week], modelContext: ModelContext) {
+        guard let notice else { return }
+
+        TaskActions.undo(notice, weeks: weeks, modelContext: modelContext)
+        dismissTask?.cancel()
+        self.notice = nil
+    }
+
+    private func dismiss(noticeID: UUID) {
+        guard notice?.id == noticeID else { return }
+        notice = nil
+    }
 }
 
 enum TaskActions {

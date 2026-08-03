@@ -151,6 +151,133 @@ final class AnchorTests: XCTestCase {
     }
 
     @MainActor
+    func testDuplicateSignatureIsEmptyForCleanStore() throws {
+        let container = try makeContainer()
+        let context = container.mainContext
+        let week = makeWeek(in: context)
+        try context.save()
+
+        XCTAssertTrue(StoreMaintenance.duplicateSignature(for: [week]).isEmpty)
+        XCTAssertEqual(StoreMaintenance.normalize(weeks: [week], modelContext: context), 0)
+    }
+
+    @MainActor
+    func testNormalizeMergesWeeksDuplicatedByCloudSync() throws {
+        let container = try makeContainer()
+        let context = container.mainContext
+        let interval = AnkerCalendar.weekInterval(containing: AnkerCalendar.date(year: 2026, month: 8, day: 3))
+
+        let fromDeviceA = insertFullWeek(interval: interval, in: context)
+        let fromDeviceB = insertFullWeek(interval: interval, in: context)
+
+        let mondayA = try XCTUnwrap(fromDeviceA.dayList.min { $0.date < $1.date })
+        let mondayB = try XCTUnwrap(fromDeviceB.dayList.min { $0.date < $1.date })
+
+        let taskA = AnkerTask(title: "Aufgabe A", priority: .a, order: 0, day: mondayA)
+        let taskB = AnkerTask(title: "Aufgabe B", priority: .b, order: 0, day: mondayB)
+        context.insert(taskA)
+        context.insert(taskB)
+        mondayA.tasks = [taskA]
+        mondayB.tasks = [taskB]
+        mondayA.notes = "Notiz vom Mac"
+        mondayB.notes = "Notiz vom iPhone"
+        try context.save()
+
+        let weeks = try context.fetch(FetchDescriptor<Week>())
+        XCTAssertEqual(weeks.count, 2)
+        XCTAssertFalse(StoreMaintenance.duplicateSignature(for: weeks).isEmpty)
+
+        // Eine doppelte Woche plus die sieben doppelten Tage darin.
+        XCTAssertEqual(StoreMaintenance.normalize(weeks: weeks, modelContext: context), 8)
+
+        let remainingWeeks = try context.fetch(FetchDescriptor<Week>())
+        XCTAssertEqual(remainingWeeks.count, 1)
+
+        let survivor = try XCTUnwrap(remainingWeeks.first)
+        XCTAssertEqual(survivor.dayList.count, 7)
+        XCTAssertTrue(StoreMaintenance.duplicateSignature(for: remainingWeeks).isEmpty)
+
+        // Keine Aufgabe darf beim Aufraeumen verloren gehen.
+        let remainingTasks = try context.fetch(FetchDescriptor<AnkerTask>())
+        XCTAssertEqual(Set(remainingTasks.map(\.title)), ["Aufgabe A", "Aufgabe B"])
+
+        let mergedMonday = try XCTUnwrap(survivor.dayList.min { $0.date < $1.date })
+        XCTAssertEqual(mergedMonday.taskList.count, 2)
+        XCTAssertEqual(mergedMonday.taskList.sorted { $0.order < $1.order }.map(\.order), [0, 1])
+
+        let mergedNotes = try XCTUnwrap(mergedMonday.notes)
+        XCTAssertTrue(mergedNotes.contains("Notiz vom Mac"))
+        XCTAssertTrue(mergedNotes.contains("Notiz vom iPhone"))
+    }
+
+    @MainActor
+    func testNormalizeKeepsSameWeekRegardlessOfOrder() throws {
+        let container = try makeContainer()
+        let context = container.mainContext
+        let interval = AnkerCalendar.weekInterval(containing: AnkerCalendar.date(year: 2026, month: 8, day: 3))
+
+        let first = insertFullWeek(interval: interval, in: context)
+        let second = insertFullWeek(interval: interval, in: context)
+        try context.save()
+
+        // Beide Geraete raeumen unabhaengig voneinander auf und sehen die Wochen in
+        // beliebiger Reihenfolge. Der Gewinner muss trotzdem derselbe sein, sonst
+        // loeschen sich die Geraete gegenseitig die jeweils behaltene Woche.
+        let expectedID = min(first.id.uuidString, second.id.uuidString)
+
+        StoreMaintenance.normalize(weeks: [second, first], modelContext: context)
+
+        let remaining = try context.fetch(FetchDescriptor<Week>())
+        XCTAssertEqual(remaining.count, 1)
+        XCTAssertEqual(try XCTUnwrap(remaining.first).id.uuidString, expectedID)
+    }
+
+    @MainActor
+    func testNormalizeMergesDuplicateDaysWithinOneWeek() throws {
+        let container = try makeContainer()
+        let context = container.mainContext
+        let week = insertFullWeek(
+            interval: AnkerCalendar.weekInterval(containing: AnkerCalendar.date(year: 2026, month: 8, day: 3)),
+            in: context
+        )
+
+        let monday = try XCTUnwrap(week.dayList.min { $0.date < $1.date })
+        let duplicateMonday = Day(date: monday.date, week: week)
+        context.insert(duplicateMonday)
+        week.days = week.dayList + [duplicateMonday]
+
+        let strayTask = AnkerTask(title: "Verirrte Aufgabe", priority: .c, order: 0, day: duplicateMonday)
+        context.insert(strayTask)
+        duplicateMonday.tasks = [strayTask]
+        try context.save()
+
+        XCTAssertEqual(week.dayList.count, 8)
+        XCTAssertEqual(StoreMaintenance.normalize(weeks: [week], modelContext: context), 1)
+
+        XCTAssertEqual(week.dayList.count, 7)
+        let mergedMonday = try XCTUnwrap(week.dayList.min { $0.date < $1.date })
+        XCTAssertEqual(mergedMonday.taskList.map(\.title), ["Verirrte Aufgabe"])
+    }
+
+    @MainActor
+    private func insertFullWeek(
+        interval: (monday: Date, sunday: Date, isoYear: Int, isoWeek: Int),
+        in context: ModelContext
+    ) -> Week {
+        let week = Week(
+            isoYear: interval.isoYear,
+            isoWeek: interval.isoWeek,
+            monday: interval.monday,
+            sunday: interval.sunday
+        )
+        week.days = AnkerCalendar.daysInWeek(starting: interval.monday).map { date in
+            Day(date: date, week: week)
+        }
+        context.insert(week)
+        return week
+    }
+
+    @MainActor
     private func makeContainer() throws -> ModelContainer {
         let schema = Schema(AnkerSchema.models)
         let configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)

@@ -1,5 +1,6 @@
 import SwiftData
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct TodayView: View {
     @Environment(\.modelContext) private var modelContext
@@ -10,14 +11,15 @@ struct TodayView: View {
     let week: Week
     var onAddTask: () -> Void
     var onSelectDay: (Day) -> Void = { _ in }
+    var onFocusDay: (Day) -> Void = { _ in }
 
+    @State private var targetedDayID: UUID?
     @State private var isSelecting = false
     @State private var selectedTaskIDs = Set<UUID>()
     @State private var showingBulkMove = false
     @State private var showingBulkPriority = false
     @State private var confirmingBulkDelete = false
-    @State private var undoNotice: TaskUndoNotice?
-    @State private var undoDismissTask: Task<Void, Never>?
+    @StateObject private var undo = TaskUndoCoordinator()
 
     private var tasks: [AnkerTask] {
         day.taskList.sorted { $0.order < $1.order }
@@ -68,7 +70,7 @@ struct TodayView: View {
                                         onStartSelection: {
                                             startSelection(with: task)
                                         },
-                                        onUndoableAction: presentUndo
+                                        onUndoableAction: undo.present
                                     )
                                 }
                             }
@@ -81,11 +83,9 @@ struct TodayView: View {
             .background(AnkerColor.paper)
 
             VStack(spacing: 10) {
-                if let undoNotice {
-                    TaskUndoToast(notice: undoNotice) {
-                        TaskActions.undo(undoNotice, weeks: weeks, modelContext: modelContext)
-                        self.undoNotice = nil
-                        undoDismissTask?.cancel()
+                if let notice = undo.notice {
+                    TaskUndoToast(notice: notice) {
+                        undo.undo(weeks: weeks, modelContext: modelContext)
                     }
                 }
 
@@ -131,7 +131,7 @@ struct TodayView: View {
 #endif
         .sheet(isPresented: $showingBulkMove) {
             TaskMoveSheet(tasks: selectedTasks) { snapshots in
-                presentUndo(TaskUndoNotice(message: "\(snapshots.count) Aufgaben verschoben", snapshots: snapshots))
+                undo.present(TaskUndoNotice(message: "\(snapshots.count) Aufgaben verschoben", snapshots: snapshots))
                 finishSelection()
             }
             .presentationDetents([.medium])
@@ -176,20 +176,33 @@ struct TodayView: View {
     }
 
     private var weekStrip: some View {
-        HStack {
-            ForEach(week.dayList.sorted { $0.date < $1.date }, id: \.id) { item in
+        let orderedDays = week.dayList.sorted { $0.date < $1.date }
+
+        return HStack {
+            ForEach(orderedDays, id: \.id) { item in
                 Button {
                     onSelectDay(item)
                 } label: {
                     WeekDot(
                         date: item.date,
                         isActive: AnkerCalendar.isSameDay(item.date, day.date),
-                        hasGoal: item.taskList.contains { $0.linkedGoal != nil }
+                        hasGoal: item.taskList.contains { $0.linkedGoal != nil },
+                        isDropTarget: targetedDayID == item.id
                     )
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel("Tag \(item.date.formatted(.dateTime.locale(Locale(identifier: "de_DE")).weekday(.wide).day().month())) auswählen")
-                if item.id != week.dayList.sorted(by: { $0.date < $1.date }).last?.id {
+                .accessibilityLabel("Tag \(dayLabel(item)) öffnen")
+                .onDrop(
+                    of: TaskDropHandling.draggedTypes,
+                    isTargeted: Binding(
+                        get: { targetedDayID == item.id },
+                        set: { isTargeted in targetedDayID = isTargeted ? item.id : nil }
+                    )
+                ) { providers in
+                    dropTask(from: providers, on: item)
+                }
+
+                if item.id != orderedDays.last?.id {
                     Spacer(minLength: 0)
                 }
             }
@@ -197,6 +210,24 @@ struct TodayView: View {
         .padding(.horizontal, AnkerSpacing.screenPadding)
         .padding(.vertical, 6)
         .padding(.bottom, 8)
+    }
+
+    private func dayLabel(_ day: Day) -> String {
+        day.date.formatted(.dateTime.locale(Locale(identifier: "de_DE")).weekday(.wide).day().month())
+    }
+
+    private func dropTask(from providers: [NSItemProvider], on targetDay: Day) -> Bool {
+        let targetDate = targetDay.date
+
+        return TaskDropHandling.loadTaskID(from: providers) { taskID in
+            let snapshot = TaskDropHandling.moveTask(id: taskID, to: targetDate, weeks: weeks, modelContext: modelContext)
+            targetedDayID = nil
+            onFocusDay(targetDay)
+
+            if let snapshot {
+                undo.present(TaskUndoNotice(message: "Aufgabe verschoben", snapshots: [snapshot]))
+            }
+        }
     }
 
     private var headerDate: String {
@@ -233,7 +264,7 @@ struct TodayView: View {
             task.isDone = true
         }
         try? modelContext.save()
-        presentUndo(TaskUndoNotice(message: "\(selected.count) Aufgaben erledigt", snapshots: snapshots))
+        undo.present(TaskUndoNotice(message: "\(selected.count) Aufgaben erledigt", snapshots: snapshots))
         finishSelection()
     }
 
@@ -245,7 +276,7 @@ struct TodayView: View {
         for task in selected {
             TaskActions.setPriority(task, to: priority, modelContext: modelContext)
         }
-        presentUndo(TaskUndoNotice(message: "Priorität geändert", snapshots: snapshots))
+        undo.present(TaskUndoNotice(message: "Priorität geändert", snapshots: snapshots))
         finishSelection()
     }
 
@@ -266,7 +297,7 @@ struct TodayView: View {
         for task in selected {
             TaskActions.delete(task, modelContext: modelContext)
         }
-        presentUndo(TaskUndoNotice(message: "\(selected.count) Aufgaben gelöscht", snapshots: snapshots))
+        undo.present(TaskUndoNotice(message: "\(selected.count) Aufgaben gelöscht", snapshots: snapshots))
         finishSelection()
     }
 
@@ -277,19 +308,6 @@ struct TodayView: View {
         }
     }
 
-    private func presentUndo(_ notice: TaskUndoNotice) {
-        undoDismissTask?.cancel()
-        undoNotice = notice
-        undoDismissTask = Task {
-            try? await Task.sleep(nanoseconds: 4_000_000_000)
-            guard !Task.isCancelled else { return }
-            await MainActor.run {
-                if undoNotice?.id == notice.id {
-                    undoNotice = nil
-                }
-            }
-        }
-    }
 }
 
 private struct TaskBulkActionBar: View {
@@ -345,7 +363,7 @@ private struct TaskBulkActionBar: View {
     }
 }
 
-private struct TaskUndoToast: View {
+struct TaskUndoToast: View {
     let notice: TaskUndoNotice
     let onUndo: () -> Void
 
