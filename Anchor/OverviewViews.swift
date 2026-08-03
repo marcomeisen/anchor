@@ -131,6 +131,9 @@ struct AnkerRootView: View {
             }
             .toolbar {
                 creationToolbarItems
+#if os(iOS)
+                syncStatusToolbarItem
+#endif
             }
 #if os(iOS)
             .toolbarBackground(.visible, for: .navigationBar)
@@ -138,6 +141,17 @@ struct AnkerRootView: View {
 #endif
         }
     }
+
+#if os(iOS)
+    /// Nur im iPhone-Zweig: die Sidebar mit `CloudSyncStatusRow` gibt es hier nicht,
+    /// im iPad-Split dagegen schon — dort waere das Badge doppelt.
+    @ToolbarContentBuilder
+    private var syncStatusToolbarItem: some ToolbarContent {
+        ToolbarItem(placement: .topBarTrailing) {
+            CloudSyncStatusBadge(status: CloudSyncStatusCenter.shared)
+        }
+    }
+#endif
 
     private func splitContent(week: Week, day: Day) -> some View {
         NavigationSplitView {
@@ -460,7 +474,7 @@ struct SidebarView: View {
         }
         .background(.regularMaterial)
         .safeAreaInset(edge: .bottom, spacing: 0) {
-            CloudSyncStatusFooter(status: cloudSyncStatus)
+            CloudSyncStatusRow(status: cloudSyncStatus)
                 .padding(.horizontal, 10)
                 .padding(.vertical, 10)
                 .background(.regularMaterial)
@@ -731,56 +745,6 @@ struct SidebarView: View {
             // Absichtlich nur den Zieltag setzen statt zu navigieren: beim Ablegen soll der
             // Blick dort bleiben, wo gezogen wurde.
             onFocusDay(day)
-        }
-    }
-}
-
-private struct CloudSyncStatusFooter: View {
-    @ObservedObject var status: CloudSyncStatusCenter
-
-    var body: some View {
-        HStack(spacing: 8) {
-            statusIcon
-
-            VStack(alignment: .leading, spacing: 1) {
-                Text(status.phase.title)
-                    .font(.system(size: 11.5, weight: .semibold))
-                    .foregroundStyle(AnkerColor.ink)
-                    .lineLimit(1)
-
-                Text(status.detail)
-                    .font(.system(size: 10.5, weight: .medium))
-                    .foregroundStyle(AnkerColor.muted)
-                    .lineLimit(1)
-            }
-
-            Spacer(minLength: 0)
-        }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 8)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(AnkerColor.card.opacity(0.72), in: RoundedRectangle(cornerRadius: 8))
-        .overlay(
-            RoundedRectangle(cornerRadius: 8)
-                .stroke(AnkerColor.line)
-        )
-        .help(status.tooltip)
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(status.phase.title), \(status.detail)")
-    }
-
-    @ViewBuilder
-    private var statusIcon: some View {
-        if status.phase == .syncing {
-            ProgressView()
-                .controlSize(.small)
-                .frame(width: 17, height: 17)
-                .tint(status.phase.tint)
-        } else {
-            Image(systemName: status.phase.symbolName)
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(status.phase.tint)
-                .frame(width: 17, height: 17)
         }
     }
 }

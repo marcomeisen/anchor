@@ -8,13 +8,14 @@
 import SwiftUI
 import SwiftData
 import CoreData
+import OSLog
 #if os(macOS)
 import AppKit
 #elseif os(iOS)
 import UIKit
 #endif
 
-private enum CloudSyncConfiguration {
+enum CloudSyncConfiguration {
     enum SyncError: LocalizedError {
         case managedObjectModelUnavailable
         case cloudKitStoreUnavailable
@@ -38,13 +39,36 @@ private enum CloudSyncConfiguration {
     /// ein und bricht den Prozess ab, wenn der Container nicht in den Entitlements steht —
     /// das ist per `do`/`catch` nicht abfangbar. Ein Testhost ohne Signatur bzw. ohne
     /// iCloud-Entitlements wuerde deshalb sofort abstuerzen.
+    /// Die Umgebungsvariable allein reicht nicht — sie erreicht den Host-Prozess nicht in jeder
+    /// Testkonfiguration. Ist das Testbundle injiziert, wurde XCTest per `DYLD_INSERT_LIBRARIES`
+    /// vor `main` geladen und die Klasse ist ab dem ersten Moment auffindbar.
     static var isRunningTests: Bool {
         ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
+            || NSClassFromString("XCTestCase") != nil
+    }
+
+    /// Ist CloudKit in diesem Prozess ueberhaupt angebunden?
+    ///
+    /// Wer ohne iCloud-Entitlements einen `CKContainer` anspricht, bekommt keinen Fehler,
+    /// sondern einen Abbruch ("BUG IN CLIENT OF CLOUDKIT: Not entitled"). Jeder CloudKit-Zugriff
+    /// muss deshalb hierueber abgesichert sein.
+    /// `DAIVENTO_DISABLE_CLOUDKIT=1` schaltet CloudKit hart ab. Notwendig fuer Testlaeufe mit
+    /// unsigniertem Host: XCTest wird erst nach der App-Initialisierung nachgeladen, `isRunningTests`
+    /// greift zu diesem Zeitpunkt also noch nicht. `xcodebuild` reicht die Variable mit dem
+    /// Praefix `TEST_RUNNER_` an den Host durch.
+    static var usesCloudKit: Bool {
+        guard ProcessInfo.processInfo.environment["DAIVENTO_DISABLE_CLOUDKIT"] != "1" else {
+            return false
+        }
+
+        return !isRunningTests
     }
 
     static func modelConfiguration(schema: Schema) -> ModelConfiguration {
-        guard !isRunningTests else {
-            return ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
+        guard usesCloudKit else {
+            // `cloudKitDatabase` ist standardmaessig `.automatic` — SwiftData wuerde CloudKit
+            // sonst selbst einschalten und im unsignierten Testhost abbrechen.
+            return ModelConfiguration(schema: schema, isStoredInMemoryOnly: true, cloudKitDatabase: .none)
         }
 
         return ModelConfiguration(
@@ -102,14 +126,19 @@ private enum CloudSyncConfiguration {
             throw storeLoadError
         }
 
-        try persistentContainer.initializeCloudKitSchema(options: [])
-
-        // Store wieder freigeben, damit SwiftData die Datei danach exklusiv oeffnet.
-        // Zwei Coordinators auf derselben SQLite-Datei koennen sich sonst gegenseitig blockieren.
-        let coordinator = persistentContainer.persistentStoreCoordinator
-        for store in coordinator.persistentStores {
-            try coordinator.remove(store)
+        // Muss ein `defer` sein: schlaegt `initializeCloudKitSchema` fehl — etwa ohne
+        // iCloud-Account —, bleibt dieser Container sonst geladen und behaelt seinen
+        // Mirroring-Delegate. SwiftData oeffnet danach denselben Store ein zweites Mal und
+        // CloudKit bricht mit 134422 ab ("another instance of this persistent store
+        // actively syncing with CloudKit in this process").
+        defer {
+            let coordinator = persistentContainer.persistentStoreCoordinator
+            for store in coordinator.persistentStores {
+                try? coordinator.remove(store)
+            }
         }
+
+        try persistentContainer.initializeCloudKitSchema(options: [])
     }
 #endif
 }
@@ -128,9 +157,15 @@ struct AnkerStore {
     let container: ModelContainer
     let cloudKitError: Error?
 
+    @MainActor
     static func make() -> AnkerStore {
+        // Vor dem Container, sonst entstehen die CloudKit-Beobachter erst, wenn eine View den
+        // Status anfasst — `setup` und der erste Import sind dann schon durchgelaufen.
+        CloudSyncStatusCenter.startObserving()
+
         let schema = Schema(AnkerSchema.models)
         let cloudConfiguration = CloudSyncConfiguration.modelConfiguration(schema: schema)
+        cloudSyncLog.notice("Store-Konfiguration: CloudKit=\(CloudSyncConfiguration.usesCloudKit, privacy: .public)")
 
 #if DEBUG
         if CloudSyncConfiguration.shouldInitializeDevelopmentSchema {
@@ -151,7 +186,10 @@ struct AnkerStore {
         }
 
         do {
-            let container = try ModelContainer(for: schema, configurations: [ModelConfiguration(schema: schema)])
+            // `.none` ist hier wesentlich: ohne die Angabe gilt `.automatic` und SwiftData
+            // wuerde CloudKit erneut anbinden — der "lokale" Fallback waere keiner.
+            let localConfiguration = ModelConfiguration(schema: schema, cloudKitDatabase: .none)
+            let container = try ModelContainer(for: schema, configurations: [localConfiguration])
             return AnkerStore(container: container, cloudKitError: CloudSyncConfiguration.SyncError.cloudKitStoreUnavailable)
         } catch {
             fatalError("Could not create ModelContainer: \(error)")
@@ -160,6 +198,7 @@ struct AnkerStore {
 }
 
 @main
+@MainActor
 struct AnchorApp: App {
 #if os(macOS)
     @NSApplicationDelegateAdaptor(AnchorAppDelegate.self) private var appDelegate
@@ -180,6 +219,9 @@ struct AnchorApp: App {
                     } else {
                         CloudSyncStatusCenter.shared.markReady()
                     }
+                }
+                .task {
+                    await CloudSyncStatusCenter.shared.refreshAccountStatus()
                 }
 #if os(macOS)
                 .onAppear {

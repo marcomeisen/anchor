@@ -128,6 +128,31 @@ also nach jedem Import automatisch erneut. Bei jeder Erweiterung beachten:
 - Notizen werden zusammengefügt statt überschrieben; Datenverlust beim Aufräumen wäre schlimmer
   als eine doppelte Zeile.
 
+## Development und Production sind zwei Datenbanken
+
+Xcode-Builds laufen gegen die **Development**-Umgebung des Containers, TestFlight- und
+App-Store-Builds gegen **Production** (gesteuert über `ICLOUD_CONTAINER_ENVIRONMENT` je
+Konfiguration). Sie synchronisieren nicht miteinander.
+
+Entscheidender Unterschied: In Development legt `NSPersistentCloudKitContainer` fehlende
+Record-Types **automatisch** an. In Production ist das Schema **read-only** — was dort nicht
+deployt ist, existiert nicht, und der Sync scheitert. Nach jeder Modelländerung deshalb:
+
+1. Einmal lokal mit `-DaiventoInitializeCloudKitSchema` starten (schreibt nach Development).
+2. CloudKit Console → Container → Schema → **Deploy Schema Changes** → Development → Production.
+
+„Läuft in Xcode, tot in TestFlight" ist fast immer dieser Schritt.
+
+## Sync im TestFlight-Build diagnostizieren
+
+Ereignisse gehen über `cloudSyncLog` ins System-Log — in Console.app nach Subsystem
+`com.marcomeisen.Anchor` und Kategorie `CloudSync` filtern. Bewusst `notice`/`error`, weil
+`debug` und `info` nicht dauerhaft gespeichert werden.
+
+`CloudSyncErrorFormatter.describe(_:)` löst `CKError` auf: Code mit Klartextnamen, Teilfehler
+aus `partialErrorsByItemID`, verschachtelte `NSUnderlyingError`. Niemals auf
+`localizedDescription` allein verlassen — bei CloudKit steht dort meist nichts Verwertbares.
+
 ## CloudKit-Fehler sind nicht abfangbar
 
 `ModelContainer.init` wirft **nicht**, wenn die iCloud-Entitlements fehlen. CloudKit richtet sich

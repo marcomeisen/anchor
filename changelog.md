@@ -18,6 +18,18 @@
 - macOS- und iPhone-Simulator-Builds sowie alle 11 Unit-Tests erfolgreich geprueft.
 - Push- und CloudKit-Umgebung in den Entitlements nicht mehr festgeschrieben: Debug und Release teilen dieselbe Datei, die bisher `development` erzwang. Werte kommen jetzt aus `APS_ENVIRONMENT` und `ICLOUD_CONTAINER_ENVIRONMENT` je Konfiguration, in Release also `production` bzw. `Production` — passend zu TestFlight und App Store.
 - Fehlendes `com.apple.developer.icloud-container-environment` fuer Distribution-Builds ergaenzt.
+- iCloud-Status auf dem iPhone ueberhaupt erst sichtbar gemacht: die Anzeige steckte ausschliesslich im Sidebar-Fuss, den es im iPhone-Zweig nicht gibt. Jetzt Badge in der Navigationsleiste, Antippen zeigt Phase, Detail und Fehlermeldung.
+- Statuszeile aus `OverviewViews` nach `CloudSyncStatus` verschoben und in `CloudSyncStatusRow` (Sidebar) sowie `CloudSyncStatusBadge` (iPhone) aufgeteilt.
+- CloudKit-Beobachter registrieren sich jetzt vor dem Erzeugen des `ModelContainer`. Vorher entstanden sie erst beim ersten Zugriff einer View, wodurch `setup` und meist der erste Import verpasst wurden und der Status auf "iCloud startet" haengen blieb.
+- Erkennung lokaler Aenderungen abgesichert: statt nur auf den undokumentierten Kontextnamen zu pruefen, zaehlt zusaetzlich die Queue (Oberflaeche = Main Queue, CloudKit-Import = Private Queue).
+- CloudKit-Fehler werden lesbar aufbereitet (`CloudSyncErrorFormatter`): Fehlercode mit Klartextnamen, Teilfehler aus `partialErrorsByItemID` und verschachtelte Ursachen. Vorher stand dort nur `localizedDescription`, bei CKError meist ohne Aussage.
+- Haeufige Ursachen werden benannt, statt nur einen Code zu zeigen — etwa der Hinweis auf ein nur in Development vorhandenes Schema bei `unknownItem`, `invalidArguments` und `serverRejectedRequest`.
+- Sync-Ereignisse landen im System-Log (Subsystem = Bundle-ID, Kategorie `CloudSync`, Level `notice`/`error`), damit TestFlight-Builds ohne Debugger in Console.app diagnostizierbar sind.
+- Fehler beim Schema-Upload liessen den Hilfscontainer geladen zurueck, weil die Freigabe hinter dem werfenden Aufruf stand. SwiftData oeffnete denselben Store danach ein zweites Mal und CloudKit brach mit 134422 ab. Freigabe laeuft jetzt ueber `defer`.
+- `cloudKitDatabase` wird ueberall explizit gesetzt. Der Standard ist `.automatic`, wodurch der lokale Fallback-Store und die In-Memory-Container fuer Tests und Previews CloudKit ungewollt wieder aktiviert haetten.
+- CoreData+CloudKit-Fehler werden erkannt: sie kommen als `NSCocoaErrorDomain` (134400, 134406, 134422 …) statt als `CKError`, und die Aussage steckt in `NSLocalizedFailureReason` und `encounteredErrors` — beides wurde vorher verworfen.
+- iCloud-Accountstatus wird beim Start und bei `CKAccountChanged` direkt abgefragt. Fehlt der Account, steht das jetzt als "Kein iCloud-Account" da, statt sich hinter einem Core-Data-Fehler zu verstecken.
+- Sync-Details zeigen zusaetzlich Accountzustand, CloudKit-Umgebung, Container-Identifier und App-Version. Damit ist am Gerät ablesbar, ob Development oder Production laeuft und welcher Build getestet wird — bei TestFlight-Builds sonst nicht feststellbar.
 
 ## 2026-08-01
 
