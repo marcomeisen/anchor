@@ -208,13 +208,14 @@ final class AnchorTests: XCTestCase {
     }
 
     @MainActor
-    func testDuplicateSignatureIsEmptyForCleanStore() throws {
+    func testNoDuplicatesFoundInCleanStore() throws {
         let container = try makeContainer()
         let context = container.mainContext
         let week = makeWeek(in: context)
         try context.save()
 
-        XCTAssertTrue(StoreMaintenance.duplicateSignature(for: [week]).isEmpty)
+        XCTAssertTrue(StoreMaintenance.duplicateWeekKeys(in: [week]).isEmpty)
+        XCTAssertTrue(StoreMaintenance.duplicateDayKeys(in: week).isEmpty)
         XCTAssertEqual(StoreMaintenance.normalize(weeks: [week], modelContext: context), 0)
     }
 
@@ -242,7 +243,7 @@ final class AnchorTests: XCTestCase {
 
         let weeks = try context.fetch(FetchDescriptor<Week>())
         XCTAssertEqual(weeks.count, 2)
-        XCTAssertFalse(StoreMaintenance.duplicateSignature(for: weeks).isEmpty)
+        XCTAssertFalse(StoreMaintenance.duplicateWeekKeys(in: weeks).isEmpty)
 
         // Eine doppelte Woche plus die sieben doppelten Tage darin.
         XCTAssertEqual(StoreMaintenance.normalize(weeks: weeks, modelContext: context), 8)
@@ -252,7 +253,7 @@ final class AnchorTests: XCTestCase {
 
         let survivor = try XCTUnwrap(remainingWeeks.first)
         XCTAssertEqual(survivor.dayList.count, 7)
-        XCTAssertTrue(StoreMaintenance.duplicateSignature(for: remainingWeeks).isEmpty)
+        XCTAssertTrue(StoreMaintenance.duplicateWeekKeys(in: remainingWeeks).isEmpty)
 
         // Keine Aufgabe darf beim Aufraeumen verloren gehen.
         let remainingTasks = try context.fetch(FetchDescriptor<AnkerTask>())
@@ -535,6 +536,162 @@ final class AnchorTests: XCTestCase {
         XCTAssertTrue(snippet.hasPrefix("… "))
         XCTAssertTrue(snippet.hasSuffix(" …"))
         XCTAssertLessThan(snippet.count, note.count)
+    }
+
+    // MARK: - Navigation
+
+    func testNavigationJumpsMoveWeekAndDayTogether() {
+        var state = AnkerNavigationState(now: AnkerCalendar.date(year: 2026, month: 8, day: 5))
+        let startWeek = state.weekStart
+        let startDay = state.dayDate
+
+        state.moveWeek(by: 1)
+
+        // Beide um denselben Betrag: sonst zeigte die Wochenansicht die neue Woche, waehrend
+        // neue Aufgaben weiter im alten Tag landeten.
+        XCTAssertEqual(state.weekStart, AnkerCalendar.iso.date(byAdding: .weekOfYear, value: 1, to: startWeek))
+        XCTAssertEqual(state.dayDate, AnkerCalendar.iso.date(byAdding: .weekOfYear, value: 1, to: startDay))
+        XCTAssertEqual(state.destination, .week)
+
+        state.moveWeek(by: -1)
+        XCTAssertEqual(state.weekStart, startWeek)
+        XCTAssertEqual(state.dayDate, startDay)
+    }
+
+    func testNavigationRemembersTopLevelWhilePushed() {
+        var state = AnkerNavigationState()
+        state.select(.year)
+        XCTAssertFalse(state.isPushed)
+
+        state.openDay(on: AnkerCalendar.date(year: 2026, month: 8, day: 6))
+        XCTAssertEqual(state.destination, .day)
+        XCTAssertTrue(state.isPushed)
+        // Der Tab bleibt stehen — nur so fuehrt ein Zurueck dorthin, wo geoeffnet wurde.
+        XCTAssertEqual(state.topLevel, .year)
+
+        state.popToTopLevel()
+        XCTAssertEqual(state.destination, .year)
+        XCTAssertFalse(state.isPushed)
+    }
+
+    func testNavigationFocusDoesNotChangeDestination() {
+        var state = AnkerNavigationState()
+        state.select(.week)
+
+        // Nach einem Drag-and-Drop soll der Blick bleiben, wo gezogen wurde.
+        state.focus(on: AnkerCalendar.date(year: 2026, month: 9, day: 2))
+
+        XCTAssertEqual(state.destination, .week)
+        XCTAssertEqual(state.weekStart, AnkerCalendar.weekInterval(containing: AnkerCalendar.date(year: 2026, month: 9, day: 2)).monday)
+    }
+
+    func testNavigationSurvivesEncodingRoundTrip() throws {
+        var state = AnkerNavigationState(now: AnkerCalendar.date(year: 2026, month: 8, day: 5))
+        let goalID = UUID()
+        state.select(.week)
+        state.openGoal(goalID, inWeekContaining: AnkerCalendar.date(year: 2026, month: 8, day: 5))
+
+        let restored = try XCTUnwrap(AnkerNavigationState(encoded: state.encoded))
+
+        XCTAssertEqual(restored, state)
+        XCTAssertEqual(restored.destination, .goal(goalID))
+        XCTAssertEqual(restored.topLevel, .week)
+        XCTAssertNil(AnkerNavigationState(encoded: "kein JSON"))
+        XCTAssertNil(AnkerNavigationState(encoded: nil))
+    }
+
+    func testDeepLinksSetDestinationAndDate() throws {
+        var state = AnkerNavigationState()
+
+        XCTAssertTrue(state.apply(try XCTUnwrap(URL(string: "daivento://day/2026-08-05"))))
+        XCTAssertEqual(state.destination, .day)
+        XCTAssertTrue(AnkerCalendar.isSameDay(state.dayDate, AnkerCalendar.date(year: 2026, month: 8, day: 5)))
+
+        XCTAssertTrue(state.apply(try XCTUnwrap(URL(string: "daivento://week/2026-09-14"))))
+        XCTAssertEqual(state.destination, .week)
+        XCTAssertEqual(state.weekStart, AnkerCalendar.weekInterval(containing: AnkerCalendar.date(year: 2026, month: 9, day: 14)).monday)
+
+        let goalID = UUID()
+        XCTAssertTrue(state.apply(try XCTUnwrap(URL(string: "daivento://goal/\(goalID.uuidString)"))))
+        XCTAssertEqual(state.destination, .goal(goalID))
+
+        XCTAssertTrue(state.apply(try XCTUnwrap(URL(string: "daivento://year"))))
+        XCTAssertEqual(state.destination, .year)
+    }
+
+    func testUnknownDeepLinkLeavesStateUntouched() throws {
+        var state = AnkerNavigationState()
+        state.select(.review)
+        let before = state
+
+        // Ein Tippfehler im Link darf den Nutzer nicht irgendwo hin befoerdern.
+        for text in ["daivento://unbekannt", "daivento://day/kein-datum", "daivento://goal/abc",
+                     "https://daivento.app/today"] {
+            XCTAssertFalse(state.apply(try XCTUnwrap(URL(string: text))), text)
+            XCTAssertEqual(state, before, text)
+        }
+    }
+
+    // MARK: - Wochenplanung
+
+    @MainActor
+    func testWeekPlanningResolvesWeeksDaysAndSundayEdge() throws {
+        let container = try makeContainer()
+        let context = container.mainContext
+        let week = SampleData.insertReferenceWeek(in: context)
+        try context.save()
+
+        XCTAssertEqual(WeekPlanning.week(startingAt: week.monday, in: [week])?.id, week.id)
+        XCTAssertEqual(WeekPlanning.week(containing: week.monday, in: [week])?.id, week.id)
+
+        // `sunday` ist auf den Tagesanfang normalisiert — ein Sonntag um 23:00 muss trotzdem
+        // in seiner eigenen Woche liegen.
+        let sundayEvening = try XCTUnwrap(AnkerCalendar.iso.date(byAdding: .hour, value: 23, to: week.sunday))
+        XCTAssertTrue(WeekPlanning.contains(sundayEvening, in: week))
+        let nextMonday = try XCTUnwrap(AnkerCalendar.iso.date(byAdding: .day, value: 7, to: week.monday))
+        XCTAssertFalse(WeekPlanning.contains(nextMonday, in: week))
+
+        let day = try XCTUnwrap(WeekPlanning.day(on: week.monday, in: week))
+        XCTAssertTrue(AnkerCalendar.isSameDay(day.date, week.monday))
+        XCTAssertEqual(WeekPlanning.day(withID: day.id, in: [week])?.id, day.id)
+        XCTAssertNil(WeekPlanning.day(withID: UUID(), in: [week]))
+
+        // Rueckfall statt nil: nach dem Zusammenfuehren doppelter Tage kann der gewaehlte Tag
+        // verschwunden sein, und ohne Tag zeigt die App nur einen Spinner.
+        let farAway = AnkerCalendar.date(year: 2030, month: 1, day: 1)
+        XCTAssertNotNil(WeekPlanning.day(on: farAway, in: week))
+    }
+
+    @MainActor
+    func testOnboardingIsNeededWhileOnlyPlaceholderGoalExists() throws {
+        let container = try makeContainer()
+        let context = container.mainContext
+
+        // Ohne laufende Woche entscheidet allein das Flag.
+        XCTAssertTrue(WeekPlanning.needsOnboarding(in: [], hasCompletedOnboarding: false))
+        XCTAssertFalse(WeekPlanning.needsOnboarding(in: [], hasCompletedOnboarding: true))
+
+        let week = WeekPlanning.ensureWeek(containing: Date(), weeks: [], modelContext: context)
+        try context.save()
+
+        // Laufende Woche ohne echtes Ziel: Onboarding, auch wenn das Flag gesetzt ist. Sonst
+        // waere die App nach einer vollstaendigen Loeschung eine Sackgasse.
+        XCTAssertTrue(WeekPlanning.needsOnboarding(in: [week], hasCompletedOnboarding: true))
+
+        let placeholder = WeekPlanning.upsertOnboardingGoal(
+            title: WeekPlanning.placeholderGoalTitle, in: week, modelContext: context
+        )
+        XCTAssertTrue(WeekPlanning.isPlaceholder(placeholder))
+        XCTAssertFalse(WeekPlanning.isUserCreated(placeholder))
+        XCTAssertTrue(WeekPlanning.needsOnboarding(in: [week], hasCompletedOnboarding: true))
+
+        // Zweiter Durchlauf benennt den Platzhalter um statt ein zweites Ziel anzulegen —
+        // sonst waere eines der vier Wochenziele unnoetig verbraucht.
+        let real = WeekPlanning.upsertOnboardingGoal(title: "Echtes Ziel", in: week, modelContext: context)
+        XCTAssertEqual(real.id, placeholder.id)
+        XCTAssertEqual(week.goalList.count, 1)
+        XCTAssertTrue(WeekPlanning.isUserCreated(real))
+        XCTAssertFalse(WeekPlanning.needsOnboarding(in: [week], hasCompletedOnboarding: true))
     }
 
     // MARK: - Einstellungen

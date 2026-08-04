@@ -3,10 +3,13 @@
 **Stand:** 2026-08-04 · **Grundlage:** Arbeitsstand im Working Tree (nicht committet) ·
 **Umfang:** Security, DSGVO, Architektur, Code
 
-> **Umsetzungsstand 2026-08-04:** Die fünf schwersten Befunde sind behoben — G1, G2, G3, A1, S2
-> und, soweit ohne Übersetzung möglich, C1. Details je Befund unten unter *Behoben*. Offen sind
-> alle übrigen Befunde sowie bei C1 die eigentlichen Übersetzungen und bei G1 die Nutrition
-> Labels in App Store Connect.
+> **Umsetzungsstand 2026-08-04:** Behoben sind G1, G2, G3, A1, S2, A2, A3, A4, A7, A8, C2, C3,
+> C4, C5, C6 sowie C1 soweit ohne Übersetzung möglich. Details je Befund unten unter *Behoben*.
+>
+> Bewusst offen: **A5** (Paket `AnkerKit`) — Entscheidung vom 2026-08-04, siehe dort. **A6**
+> (Widgets, Watch, EventKit) ist ausgeklammert. **S1** und **S4** sind nicht angefasst.
+> Nicht-Code-Arbeit bleibt: die Datenschutzerklärung (G4) und die Nutrition Labels in
+> App Store Connect (G1).
 
 ---
 
@@ -39,26 +42,26 @@ Wo eine Bewertung von diesen Punkten abhängt, ist das ausdrücklich vermerkt.
 | S1 | Security | Keine Zugriffssperre für Inhalte, keine erhöhte Data Protection | Mittel | offen |
 | S2 | Security | Automatische Datensatzlöschung ohne Protokoll | Mittel | **behoben** |
 | G4 | DSGVO | Keine Datenschutzerklärung im Projekt, kein Link in der App | Mittel | offen |
-| A2 | Architektur | Geschäftslogik in Views | Mittel | offen |
-| A3 | Architektur | `OverviewViews.swift` mit 1483 Zeilen | Mittel | offen |
-| A4 | Architektur | Navigation ohne `NavigationPath` | Mittel | offen |
-| A5 | Architektur | Kein Modul-Schnitt, Widgets/Watch nicht anbindbar | Mittel | offen |
-| A6 | Architektur | Spec-Features fehlen (Widgets, Watch, EventKit) | Mittel | offen |
-| C2 | Code | 19 hartkodierte Hex-Farben außerhalb `Theme.swift` | Mittel | offen |
-| C3 | Code | UI-Tests sind leere Template-Rümpfe | Mittel | offen |
+| A2 | Architektur | Geschäftslogik in Views | Mittel | **behoben** |
+| A3 | Architektur | `OverviewViews.swift` mit 1483 Zeilen | Mittel | **behoben** |
+| A4 | Architektur | Navigation ohne `NavigationPath` | Mittel | **behoben** |
+| A5 | Architektur | Kein Modul-Schnitt, Widgets/Watch nicht anbindbar | Mittel | bewusst offen |
+| A6 | Architektur | Spec-Features fehlen (Widgets, Watch, EventKit) | Mittel | ausgeklammert |
+| C2 | Code | 19 hartkodierte Hex-Farben außerhalb `Theme.swift` | Mittel | **behoben** |
+| C3 | Code | UI-Tests sind leere Template-Rümpfe | Mittel | **behoben** |
 | S3 | Security | `print` mit Fehlerobjekt im Release-Pfad | Niedrig | offen |
 | S4 | Security | `privacy: .public` auf freien Fehlertexten | Niedrig | offen |
 | G5 | DSGVO | Usage Descriptions fehlen (relevant, sobald EventKit kommt) | Niedrig | offen |
-| A7 | Architektur | `CloudSyncStatusCenter` als globaler Singleton | Niedrig | offen |
-| A8 | Architektur | Duplikat-Signatur bei jeder `body`-Auswertung | Niedrig | offen |
-| C4 | Code | `AnkerCalendar.iso` erzeugt bei jedem Zugriff ein `Calendar` | Niedrig | offen |
-| C5 | Code | Datumsformatierung mehrfach dupliziert | Niedrig | offen |
-| C6 | Code | Beispieldaten-Logik im Auslieferungspfad | Niedrig | offen |
+| A7 | Architektur | `CloudSyncStatusCenter` als globaler Singleton | Niedrig | **behoben** |
+| A8 | Architektur | Duplikat-Signatur bei jeder `body`-Auswertung | Niedrig | **behoben** |
+| C4 | Code | `AnkerCalendar.iso` erzeugt bei jedem Zugriff ein `Calendar` | Niedrig | **behoben** |
+| C5 | Code | Datumsformatierung mehrfach dupliziert | Niedrig | **behoben** |
+| C6 | Code | Beispieldaten-Logik im Auslieferungspfad | Niedrig | **behoben** |
 
 **Positiv und ausdrücklich festzuhalten:** keine Drittanbieter-Abhängigkeiten, kein Tracking,
 kein eigener Netzwerkcode außer CloudKit, App Sandbox und Hardened Runtime aktiv,
 Kern-Geschäftslogik (`TaskActions`, `GoalActions`, `StoreMaintenance`, `AnkerCalendar`) ist von
-der UI getrennt und durch 20 Unit-Tests abgedeckt.
+der UI getrennt und durch 34 Unit-Tests plus einen UI-Test des Kernflusses abgedeckt.
 
 ---
 
@@ -250,10 +253,20 @@ unterliegt der Standardredaktion — dieselbe Trennung, die S4 für den Sync-Pfa
 
 ### A2 — Geschäftslogik in Views · Mittel
 
-`AnkerRootView` ([OverviewViews.swift](Anchor/OverviewViews.swift)) verantwortet Navigation,
-Onboarding-Zustand, Wochen- und Monatssprünge, Wochenanlage, Beispieldaten-Bereinigung und
-Zielverwaltung in einem Typ. Das macht die Logik nur über die UI testbar — und die UI-Tests sind
-leer (C3).
+`AnkerRootView` (damals in `OverviewViews.swift`) verantwortete Navigation, Onboarding-Zustand,
+Wochen- und Monatssprünge, Wochenanlage, Beispieldaten-Bereinigung und Zielverwaltung in einem Typ.
+Das machte die Logik nur über die UI testbar — und die UI-Tests waren leer (C3).
+
+**Behoben (2026-08-04).** Zwei neue Typen ohne View-Bezug:
+[AppNavigation.swift](Anchor/AppNavigation.swift) mit `AnkerNavigationState` (Sprünge,
+Suchtreffer, Wiederherstellung, Deep Links) und [WeekPlanning.swift](Anchor/WeekPlanning.swift)
+(Wochen und Tage auflösen, Onboarding-Zustand, erstes Wochenziel).
+[AnkerRootView.swift](Anchor/AnkerRootView.swift) ist auf Verdrahtung reduziert.
+
+Nebeneffekt, der die Absicht belegt: die acht Navigationsmethoden bestanden alle aus derselben
+Dreierfolge *Zustand ändern, Zielwoche anlegen, speichern*. Das ist jetzt eine Methode `move(_:)`,
+und die eigentlichen Sprünge sind reine Mutationen auf einem Wertetyp — neun Unit-Tests prüfen sie
+direkt, darunter der Sonntagsrand von `contains` und der Platzhalter im Onboarding.
 
 ### A3 — Dateizuschnitt · Mittel
 
@@ -268,12 +281,45 @@ leer (C3).
 `OverviewViews.swift` enthält vier Top-Level-Views plus acht private Hilfs-Views. Sammeldateien wie
 `DetailAndCaptureViews.swift` bündeln fachlich Unverwandtes.
 
+**Behoben (2026-08-04).** Aufgeteilt entlang der Views, private Hilfs-Views bei ihrem Nutzer:
+
+| vorher | nachher |
+|---|---|
+| `OverviewViews.swift` (1483) | `AnkerRootView.swift` (388), `SidebarView.swift` (615), `WeekOverviewView.swift` (315), `YearOverviewView.swift` (222) |
+| `DetailAndCaptureViews.swift` (994) | `TaskCaptureSheets.swift` (568), `GoalDetailView.swift` (158), `WeeklyReviewView.swift` (110), `OnboardingView.swift` (173) |
+| `TaskEditing.swift` (768) | `TaskActions.swift` (355), `TaskEditorSheets.swift` (418) |
+
+Die Trennung von `TaskEditing.swift` stand nicht im Plan, ist aber derselbe Fall: die
+Mutationsschicht und zwei Blätter hatten nichts miteinander zu tun. `AnkerComponents.swift` (978)
+bleibt bewusst zusammen — das ist eine Komponentenbibliothek, keine Sammeldatei.
+
 ### A4 — Navigation ohne `NavigationPath` · Mittel
 
 Die Navigation läuft über das Enum `AppDestination` plus separate `@State`-Variablen für Woche und
 Tag. Folgen: kein Deep-Linking, keine State-Restoration, kein Zurück-Stack. Zusätzlich ist das Enum
 inkonsistent — `.goal(UUID)` trägt eine Nutzlast, `.day` bewusst nicht, weil der Tag aus
 `selectedDayDate` folgt.
+
+**Behoben (2026-08-04),** allerdings nicht wörtlich wie im Plan formuliert. Die drei genannten
+Folgen sind weg:
+
+- **State-Restoration:** `AnkerNavigationState` ist `Codable` und liegt in `@SceneStorage`. Die App
+  startet wieder in der Woche und auf dem Tag, an denen zuletzt gearbeitet wurde; auf dem Mac je
+  Fenster.
+- **Deep-Linking:** `daivento://today`, `//week/2026-08-03`, `//day/2026-08-05`, `//goal/<UUID>`,
+  `//year`, `//review`, registriert über `CFBundleURLTypes`. Datumsangaben bewusst in ISO — ein
+  Link muss unabhängig von der Regionseinstellung des Empfängers funktionieren. Eine nicht
+  verstandene URL lässt den Zustand unangetastet, statt den Nutzer irgendwohin zu befördern.
+- **Zurück-Stack:** auf dem iPhone liegen `.day` und `.goal` jetzt auf einem echten
+  `NavigationStack(path:)`; die Zurück-Gestik funktioniert, wo es vorher nur einen
+  Schließen-Knopf gab.
+
+**Was ich nicht gemacht habe:** die Split-Ansicht auf einen `NavigationPath` umstellen. Die
+Detailspalte einer `NavigationSplitView` ist auswahl- und nicht stapelgetrieben; ein Pfad wäre dort
+kein Gewinn, sondern ein Fremdkörper. Der Stapel wird stattdessen aus demselben Zustand abgeleitet
+(`isPushed`), sodass Tab-Auswahl, Zurück und Wiederherstellung eine Quelle haben. Die genannte
+Inkonsistenz des Enums bleibt bestehen und ist dokumentiert — `.day` ohne Nutzlast ist Absicht,
+damit das Zusammenführen doppelter Tage die Navigation nicht ins Leere laufen lässt.
 
 ### A5 — Kein Modul-Schnitt · Mittel
 
@@ -282,6 +328,21 @@ Alles liegt in einem Multiplattform-Target. Der ursprüngliche Spec
 Datenmodell, Logik und Theme vor. Ohne dieses Paket lassen sich Widget- und Watch-Extensions später
 nicht anbinden, ohne Code zu duplizieren.
 
+**Bewusst offen (Entscheidung 2026-08-04).** Der Nutzen des Pakets ist die Anbindung von Widgets
+und Watch — also A6, und A6 ist ausgeklammert. Übrig blieben die Kosten: rund 15 Dateien umziehen,
+jede in Logik- und View-Teil trennen, etwa 250 `public`-Annotationen, `project.pbxproj` von Hand um
+die Paketreferenz erweitern. Dazu ein Restrisiko am Datenbestand: die `@Model`-Klassen hießen danach
+`AnkerKit.Goal` statt `Daivento.Goal`. Entity-Name und CloudKit-Recordtyp (`CD_Goal`) bleiben zwar
+gleich, aber ein Paket mit genau einem Abnehmer rechtfertigt diesen Eingriff nicht.
+
+Die Vorbereitung ist trotzdem erledigt: Modell und Logik liegen nach A2 und A3 in eigenen Dateien
+ohne View-Bezug (`Models`, `TaskActions`, `GoalEditing`, `WeekPlanning`, `AppNavigation`,
+`StoreMaintenance`, `DataPortability`, `AppSettings`, `Persistence`, `CalendarLogic`, `Theme`).
+Damit ist A5 später ein Umzug und keine Entflechtung.
+
+*Falls es doch ansteht:* eine Store-Datei mit dem heutigen Modulschnitt sichern und nach dem Umzug
+öffnen. Nur so ist belegt statt angenommen, dass bestehende Daten weiter gelesen werden.
+
 ### A6 — Fehlende Spec-Features · Mittel
 
 Gegen die Abnahmekriterien in [Anchor_prompt.md](Anchor_prompt.md) und
@@ -289,16 +350,36 @@ Gegen die Abnahmekriterien in [Anchor_prompt.md](Anchor_prompt.md) und
 Lock-Screen-Widgets, Watch-App, EventKit-Anbindung für die Zeitplanspalte, Lokalisierung. Das ist
 bekannter Restumfang, keine Regression — hier nur zur Vollständigkeit erfasst.
 
+**Ausgeklammert (Entscheidung 2026-08-04).** Die Lokalisierungsinfrastruktur ist über C1 inzwischen
+vorhanden; Widgets, Watch und EventKit bleiben Restumfang und setzen A5 voraus.
+
 ### A7 — Globaler Singleton · Niedrig
 
 `CloudSyncStatusCenter.shared` hält globalen, `@MainActor`-isolierten Zustand und registriert im
 Initialisierer Notification-Beobachter. Für Tests nicht ersetzbar.
+
+**Behoben (2026-08-04).** Drei Änderungen: Der Initialisierer ist nebenwirkungsfrei, die Beobachter
+entstehen erst in `startObserving()` (mehrfach aufrufbar). Die Beobachter melden über `[weak self]`
+an ihre eigene Instanz statt an `.shared` — vorher hätte eine eingesetzte Ersatzinstanz weiter das
+Singleton bedient. Und `StoreMaintenance` berichtet über das Protokoll `StoreMaintenanceReporting`
+statt direkt an `.shared`, sodass ein Test einen stillen Empfänger übergeben kann. In den Views ist
+die Statuszentrale ein injizierbarer Parameter mit `.shared` als Vorbelegung.
+
+Der Singleton selbst bleibt — er ist die Klammer um vier prozessweite Notification-Beobachter, und
+ihn aufzulösen hieße, dieselbe Klammer an anderer Stelle neu zu bauen.
 
 ### A8 — Rechenaufwand im View-Body · Niedrig
 
 `StoreMaintenance.duplicateSignature(for: weeks)` wird als `.task(id:)`-Schlüssel bei **jeder**
 Auswertung von `AnkerRootView.body` berechnet und gruppiert dabei alle Wochen und Tage. Bei einem
 Jahr Nutzung sind das rund 364 Tage pro Durchlauf. Aktuell unkritisch, wächst aber linear.
+
+**Behoben (2026-08-04),** und zwar nicht durch Zwischenspeichern, sondern durch den richtigen
+Schlüssel: `CloudSyncStatusCenter` zählt jetzt eingegangene CloudKit-Importe, und `.task(id:)` hängt
+an diesem Zähler. Das ist nicht nur billiger, es trifft die Absicht genauer — Duplikate entstehen
+ausschließlich dadurch, dass ein Import eine Woche einspielt, die lokal schon existiert. Die
+Signatur ist damit entbehrlich und entfernt; `duplicateWeekKeys` und `duplicateDayKeys` bleiben und
+sind weiter getestet.
 
 ---
 
@@ -337,11 +418,39 @@ Verwendung für nutzerdefinierte Zielfarben (`goal.colorHex`). Betroffen sind un
 Rot destruktiver Aktionen (`#D93327`) und Verlaufsfarben. Das unterläuft die Dark-Mode- und
 Kontraststrategie des Designsystems.
 
+**Behoben (2026-08-04).** Alle 19 Vorkommen sind Tokens in `Theme.swift`: `destructive`,
+`indigoGradientLight/Soft/Deep`, `selectedRow`, `bannerIndigo/Brass/Success`,
+`textBody/Chip/Task`. Außerhalb von `Theme.swift` gibt es keinen Hex-Wert mehr.
+
+Ein Wert ist dabei bewusst *geändert* und nicht nur umbenannt: `#E0392E` (Papierkorb im
+Hover-Reveal, Mehrfachauswahl-Löschen) steht in keinem Referenzdokument. Das Designsystem definiert
+genau ein Rot — `--prio-a:#D93327`, ausdrücklich kontrastkorrigiert. Der Ausreißer ist darauf
+zusammengeführt. Die übrigen Werte sind unverändert übernommen; wo eine Dunkelvariante fehlt, fehlt
+sie weiterhin, weil ich sie nicht aus dem Referenzdokument belegen kann und nicht erfinden wollte.
+
 ### C3 — UI-Tests ohne Inhalt · Mittel
 
 `AnchorUITests` enthält drei Funktionen, davon zwei generierte Rümpfe und einen Launch-Test. Der im
 Spec geforderte Flow „Aufgabe erstellen → an Ziel verankern → Fortschritt aktualisiert sich" ist
 nicht abgedeckt. Die 13 Unit-Tests decken die Logikschicht gut ab, aber keinen einzigen UI-Pfad.
+
+**Behoben (2026-08-04).** `testCreateTaskAnchorToGoalAndSeeProgress` läuft den geforderten Flow
+vollständig: Onboarding mit erstem Wochenziel, Aufgabe über das Erfassungsblatt anlegen und dabei
+an das Ziel verankern, über die Sidebar zurück zum Ziel, Aufgabe erledigen, Zähler und
+Fortschrittsring prüfen (0 → 100 Prozent).
+
+Dafür war Infrastruktur nötig, die vorher fehlte: `UITestMode` (`-DaiventoUITest`) startet mit
+leerem In-Memory-Store, abgeschaltetem iCloud und zurückgesetzten Einstellungen. **Ohne das liefen
+UI-Tests gegen den echten Store und den echten iCloud-Account** — `XCTestConfigurationFilePath` ist
+im App-Prozess eines UI-Tests nicht gesetzt, und `@AppStorage` überlebt Läufe. Dazu kamen
+Accessibility-Kennungen für Kennzahlen, Zielpille und Aufgabenkarte; die Kennzahlen sind dabei
+über `accessibilityElement(children: .ignore)` zusammengefasst, was VoiceOver ohnehin verbessert
+(vorher „1" und „AUFGABEN" als zwei getrennte Elemente).
+
+Der Test läuft auf macOS. Das Erledigen geht über das Kontextmenü der Karte, weil die Karte für
+VoiceOver ein zusammengefasstes Element ist und das innere Kästchen deshalb nicht einzeln
+adressierbar — die Alternative wäre gewesen, die Accessibility-Struktur für die Testbarkeit zu
+verschlechtern.
 
 ### C4 — `Calendar`-Erzeugung pro Zugriff · Niedrig
 
@@ -349,16 +458,32 @@ nicht abgedeckt. Die 13 Unit-Tests decken die Logikschicht gut ab, aber keinen e
 ([CalendarLogic.swift:4](Anchor/CalendarLogic.swift#L4)) und erzeugt bei jedem Aufruf ein neues
 `Calendar`-Objekt. Sie wird in Schleifen und Sortierprädikaten verwendet.
 
+**Behoben (2026-08-04).** `static let`. Damit ist auch `TimeZone.current` einmal pro Prozess
+festgeschrieben — gewollt, weil dieselbe Woche innerhalb einer Sitzung nicht ihre Grenzen wechseln
+soll. Reist der Nutzer über eine Zeitzonengrenze, gilt die neue Zone ab dem nächsten Start;
+`StoreMaintenance` rechnet ohnehin bewusst mit den ISO-Feldern statt mit `monday`.
+
 ### C5 — Doppelte Datumsformatierung · Niedrig
 
 `shortDate`, `dayLabel` und Varianten existieren mehrfach in `TaskEditing`, `OverviewViews`,
 `DayDetailView` und `DetailAndCaptureViews` mit jeweils eigener, leicht abweichender Implementierung.
+
+**Behoben (2026-08-04).** `AnkerDateFormat` in [CalendarLogic.swift](Anchor/CalendarLogic.swift)
+hält alle zwölf Formate; 50 Aufrufstellen und acht lokale Wrapper sind darauf umgestellt, `.formatted(.dateTime…)`
+kommt außerhalb dieser Datei nicht mehr vor. Jede Ersetzung ist gegen das ursprüngliche Format
+geprüft — eine Abweichung ist dabei aufgefallen und zurückgesetzt (das Datum im Zielkopf war
+„Mo 03.08.", nicht „03.08.2026").
 
 ### C6 — Beispieldaten-Logik im Auslieferungspfad · Niedrig
 
 `SampleData.isReferenceWeek` und `AnkerRootView.removeReferenceDataIfNeeded()` erkennen und löschen
 Beispieldaten zur Laufzeit im Produktivcode. Das ist Migrationsbehelf aus der Entwicklung, der bei
 jedem Start läuft und Nutzerdaten löschen kann, wenn die Erkennung je falsch greift.
+
+**Behoben (2026-08-04).** Beide entfernt. `SampleData.insertReferenceWeek` bleibt und wird nur noch
+von `PreviewContainer` und den Tests aufgerufen. Die Erkennung hätte eine echte Woche mit vier
+gleichnamigen Zielen in Kalenderwoche 1/2026 getroffen — unwahrscheinlich, aber der Preis dafür
+wäre gelöschte Nutzerarbeit gewesen.
 
 ---
 
@@ -406,23 +531,28 @@ Kein Selbstzweck: 3.1 ist die Voraussetzung für Widgets und Watch aus dem urspr
 
 | # | Maßnahme | Behebt | Aufwand |
 |---|---|---|---|
-| 3.1 | Lokales Paket `AnkerKit` für Modell, Logik und Theme | A5, A6 | L |
-| 3.2 | `AnkerRootView` entflechten: Navigation, Onboarding und Wochenverwaltung trennen | A2 | M |
-| 3.3 | `OverviewViews.swift` und `DetailAndCaptureViews.swift` nach Views aufteilen | A3 | M |
-| 3.4 | Navigation auf `NavigationPath` umstellen, Deep-Linking und State-Restoration ermöglichen | A4 | L |
-| 3.5 | `CloudSyncStatusCenter` hinter ein Protokoll legen | A7 | S |
-| 3.6 | Duplikat-Signatur zwischenspeichern statt pro `body` berechnen | A8 | S |
+| 3.1 | Lokales Paket `AnkerKit` für Modell, Logik und Theme | A5, A6 | L | **zurückgestellt** — Begründung unter A5 |
+| 3.2 | ~~`AnkerRootView` entflechten~~ **erledigt** (`AnkerNavigationState`, `WeekPlanning`) | A2 | M |
+| 3.3 | ~~`OverviewViews.swift` und `DetailAndCaptureViews.swift` aufteilen~~ **erledigt**, `TaskEditing.swift` mit | A3 | M |
+| 3.4 | ~~Deep-Linking und State-Restoration~~ **erledigt**; `NavigationPath` nur auf dem iPhone, siehe A4 | A4 | L |
+| 3.5 | ~~`CloudSyncStatusCenter` hinter ein Protokoll legen~~ **erledigt** | A7 | S |
+| 3.6 | ~~Duplikat-Prüfung aus dem `body` holen~~ **erledigt** — über einen Import-Zähler statt Zwischenspeichern | A8 | S |
 
 ### Phase 4 — Qualität und Vollständigkeit
 
 | # | Maßnahme | Behebt | Aufwand |
 |---|---|---|---|
 | 4.1 | ~~String Catalog einführen, Texte extrahieren, hartkodiertes `de_DE` entfernen~~ **erledigt**; offen bleiben die Übersetzungen in weitere Sprachen | C1 | L |
-| 4.2 | UI-Test für „Aufgabe erstellen → verankern → Fortschritt" | C3 | M |
-| 4.3 | Hartkodierte Farben in `Theme.swift` überführen | C2 | S |
-| 4.4 | Datumsformatierung zentralisieren | C5 | S |
-| 4.5 | `AnkerCalendar.iso` als `static let` zwischenspeichern | C4 | S |
-| 4.6 | Beispieldaten-Bereinigung nach einer Übergangsfrist entfernen | C6 | S |
+| 4.2 | ~~UI-Test für „Aufgabe erstellen → verankern → Fortschritt"~~ **erledigt** | C3 | M |
+| 4.3 | ~~Hartkodierte Farben in `Theme.swift` überführen~~ **erledigt** | C2 | S |
+| 4.4 | ~~Datumsformatierung zentralisieren~~ **erledigt** (`AnkerDateFormat`) | C5 | S |
+| 4.5 | ~~`AnkerCalendar.iso` als `static let`~~ **erledigt** | C4 | S |
+| 4.6 | ~~Beispieldaten-Bereinigung entfernen~~ **erledigt** | C6 | S |
+
+### Phase 3 und 4 — Stand
+
+Aus Phase 3 sind 3.2 bis 3.6 erledigt, 3.1 ist zurückgestellt. Aus Phase 4 sind 4.1 bis 4.6
+erledigt, bei 4.1 ohne die Übersetzungen selbst. Offen aus Phase 2: 2.1 bis 2.3 (S1, S4).
 
 ### Phase 5 — Restumfang aus dem Spec
 
@@ -440,8 +570,35 @@ erst, wenn Widgets oder Watch tatsächlich anstehen; ohne diesen Anlass ist 3.1 
 Verallgemeinerung. Phase 4.1 sollte vor jeder Veröffentlichung außerhalb des deutschsprachigen
 Raums stehen.
 
-**Nach der Umsetzung vom 2026-08-04** ist Phase 1 vollständig abgearbeitet und aus Phase 0 der
-technische Teil. Was vor der nächsten Einreichung noch fehlt, ist ausschließlich Nicht-Code-Arbeit:
-die Datenschutzerklärung (0.2, G4) und die Nutrition Labels in App Store Connect (0.3). Der
-Bildschirm *Daten und Datenschutz* beschreibt bereits, was gespeichert wird und wer es empfängt —
-dieser Text taugt als Grundlage für die Erklärung, ersetzt sie aber nicht.
+**Nach der Umsetzung vom 2026-08-04** sind Phase 1 vollständig, aus Phase 0 der technische Teil und
+aus den Phasen 3 und 4 alles außer dem Paket `AnkerKit` abgearbeitet. Was vor der nächsten
+Einreichung noch fehlt, ist ausschließlich Nicht-Code-Arbeit: die Datenschutzerklärung (0.2, G4) und
+die Nutrition Labels in App Store Connect (0.3). Der Bildschirm *Daten und Datenschutz* beschreibt
+bereits, was gespeichert wird und wer es empfängt — dieser Text taugt als Grundlage für die
+Erklärung, ersetzt sie aber nicht.
+
+Sinnvoll als Nächstes: **Phase 2** (S1, S4) ist unabhängig und klein. `AnkerKit` erst, wenn Widgets
+oder Watch anstehen.
+
+---
+
+## Nebenbefunde aus der Umsetzung
+
+Beim Umbau aufgefallen, nicht Teil der ursprünglichen Analyse und **nicht behoben**:
+
+### N1 — Die iPhone-Wischgesten laufen nie · Mittel
+
+`TaskCard` definiert `.swipeActions` für Erledigen, Löschen und Verschieben
+([AnkerComponents.swift](Anchor/AnkerComponents.swift)). `swipeActions` wirkt aber nur innerhalb
+einer `List` oder `Form` — im Projekt gibt es **keine einzige** `List`, alle Aufgabenlisten sind
+`VStack` in einem `ScrollView`. Die Gesten sind damit toter Code.
+
+Das betrifft direkt das [Interaktionskonzept](Daivento_Task_Interaktionskonzept.md), das Swipe als
+Kerninteraktion auf dem iPhone vorsieht. Behebung heißt entweder auf `List` umstellen (greift ins
+Layout ein) oder die Gesten selbst implementieren.
+
+### N2 — Tippfehler in einem sichtbaren Text · Niedrig
+
+„Wochenziele kannst du danach direkt **fuer** diese Woche erstellen" in
+[TaskCaptureSheets.swift](Anchor/TaskCaptureSheets.swift). Nicht korrigiert, weil eine Änderung den
+Schlüssel im String Catalog mitzieht.

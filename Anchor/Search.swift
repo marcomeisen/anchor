@@ -71,7 +71,7 @@ enum AnkerSearch {
         var results: [Result] = []
 
         for week in weeks {
-            let weekLabel = "KW \(String(format: "%02d", week.isoWeek)) · \(week.isoYear)"
+            let weekLabel = "\(AnkerDateFormat.calendarWeek(week.isoWeek)) · \(week.isoYear)"
 
             for goal in week.goalList where matches(goal.title, needle) {
                 results.append(
@@ -89,7 +89,7 @@ enum AnkerSearch {
             }
 
             for day in week.dayList {
-                let dayLabel = day.date.formatted(.dateTime.weekday(.abbreviated).day(.twoDigits).month(.twoDigits))
+                let dayLabel = AnkerDateFormat.weekdayShortWithDayMonth(day.date)
 
                 for task in day.taskList where matches(task.title, needle) {
                     var context = "\(dayLabel) · Prio \(task.priority.label)"
@@ -148,7 +148,7 @@ enum AnkerSearch {
                             id: block.id,
                             kind: .timeBlock,
                             title: block.title,
-                            context: "\(dayLabel) · \(block.startTime.formatted(.dateTime.hour().minute()))",
+                            context: "\(dayLabel) · \(AnkerDateFormat.clock(block.startTime))",
                             isDone: false,
                             dayID: day.id,
                             goalID: nil,

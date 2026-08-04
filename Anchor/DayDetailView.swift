@@ -96,7 +96,7 @@ struct DayDetailView: View {
     }
 
     private var navigationTitle: String {
-        let weekday = day.date.formatted(.dateTime.weekday(.wide))
+        let weekday = AnkerDateFormat.weekdayLong(day.date)
         return isToday ? "\(weekday) — Heute" : weekday
     }
 
@@ -111,7 +111,7 @@ struct DayDetailView: View {
                         .foregroundStyle(AnkerColor.muted)
                         .tracking(0.35)
 
-                    Text(day.date.formatted(.dateTime.weekday(.wide)))
+                    Text(AnkerDateFormat.weekdayLong(day.date))
                         .font(.system(size: 22, weight: .bold))
                         .foregroundStyle(AnkerColor.ink)
                 }
@@ -149,8 +149,8 @@ struct DayDetailView: View {
     }
 
     private var headerMeta: String {
-        let date = day.date.formatted(.dateTime.day(.twoDigits).month(.twoDigits).year())
-        return "\(date) · KW \(String(format: "%02d", week.isoWeek))"
+        let date = AnkerDateFormat.dayMonthYear(day.date)
+        return "\(date) · \(AnkerDateFormat.calendarWeek(week.isoWeek))"
     }
 
     // MARK: - Kennzahlen
@@ -430,10 +430,10 @@ private struct DayTimeBlockRow: View {
     var body: some View {
         HStack(spacing: 10) {
             VStack(alignment: .leading, spacing: 1) {
-                Text(block.startTime.formatted(.dateTime.hour(.twoDigits(amPM: .omitted)).minute(.twoDigits)))
+                Text(AnkerDateFormat.timeOfDay(block.startTime))
                     .font(.system(size: 11, weight: .semibold, design: .monospaced))
                     .foregroundStyle(AnkerColor.ink)
-                Text(block.endTime.formatted(.dateTime.hour(.twoDigits(amPM: .omitted)).minute(.twoDigits)))
+                Text(AnkerDateFormat.timeOfDay(block.endTime))
                     .font(.system(size: 10, weight: .regular, design: .monospaced))
                     .foregroundStyle(AnkerColor.muted)
             }

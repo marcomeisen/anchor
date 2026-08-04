@@ -1,11 +1,20 @@
 import Foundation
 
 enum AnkerCalendar {
-    static var iso: Calendar {
+    /// Ein einziges `Calendar` fuer den ganzen Prozess.
+    ///
+    /// Vorher eine berechnete `static var`, die bei jedem Zugriff ein neues `Calendar` baute —
+    /// in Schleifen und Sortierpraedikaten also hunderte Male pro Durchlauf.
+    ///
+    /// `TimeZone.current` wird dabei einmal festgeschrieben. Das ist gewollt: dieselbe Woche
+    /// soll innerhalb einer Sitzung nicht ihre Grenzen wechseln. Reist der Nutzer ueber eine
+    /// Zeitzonengrenze, gilt die neue Zone ab dem naechsten Start; `StoreMaintenance` rechnet
+    /// deshalb bewusst mit den ISO-Feldern statt mit `monday`.
+    static let iso: Calendar = {
         var calendar = Calendar(identifier: .iso8601)
         calendar.timeZone = .current
         return calendar
-    }
+    }()
 
     static func weekInterval(containing date: Date, calendar: Calendar = iso) -> (monday: Date, sunday: Date, isoYear: Int, isoWeek: Int) {
         let components = calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: date)
@@ -38,5 +47,90 @@ enum AnkerCalendar {
 
     static func isSameDay(_ lhs: Date, _ rhs: Date, calendar: Calendar = iso) -> Bool {
         calendar.isDate(lhs, inSameDayAs: rhs)
+    }
+}
+
+/// Alle Datums- und Zeitformate der Oberflaeche an einer Stelle.
+///
+/// Vorher lagen `shortDate`, `dayLabel` und Varianten mehrfach in `TaskEditing`,
+/// `OverviewViews`, `DayDetailView`, `TodayView` und `DetailAndCaptureViews` — jeweils mit
+/// eigener, leicht abweichender Implementierung. Gleiche Angabe, unterschiedliche Schreibweise
+/// je Bildschirm.
+///
+/// Bewusst keine `Locale`-Angabe: die Formate folgen der Regionseinstellung des Nutzers.
+enum AnkerDateFormat {
+
+    // MARK: - Tag
+
+    /// `Mo`, `Di` — ohne Punkt, fuer die schmalen Tagesauswahl-Buttons.
+    static func weekdayShort(_ date: Date) -> String {
+        // Die deutsche Abkuerzung kommt als "Mo."; in den 34 Punkt breiten Buttons stoert
+        // der Punkt, und in anderen Regionen faellt der `replacing`-Aufruf einfach aus.
+        date.formatted(.dateTime.weekday(.abbreviated)).replacing(".", with: "")
+    }
+
+    /// `Montag`
+    static func weekdayLong(_ date: Date) -> String {
+        date.formatted(.dateTime.weekday(.wide))
+    }
+
+    /// `01`
+    static func dayNumber(_ date: Date) -> String {
+        date.formatted(.dateTime.day(.twoDigits))
+    }
+
+    /// `03.08.` — Tag und Monat ohne Jahr, fuer Wochenspannen und Verschiebe-Dialoge.
+    static func dayMonth(_ date: Date) -> String {
+        date.formatted(.dateTime.day(.twoDigits).month(.twoDigits))
+    }
+
+    /// `03.08.2026`
+    static func dayMonthYear(_ date: Date) -> String {
+        date.formatted(.dateTime.day(.twoDigits).month(.twoDigits).year())
+    }
+
+    /// `Mo 03.08.` — Kopfzeilen von Tageskarten und Suchtreffern.
+    static func weekdayShortWithDayMonth(_ date: Date) -> String {
+        date.formatted(.dateTime.weekday(.abbreviated).day(.twoDigits).month(.twoDigits))
+    }
+
+    /// `Montag, 3. August` — die ausgeschriebene Form fuer Titel und Accessibility-Labels.
+    static func weekdayLongWithDayMonth(_ date: Date) -> String {
+        date.formatted(.dateTime.weekday(.wide).day().month())
+    }
+
+    /// `Montag, 03.08.` — wie oben, aber mit numerischem Datum. Steht in Listen neben
+    /// monospaced Zahlen, wo der ausgeschriebene Monat die Spaltenbreite sprengen wuerde.
+    static func weekdayLongWithDayMonthNumeric(_ date: Date) -> String {
+        date.formatted(.dateTime.weekday(.wide).day(.twoDigits).month(.twoDigits))
+    }
+
+    /// `August`
+    static func monthLong(_ date: Date) -> String {
+        date.formatted(.dateTime.month(.wide))
+    }
+
+    // MARK: - Uhrzeit
+
+    /// `09:30` — im Zeitplan, deshalb immer zweistellig und ohne AM/PM.
+    static func timeOfDay(_ date: Date) -> String {
+        date.formatted(.dateTime.hour(.twoDigits(amPM: .omitted)).minute(.twoDigits))
+    }
+
+    /// `9:30` in der Regionsschreibweise — fuer Statustexte, wo die Uhrzeit im Satz steht.
+    static func clock(_ date: Date) -> String {
+        date.formatted(.dateTime.hour().minute())
+    }
+
+    // MARK: - Woche
+
+    /// `KW 32` — zweistellig, damit die Breite in Listen nicht springt.
+    static func calendarWeek(_ isoWeek: Int) -> String {
+        "KW \(String(format: "%02d", isoWeek))"
+    }
+
+    /// `03.08. - 09.08.2026`
+    static func weekSpan(monday: Date, sunday: Date) -> String {
+        "\(dayMonth(monday)) - \(dayMonthYear(sunday))"
     }
 }

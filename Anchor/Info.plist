@@ -6,5 +6,21 @@
 	<array>
 		<string>remote-notification</string>
 	</array>
+	<!-- Deep Links: daivento://today, //week/2026-08-03, //day/2026-08-05,
+	     //goal/<UUID>, //year, //review. Ohne diese Registrierung liefert das
+	     System die URL nicht an die App aus. -->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>com.marcomeisen.Anchor.deeplink</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>daivento</string>
+			</array>
+		</dict>
+	</array>
 </dict>
 </plist>

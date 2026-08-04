@@ -1,22 +1,15 @@
 import Foundation
 import SwiftData
 
+/// Beispieldaten fuer Previews und Unit-Tests.
+///
+/// Frueher wurden diese Daten auch in Auslieferungsbuilds erkannt und beim Start geloescht
+/// (`isReferenceWeek` / `removeReferenceDataIfNeeded`). Das war ein Migrationsbehelf aus der
+/// Entwicklung, lief bei jedem Start und haette bei einer Fehlerkennung echte Nutzerdaten
+/// getroffen — eine Woche mit vier gleichnamigen Zielen reicht dafuer. Die Erkennung ist
+/// entfernt; angelegt werden die Daten nur noch aus `PreviewContainer` und den Tests.
 enum SampleData {
     static let referenceToday = AnkerCalendar.date(year: 2026, month: 1, day: 1, hour: 9, minute: 41)
-    nonisolated static let referenceGoalTitles: Set<String> = [
-        "Jahresplanung 2026",
-        "Security-Review AWS SES",
-        "Workshop Product Owner Lead",
-        "FZulG-Bewertung abschließen"
-    ]
-
-    nonisolated static func isReferenceWeek(_ week: Week) -> Bool {
-        let titles = Set(week.goalList.map(\.title))
-        return week.isoYear == 2026
-            && week.isoWeek == 1
-            && referenceGoalTitles.isSubset(of: titles)
-    }
-
     @discardableResult
     static func insertReferenceWeek(in context: ModelContext) -> Week {
         let interval = AnkerCalendar.weekInterval(containing: referenceToday)

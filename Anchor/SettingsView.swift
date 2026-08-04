@@ -8,7 +8,7 @@ struct SettingsView: View {
     @AppStorage(AppSettingsKey.appearance) private var appearanceRaw = AppearanceMode.system.rawValue
     @AppStorage(AppSettingsKey.cloudSyncEnabled) private var cloudSyncEnabled = true
 
-    @ObservedObject private var cloudSyncStatus = CloudSyncStatusCenter.shared
+    @ObservedObject var cloudSyncStatus: CloudSyncStatusCenter = .shared
     @State private var showingDataPrivacy = false
 
     /// `showsDoneButton` false in der macOS-Einstellungen-Szene: die hat ihr eigenes Fenster

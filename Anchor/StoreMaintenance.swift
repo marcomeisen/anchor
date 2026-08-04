@@ -9,6 +9,18 @@ import SwiftData
 /// voneinander, existiert dieselbe Kalenderwoche nach dem Sync zweimal, mit je sieben
 /// Tagen und auf beide Kopien verteilten Aufgaben. Sichtbar wird das als doppelte
 /// Tagesliste in der Sidebar und als scheinbar verschwundene Aufgaben.
+/// Empfaenger fuer das Protokoll einer Zusammenfuehrung.
+///
+/// `StoreMaintenance` rief vorher `CloudSyncStatusCenter.shared` direkt an. Ueber das
+/// Protokoll laesst sich in Tests ein stiller Empfaenger einsetzen, statt den globalen
+/// Zustand des Singletons zu veraendern.
+@MainActor
+protocol StoreMaintenanceReporting: AnyObject {
+    func noteMaintenance(_ report: StoreMaintenance.MergeReport)
+}
+
+extension CloudSyncStatusCenter: StoreMaintenanceReporting {}
+
 @MainActor
 enum StoreMaintenance {
     /// Stabiler Schluessel pro Kalenderwoche.
@@ -32,24 +44,6 @@ enum StoreMaintenance {
     static func dayKey(_ day: Day) -> String {
         let components = AnkerCalendar.iso.dateComponents([.year, .month, .day], from: day.date)
         return "\(components.year ?? 0)-\(components.month ?? 0)-\(components.day ?? 0)"
-    }
-
-    /// Leerer String, solange nichts zu tun ist. Als `id` fuer `.task(id:)` gedacht, damit
-    /// das Zusammenfuehren automatisch nach jedem CloudKit-Import erneut laeuft.
-    static func duplicateSignature(for weeks: [Week]) -> String {
-        var parts: [String] = []
-
-        for key in duplicateWeekKeys(in: weeks) {
-            parts.append("w\(key.isoYear)-\(key.isoWeek)")
-        }
-
-        for week in weeks {
-            for dayKey in duplicateDayKeys(in: week) {
-                parts.append("d\(dayKey)")
-            }
-        }
-
-        return parts.sorted().joined(separator: "|")
     }
 
     static func duplicateWeekKeys(in weeks: [Week]) -> [WeekKey] {
@@ -94,13 +88,21 @@ enum StoreMaintenance {
     /// Fuehrt doppelte Wochen und doppelte Tage zusammen. Gibt die Anzahl entfernter
     /// Datensaetze zurueck.
     @discardableResult
-    static func normalize(weeks: [Week], modelContext: ModelContext) -> Int {
-        merge(weeks: weeks, modelContext: modelContext).removedTotal
+    static func normalize(
+        weeks: [Week],
+        modelContext: ModelContext,
+        reporter: StoreMaintenanceReporting? = CloudSyncStatusCenter.shared
+    ) -> Int {
+        merge(weeks: weeks, modelContext: modelContext, reporter: reporter).removedTotal
     }
 
     /// Wie `normalize`, aber mit vollem Protokoll.
     @discardableResult
-    static func merge(weeks: [Week], modelContext: ModelContext) -> MergeReport {
+    static func merge(
+        weeks: [Week],
+        modelContext: ModelContext,
+        reporter: StoreMaintenanceReporting? = CloudSyncStatusCenter.shared
+    ) -> MergeReport {
         var report = MergeReport()
 
         let weekGroups = Dictionary(grouping: weeks, by: weekKey).filter { $0.value.count > 1 }
@@ -138,7 +140,7 @@ enum StoreMaintenance {
             cloudSyncLog.notice(
                 "Zusammenfuehrung abgeschlossen: \(report.removedWeeks, privacy: .public) Wochen und \(report.removedDays, privacy: .public) Tage entfernt in \(report.affectedWeeks.joined(separator: ", "), privacy: .public), gespeichert=\(saved, privacy: .public)"
             )
-            CloudSyncStatusCenter.shared.noteMaintenance(report)
+            reporter?.noteMaintenance(report)
         }
 
         return report

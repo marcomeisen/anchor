@@ -27,6 +27,38 @@ enum AnkerColor {
     /// eine Loeschaktion ist keine Prioritaet A und soll sich unabhaengig davon aendern lassen.
     static let destructive = prioA
 
+    // MARK: - Verlaufsfarben
+    //
+    // Bis auf `indigoGradientSoft` stehen die Werte so im Designsystem. Sie lagen vorher
+    // inline in den Views und waren dort weder auffindbar noch gemeinsam aenderbar.
+
+    /// Heller Verlaufsanfang auf ausgewaehlten Aufgabenkarten.
+    static let indigoGradientLight = Color(hex: "#96A6F2")
+    /// Verlaufsanfang auf den grossen Aktionsflaechen (FAB, Onboarding-Button).
+    static let indigoGradientSoft = Color(hex: "#8C9BF5")
+    /// Verlaufsanfang auf ausgewaehlten Sidebar- und Wochenzeilen.
+    static let indigoGradientDeep = Color(hex: "#7688EE")
+
+    // MARK: - Flaechen mit eigener Dunkelvariante
+
+    /// Hinterlegung der aktiven Zeile in Listen.
+    static let selectedRow = Color(light: "#F3F4FF", dark: "#20243A")
+    /// Verlaufsanfang der Kopfbanner.
+    static let bannerIndigo = Color(light: "#EEF0FF", dark: "#1C1D24")
+    /// Verlaufsende des Wochenziel-Banners.
+    static let bannerBrass = Color(light: "#F7F1E4", dark: "#23242D")
+    /// Verlaufsende des Rueckblick-Banners.
+    static let bannerSuccess = Color(light: "#EAF7EE", dark: "#23242D")
+
+    // MARK: - Textabstufungen zwischen `ink` und `muted`
+
+    /// Fliesstext in Onboarding und Erklaerungen — leichter als `ink`, dunkler als `muted`.
+    static let textBody = Color(light: "#5A5D6A", dark: "#C4C6D0")
+    /// Beschriftung nicht ausgewaehlter Chips.
+    static let textChip = Color(light: "#4A4D5A", dark: "#D8D9E0")
+    /// Aufgabentitel in kompakten Listen.
+    static let textTask = Color(light: "#3A3D4A", dark: "#D8D9E0")
+
     static let month: [Color] = [
         "#8FA8E8", "#7FCDA8", "#B9D97A", "#F0C955",
         "#F0A968", "#F09EA9", "#C79BE8", "#A79BE8",

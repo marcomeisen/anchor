@@ -1,6 +1,9 @@
 {
   "sourceLanguage" : "de",
   "strings" : {
+    "%@" : {
+
+    },
     "%@ - %@" : {
       "localizations" : {
         "de" : {
@@ -264,9 +267,6 @@
     "Jetzt neu starten" : {
 
     },
-    "KW %@" : {
-
-    },
     "Kein Ziel" : {
 
     },
@@ -414,12 +414,12 @@
     "Wochenziel löschen?" : {
 
     },
-    "Wochenziel · KW %@ · geplant seit %@" : {
+    "Wochenziel · %@ · geplant seit %@" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "new",
-            "value" : "Wochenziel · KW %1$@ · geplant seit %2$@"
+            "value" : "Wochenziel · %1$@ · geplant seit %2$@"
           }
         }
       }

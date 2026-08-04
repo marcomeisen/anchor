@@ -191,7 +191,7 @@ struct TodayView: View {
                     )
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel("Tag \(dayLabel(item)) öffnen")
+                .accessibilityLabel("Tag \(AnkerDateFormat.weekdayLongWithDayMonth(item.date)) öffnen")
                 .onDrop(
                     of: TaskDropHandling.draggedTypes,
                     isTargeted: Binding(
@@ -212,9 +212,6 @@ struct TodayView: View {
         .padding(.bottom, 8)
     }
 
-    private func dayLabel(_ day: Day) -> String {
-        day.date.formatted(.dateTime.weekday(.wide).day().month())
-    }
 
     private func dropTask(from providers: [NSItemProvider], on targetDay: Day) -> Bool {
         let targetDate = targetDay.date
@@ -231,9 +228,9 @@ struct TodayView: View {
     }
 
     private var headerDate: String {
-        let weekday = day.date.formatted(.dateTime.weekday(.wide)).uppercased()
-        let date = day.date.formatted(.dateTime.day(.twoDigits).month(.twoDigits).year())
-        return "\(weekday) · \(date) · KW \(String(format: "%02d", week.isoWeek))"
+        let weekday = AnkerDateFormat.weekdayLong(day.date).uppercased()
+        let date = AnkerDateFormat.dayMonthYear(day.date)
+        return "\(weekday) · \(date) · \(AnkerDateFormat.calendarWeek(week.isoWeek))"
     }
 
     private var listAnimation: Animation {
@@ -329,7 +326,7 @@ private struct TaskBulkActionBar: View {
             bulkButton("checkmark", "Erledigt", isDisabled: selectedCount == 0, action: onDone)
             bulkButton("calendar", "Verschieben", isDisabled: selectedCount == 0, action: onMove)
             bulkButton("flag", "Priorität", isDisabled: selectedCount == 0, action: onPriority)
-            bulkButton("trash", "Löschen", tint: Color(hex: "#E0392E"), isDisabled: selectedCount == 0, action: onDelete)
+            bulkButton("trash", "Löschen", tint: AnkerColor.destructive, isDisabled: selectedCount == 0, action: onDelete)
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 10)
@@ -413,7 +410,7 @@ private struct TimeBlockRow: View {
 
     var body: some View {
         HStack(spacing: 10) {
-            Text(block.startTime.formatted(.dateTime.hour(.twoDigits(amPM: .omitted)).minute(.twoDigits)))
+            Text(AnkerDateFormat.timeOfDay(block.startTime))
                 .font(.system(size: 11, weight: .regular, design: .monospaced))
                 .foregroundStyle(AnkerColor.muted)
                 .frame(width: 38, alignment: .leading)

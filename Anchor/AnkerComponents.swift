@@ -106,8 +106,8 @@ struct GoalBanner: View {
     var badgeColor: Color = AnkerColor.indigo
     var background: LinearGradient = LinearGradient(
         colors: [
-            Color(light: "#EEF0FF", dark: "#1C1D24"),
-            Color(light: "#F7F1E4", dark: "#23242D")
+            AnkerColor.bannerIndigo,
+            AnkerColor.bannerBrass
         ],
         startPoint: .topLeading,
         endPoint: .bottomTrailing
@@ -369,6 +369,7 @@ struct TaskCard: View {
             Text("Diese Aufgabe wird dauerhaft entfernt.")
         }
         .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("taskCard")
     }
 
     private var hoverActions: some View {
@@ -386,7 +387,7 @@ struct TaskCard: View {
             }
             .keyboardShortcut("m", modifiers: [.command, .shift])
 
-            hoverAction(systemName: "trash", tint: Color(hex: "#E0392E"), help: "Aufgabe löschen (⌘⌫)", isDestructive: true) {
+            hoverAction(systemName: "trash", tint: AnkerColor.destructive, help: "Aufgabe löschen (⌘⌫)", isDestructive: true) {
                 confirmingDelete = true
             }
         }
@@ -459,7 +460,7 @@ struct TaskCard: View {
                     Button {
                         performMove(to: date)
                     } label: {
-                        Label(date.formatted(.dateTime.weekday(.wide).day().month()), systemImage: "calendar")
+                        Label(AnkerDateFormat.weekdayLongWithDayMonth(date), systemImage: "calendar")
                     }
                 }
             } label: {
@@ -825,7 +826,7 @@ struct WeekDot: View {
     var isDropTarget = false
 
     private var weekday: String {
-        date.formatted(.dateTime.weekday(.abbreviated))
+        AnkerDateFormat.weekdayShort(date)
             .replacing(".", with: "")
     }
 
@@ -836,13 +837,13 @@ struct WeekDot: View {
                 .foregroundStyle(AnkerColor.muted)
 
             ZStack(alignment: .bottom) {
-                Text(date.formatted(.dateTime.day(.twoDigits)))
+                Text(AnkerDateFormat.dayNumber(date))
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundStyle(AnkerColor.ink)
                     .frame(width: 28, height: 28)
                     .background(
                         isActive
-                            ? AnyShapeStyle(LinearGradient(colors: [Color(hex: "#96A6F2"), AnkerColor.indigo], startPoint: .topLeading, endPoint: .bottomTrailing))
+                            ? AnyShapeStyle(LinearGradient(colors: [AnkerColor.indigoGradientLight, AnkerColor.indigo], startPoint: .topLeading, endPoint: .bottomTrailing))
                             : AnyShapeStyle(AnkerColor.surfaceRaised),
                         in: Circle()
                     )
@@ -955,7 +956,7 @@ struct GlassFAB: View {
                 .background(.ultraThinMaterial, in: Circle())
                 .background(
                     LinearGradient(
-                        colors: [Color(hex: "#8C9BF5").opacity(0.92), AnkerColor.indigoText.opacity(0.92)],
+                        colors: [AnkerColor.indigoGradientSoft.opacity(0.92), AnkerColor.indigoText.opacity(0.92)],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
                     ),

@@ -54,7 +54,10 @@ enum CloudSyncConfiguration {
     /// hatte — siehe `CloudSyncPreference.activeAtLaunch`.
     @MainActor
     static var usesCloudKit: Bool {
-        !isRunningTests && CloudSyncPreference.activeAtLaunch
+#if DEBUG
+        if UITestMode.isActive { return false }
+#endif
+        return !isRunningTests && CloudSyncPreference.activeAtLaunch
     }
 
     @MainActor
@@ -64,6 +67,14 @@ enum CloudSyncConfiguration {
         if isRunningTests {
             return ModelConfiguration(schema: schema, isStoredInMemoryOnly: true, cloudKitDatabase: .none)
         }
+
+#if DEBUG
+        // UI-Tests starten immer im leeren Zustand — sonst haengt ihr Ergebnis daran, was
+        // vorher im Store lag.
+        if UITestMode.isActive {
+            return ModelConfiguration(schema: schema, isStoredInMemoryOnly: true, cloudKitDatabase: .none)
+        }
+#endif
 
         guard CloudSyncPreference.activeAtLaunch else {
             // Bewusst dieselbe Store-Datei wie mit Sync, nur ohne Mirroring: wer den Sync
@@ -164,6 +175,11 @@ struct AnkerStore {
 
     @MainActor
     static func make() -> AnkerStore {
+#if DEBUG
+        // Vor allem anderen: setzt die gespeicherten Einstellungen zurueck.
+        UITestMode.prepare()
+#endif
+
         // Vor dem Container, sonst entstehen die CloudKit-Beobachter erst, wenn eine View den
         // Status anfasst — `setup` und der erste Import sind dann schon durchgelaufen.
         CloudSyncStatusCenter.startObserving()

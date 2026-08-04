@@ -4,6 +4,36 @@ import SwiftUI
 import AppKit
 #endif
 
+#if DEBUG
+/// Startzustand fuer UI-Tests.
+///
+/// Ohne das liefen UI-Tests gegen den echten Store und den echten iCloud-Account des Nutzers:
+/// der Testhost ist die vollstaendige App, `XCTestConfigurationFilePath` ist im
+/// App-Prozess nicht gesetzt, und `@AppStorage` haelt den Onboarding-Zustand ueber Laeufe
+/// hinweg. Aktiv nur mit dem Startargument, und nur in Debug-Builds.
+enum UITestMode {
+    static let launchArgument = "-DaiventoUITest"
+
+    static var isActive: Bool {
+        ProcessInfo.processInfo.arguments.contains(launchArgument)
+    }
+
+    /// Muss vor dem `ModelContainer` und vor der ersten View laufen.
+    static func prepare(defaults: UserDefaults = .standard) {
+        guard isActive else { return }
+
+        for key in [AppSettingsKey.appearance, "hasCompletedOnboarding", "onboardingVersion"] {
+            defaults.removeObject(forKey: key)
+        }
+
+        // Sync aus und als beantwortet markiert: der Test soll weder CloudKit anfassen noch
+        // ueber die Sync-Frage im Onboarding laufen.
+        defaults.set(false, forKey: AppSettingsKey.cloudSyncEnabled)
+        defaults.set(true, forKey: AppSettingsKey.hasChosenCloudSync)
+    }
+}
+#endif
+
 /// Schluessel der Nutzereinstellungen an einer Stelle, damit `@AppStorage` und die
 /// Vorab-Abfrage beim Start nicht auseinanderlaufen.
 enum AppSettingsKey {

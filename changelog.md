@@ -2,6 +2,20 @@
 
 ## 2026-08-04
 
+- `AnkerRootView` entflochten: Navigation und Deep Links liegen jetzt in `AnkerNavigationState`, das Aufloesen von Wochen und Tagen sowie der Onboarding-Zustand in `WeekPlanning` — beides ohne View-Bezug und direkt testbar. Die acht Navigationsmethoden bestanden aus derselben Dreierfolge und sind zu einer zusammengefasst.
+- Navigationszustand ueberlebt den Neustart (`@SceneStorage`): die App startet wieder in der Woche und auf dem Tag, an denen zuletzt gearbeitet wurde.
+- Deep Links ergaenzt: `daivento://today`, `//week/2026-08-03`, `//day/2026-08-05`, `//goal/<UUID>`, `//year`, `//review`. Datumsangaben in ISO, damit ein Link unabhaengig von der Regionseinstellung des Empfaengers funktioniert; eine unverstaendliche URL laesst den Zustand unangetastet.
+- Auf dem iPhone liegen Tages- und Zieldetail auf einem echten `NavigationStack` — die Zurueck-Gestik funktioniert, wo es vorher nur einen Schliessen-Knopf gab.
+- Grosse Sammeldateien aufgeteilt: `OverviewViews.swift` (1483 Zeilen) und `DetailAndCaptureViews.swift` (994) sind weg, `TaskEditing.swift` in `TaskActions.swift` und `TaskEditorSheets.swift` getrennt. Keine Datei ueber 1000 Zeilen mehr.
+- `CloudSyncStatusCenter` entkoppelt: der Initialisierer ist nebenwirkungsfrei, die Beobachter melden an ihre eigene Instanz statt an `.shared`, und `StoreMaintenance` berichtet ueber das Protokoll `StoreMaintenanceReporting`. In Views ist die Statuszentrale ein injizierbarer Parameter.
+- Duplikatpruefung aus dem View-`body` geholt: sie haengt jetzt an einem Zaehler eingegangener CloudKit-Importe statt an einer Signatur, die bei jeder Neuberechnung alle Wochen und Tage gruppierte.
+- Alle 19 hartkodierten Hex-Farben sind Tokens in `Theme.swift`. Das Rot `#E0392E` stand in keinem Referenzdokument und ist auf das kontrastkorrigierte `#D93327` des Designsystems zusammengefuehrt.
+- Datumsformatierung zentralisiert (`AnkerDateFormat`): zwoelf Formate an einer Stelle, 50 Aufrufstellen und acht lokale Wrapper umgestellt. `AnkerCalendar.iso` ist `static let` statt bei jedem Zugriff ein neues `Calendar`.
+- Beispieldaten-Erkennung aus dem Auslieferungspfad entfernt: sie lief bei jedem Start und haette eine echte Woche mit vier gleichnamigen Zielen in KW 1/2026 geloescht.
+- UI-Test fuer den Kernfluss ergaenzt: Onboarding, Aufgabe anlegen, an das Wochenziel verankern, erledigen, Fortschritt von 0 auf 100 Prozent. Dafuer `UITestMode` (`-DaiventoUITest`) mit leerem Store und abgeschaltetem iCloud — vorher haetten UI-Tests gegen die echten Daten des Nutzers gelaufen.
+- Neun weitere Unit-Tests fuer Navigationszustand, Deep Links und Wochenplanung; 34 Unit-Tests und der UI-Test laufen, beide Plattformen bauen.
+- Das Paket `AnkerKit` (A5) bleibt bewusst aus: sein Nutzen sind Widgets und Watch, die nicht anstehen. Modell und Logik liegen aber schon in eigenen Dateien ohne View-Bezug, damit das spaeter ein Umzug bleibt.
+
 - Neuer Einstellungen-Bildschirm (`SettingsView`) mit Erscheinungsbild, iCloud-Sync und dem Weg zu Daten und Datenschutz. Erreichbar aus der Sidebar (Mac, iPad), aus dem Tab Mehr (iPhone) und auf dem Mac zusaetzlich ueber Command-Komma.
 - Farbmodus einstellbar: System, Hell oder Dunkel. Auf macOS wird zusaetzlich `NSApp.appearance` gesetzt, sonst blieben die Farbtokens und das Statusbar-Popover im Systemmodus stehen.
 - iCloud-Sync abschaltbar. Ohne Sync laeuft dieselbe Store-Datei ohne Mirroring weiter — vorhandene Daten bleiben, sie werden nur nicht mehr uebertragen. Der Wechsel greift beim naechsten Start, weil derselbe Store nicht zur Laufzeit erneut mit CloudKit verbunden werden kann (Core Data 134422); auf dem Mac gibt es dafuer einen Neustart-Knopf. Der Sync-Status hat dafuer eine eigene Phase "Sync aus" statt einer Fehlermeldung.

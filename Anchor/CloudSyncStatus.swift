@@ -26,8 +26,7 @@ final class CloudSyncStatusCenter: ObservableObject {
     /// angefasst, war der CloudKit-Container schon aufgebaut und `setup` sowie oft der erste
     /// Import waren durch — der Status blieb dann auf "iCloud startet" stehen.
     static func startObserving() {
-        _ = shared
-        cloudSyncLog.notice("CloudSync-Beobachter registriert")
+        shared.startObserving()
     }
 
     enum Phase: Sendable {
@@ -105,23 +104,40 @@ final class CloudSyncStatusCenter: ObservableObject {
     /// Zusammenfuehrung ueberhaupt zu bemerken.
     @Published private(set) var maintenanceSummary: String?
 
+    /// Zaehlt eingegangene CloudKit-Importe.
+    ///
+    /// Dient als Schluessel fuer das Zusammenfuehren doppelter Datensaetze: es soll nach jedem
+    /// Import laufen, aber nicht bei jeder Neuberechnung einer View. Startwert 0, damit der
+    /// erste `task(id:)` auch ohne Import einmal durchlaeuft — ein Store kann Duplikate aus
+    /// einer frueheren Sitzung mitbringen.
+    @Published private(set) var remoteChangeCount = 0
+
     private var observers: [NSObjectProtocol] = []
     private var pendingExportWatchdog: Task<Void, Never>?
     private var isSyncDisabled = false
 
-    private init() {
+    /// Ohne Nebenwirkungen: die Beobachter entstehen erst in `startObserving()`.
+    ///
+    /// Vorher registrierte der Initialisierer sie selbst — damit war jede Instanz an den
+    /// `NotificationCenter` gekoppelt und in Tests nicht als stiller Ersatz verwendbar.
+    init() {}
+
+    /// Mehrfachaufruf ist unschaedlich.
+    func startObserving() {
+        guard observers.isEmpty else { return }
+
         let cloudKitObserver = NotificationCenter.default.addObserver(
             forName: NSPersistentCloudKitContainer.eventChangedNotification,
             object: nil,
             queue: .main
-        ) { notification in
+        ) { [weak self] notification in
             guard let event = notification.userInfo?[NSPersistentCloudKitContainer.eventNotificationUserInfoKey] as? NSPersistentCloudKitContainer.Event else {
                 return
             }
 
             let update = CloudSyncEventUpdate(event: event)
             Task { @MainActor in
-                CloudSyncStatusCenter.shared.apply(update)
+                self?.apply(update)
             }
         }
 
@@ -129,14 +145,14 @@ final class CloudSyncStatusCenter: ObservableObject {
             forName: NSManagedObjectContext.didSaveObjectsNotification,
             object: nil,
             queue: .main
-        ) { notification in
+        ) { [weak self] notification in
             // CloudKit speichert seine Importe in eigenen Kontexten. Ohne diesen Filter
             // gilt jeder empfangene Datensatz als neue lokale Aenderung, der Status faellt
             // auf "Export ausstehend" zurueck und der Watchdog meldet faelschlich ein Problem.
             guard CloudSyncStatusCenter.isUserContext(notification.object) else { return }
 
             Task { @MainActor in
-                CloudSyncStatusCenter.shared.markLocalChangeSaved()
+                self?.markLocalChangeSaved()
             }
         }
 
@@ -144,9 +160,9 @@ final class CloudSyncStatusCenter: ObservableObject {
             forName: .NSPersistentStoreRemoteChange,
             object: nil,
             queue: .main
-        ) { _ in
+        ) { [weak self] _ in
             Task { @MainActor in
-                CloudSyncStatusCenter.shared.markRemoteChangeSeen()
+                self?.markRemoteChangeSeen()
             }
         }
 
@@ -155,13 +171,14 @@ final class CloudSyncStatusCenter: ObservableObject {
             forName: .CKAccountChanged,
             object: nil,
             queue: .main
-        ) { _ in
+        ) { [weak self] _ in
             Task { @MainActor in
-                await CloudSyncStatusCenter.shared.refreshAccountStatus()
+                await self?.refreshAccountStatus()
             }
         }
 
         observers = [cloudKitObserver, localSaveObserver, remoteChangeObserver, accountObserver]
+        cloudSyncLog.notice("CloudSync-Beobachter registriert")
     }
 
     deinit {
@@ -321,6 +338,10 @@ final class CloudSyncStatusCenter: ObservableObject {
     }
 
     private func markRemoteChangeSeen() {
+        // Der Zaehler laeuft auch bei abgeschaltetem Sync und waehrend `.syncing` weiter:
+        // er steuert das Aufraeumen, nicht die Anzeige.
+        remoteChangeCount += 1
+
         guard !isSyncDisabled, phase != .syncing else { return }
 
         pendingExportWatchdog?.cancel()
@@ -666,15 +687,15 @@ private struct CloudSyncEventUpdate: Sendable {
         if event.endDate == nil {
             phase = .syncing
             detail = event.type.inProgressTitle
-            tooltip = "\(event.type.detailTitle) laeuft seit \(event.startDate.formatted(.dateTime.hour().minute()))."
+            tooltip = "\(event.type.detailTitle) laeuft seit \(AnkerDateFormat.clock(event.startDate))."
             return
         }
 
         if event.succeeded {
             let endDate = event.endDate ?? Date()
             phase = .synced
-            detail = "Zuletzt \(endDate.formatted(.dateTime.hour().minute()))"
-            tooltip = "\(event.type.detailTitle) erfolgreich abgeschlossen um \(endDate.formatted(.dateTime.hour().minute()))."
+            detail = "Zuletzt \(AnkerDateFormat.clock(endDate))"
+            tooltip = "\(event.type.detailTitle) erfolgreich abgeschlossen um \(AnkerDateFormat.clock(endDate))."
             cloudSyncLog.notice("\(event.type.detailTitle, privacy: .public) erfolgreich")
         } else {
             phase = .issue
