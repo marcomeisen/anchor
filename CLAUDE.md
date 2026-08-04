@@ -14,6 +14,13 @@ Code-Identifier sind Englisch.
 | [Anchor/AnchorApp.swift](Anchor/AnchorApp.swift) | `@main`, `ModelContainer`, CloudKit-Konfiguration, macOS-Statusbar-Popover, `AnkerSchema.models` |
 | [Anchor/Models.swift](Anchor/Models.swift) | `@Model`: `Goal`, `Week`, `Day`, `AnkerTask`, `TimeBlock`; `Priority` |
 | [Anchor/TaskEditing.swift](Anchor/TaskEditing.swift) | `TaskActions` (**die** Mutations-Schicht für Aufgaben), `TaskSnapshot`/Undo, `TaskEditorSheet`, `TaskMoveSheet` |
+| [Anchor/GoalEditing.swift](Anchor/GoalEditing.swift) | `GoalActions` — Wochenziele löschen, Aufgaben bleiben erhalten; `goalDeleteConfirmation` |
+| [Anchor/Persistence.swift](Anchor/Persistence.swift) | `ModelContext.saveChanges()` — **statt** `try? save()`; `PersistenceFailureCenter`, Fehlerdialog |
+| [Anchor/AppSettings.swift](Anchor/AppSettings.swift) | `AppearanceMode` (Farbmodus), `CloudSyncPreference` (Sync ein/aus, greift erst beim Neustart) |
+| [Anchor/SettingsView.swift](Anchor/SettingsView.swift) | Einstellungen: Erscheinungsbild, iCloud-Sync, Zugang zu Daten und Datenschutz |
+| [Anchor/Search.swift](Anchor/Search.swift) | `AnkerSearch` über Aufgaben, Ziele, Notizen, Tagesfokus, Zeitblöcke; `SearchResultsList`, `SearchSheet` |
+| [Anchor/DataPortability.swift](Anchor/DataPortability.swift) | JSON-Export und vollständige Löschung (DSGVO Art. 15, 17, 20) |
+| [Anchor/DataPrivacyView.swift](Anchor/DataPrivacyView.swift) | Bildschirm „Daten und Datenschutz": Bestand, Export, Löschung |
 | [Anchor/OverviewViews.swift](Anchor/OverviewViews.swift) | `AnkerRootView` (Navigation, Onboarding, Wochen-/Monatssprünge), `SidebarView`, `WeekOverviewView`, `YearOverviewView` |
 | [Anchor/TodayView.swift](Anchor/TodayView.swift) | iPhone-Heute-Screen, Undo-Toast, Mehrfachauswahl |
 | [Anchor/DayDetailView.swift](Anchor/DayDetailView.swift) | Tagesdetailansicht: Kennzahlen, Tagesfokus, Ziele, Zeitplan, Aufgaben, Notizen |
@@ -23,6 +30,8 @@ Code-Identifier sind Englisch.
 | [Anchor/Theme.swift](Anchor/Theme.swift) | `AnkerColor` / `AnkerRadius` / `AnkerSpacing`, `Color(light:dark:)` |
 | [Anchor/CalendarLogic.swift](Anchor/CalendarLogic.swift) | `AnkerCalendar` — **immer** ISO-8601, nie `Calendar.current` |
 | [Anchor/CloudSyncStatus.swift](Anchor/CloudSyncStatus.swift) | `CloudSyncStatusCenter` — Sync-Anzeige in der Sidebar |
+| [Anchor/PrivacyInfo.xcprivacy](Anchor/PrivacyInfo.xcprivacy) | Privacy Manifest — Pflicht für die App-Store-Einreichung |
+| [Anchor/Localizable.xcstrings](Anchor/Localizable.xcstrings) | String Catalog, Quellsprache Deutsch |
 | [AnchorTests/AnchorTests.swift](AnchorTests/AnchorTests.swift) | XCTest-Unit-Tests (SwiftData in-memory) |
 
 Alles ist ein einziges Multiplattform-Target (`Anchor`, Produkt `Daivento.app`); Plattformunterschiede

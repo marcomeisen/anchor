@@ -213,7 +213,7 @@ struct TodayView: View {
     }
 
     private func dayLabel(_ day: Day) -> String {
-        day.date.formatted(.dateTime.locale(Locale(identifier: "de_DE")).weekday(.wide).day().month())
+        day.date.formatted(.dateTime.weekday(.wide).day().month())
     }
 
     private func dropTask(from providers: [NSItemProvider], on targetDay: Day) -> Bool {
@@ -231,8 +231,8 @@ struct TodayView: View {
     }
 
     private var headerDate: String {
-        let weekday = day.date.formatted(.dateTime.locale(Locale(identifier: "de_DE")).weekday(.wide)).uppercased()
-        let date = day.date.formatted(.dateTime.locale(Locale(identifier: "de_DE")).day(.twoDigits).month(.twoDigits).year())
+        let weekday = day.date.formatted(.dateTime.weekday(.wide)).uppercased()
+        let date = day.date.formatted(.dateTime.day(.twoDigits).month(.twoDigits).year())
         return "\(weekday) · \(date) · KW \(String(format: "%02d", week.isoWeek))"
     }
 
@@ -263,7 +263,7 @@ struct TodayView: View {
         for task in selected {
             task.isDone = true
         }
-        try? modelContext.save()
+        modelContext.saveChanges()
         undo.present(TaskUndoNotice(message: "\(selected.count) Aufgaben erledigt", snapshots: snapshots))
         finishSelection()
     }

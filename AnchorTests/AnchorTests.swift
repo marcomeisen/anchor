@@ -151,6 +151,63 @@ final class AnchorTests: XCTestCase {
     }
 
     @MainActor
+    func testDeletingGoalKeepsTasksAndClearsTheirLink() throws {
+        let container = try makeContainer()
+        let context = container.mainContext
+        let week = SampleData.insertReferenceWeek(in: context)
+        try context.save()
+
+        let goal = try XCTUnwrap(week.goalList.first { !$0.taskList.isEmpty })
+        let goalID = goal.id
+        let linkedTaskIDs = Set(
+            week.dayList
+                .flatMap(\.taskList)
+                .filter { $0.linkedGoal?.id == goalID }
+                .map(\.id)
+        )
+        XCTAssertFalse(linkedTaskIDs.isEmpty)
+
+        let otherGoalIDs = Set(week.goalList.map(\.id)).subtracting([goalID])
+        let taskCountBefore = try context.fetch(FetchDescriptor<AnkerTask>()).count
+
+        GoalActions.delete(goal, in: week, modelContext: context)
+
+        let remainingGoals = try context.fetch(FetchDescriptor<Goal>())
+        XCTAssertFalse(remainingGoals.contains { $0.id == goalID })
+        XCTAssertEqual(Set(remainingGoals.map(\.id)), otherGoalIDs, "Andere Wochenziele dürfen nicht mitgelöscht werden")
+        XCTAssertFalse(week.goalList.contains { $0.id == goalID })
+
+        // Kern der Anforderung: die Aufgaben bleiben, nur die Zuordnung faellt weg.
+        let remainingTasks = try context.fetch(FetchDescriptor<AnkerTask>())
+        XCTAssertEqual(remainingTasks.count, taskCountBefore)
+        for id in linkedTaskIDs {
+            let task = try XCTUnwrap(remainingTasks.first { $0.id == id })
+            XCTAssertNil(task.linkedGoal)
+        }
+        XCTAssertFalse(remainingTasks.contains { $0.linkedGoal?.id == goalID })
+    }
+
+    @MainActor
+    func testDeletingGoalWithoutTasksLeavesOtherLinksIntact() throws {
+        let container = try makeContainer()
+        let context = container.mainContext
+        let week = SampleData.insertReferenceWeek(in: context)
+        try context.save()
+
+        let goals = week.goalList
+        let victim = try XCTUnwrap(goals.first)
+        let survivor = try XCTUnwrap(goals.first { $0.id != victim.id })
+        let survivorTaskIDs = Set(survivor.taskList.map(\.id))
+
+        GoalActions.delete(victim, in: week, modelContext: context)
+
+        XCTAssertEqual(Set(survivor.taskList.map(\.id)), survivorTaskIDs)
+        for task in survivor.taskList {
+            XCTAssertEqual(task.linkedGoal?.id, survivor.id)
+        }
+    }
+
+    @MainActor
     func testDuplicateSignatureIsEmptyForCleanStore() throws {
         let container = try makeContainer()
         let context = container.mainContext
@@ -257,6 +314,279 @@ final class AnchorTests: XCTestCase {
         XCTAssertEqual(week.dayList.count, 7)
         let mergedMonday = try XCTUnwrap(week.dayList.min { $0.date < $1.date })
         XCTAssertEqual(mergedMonday.taskList.map(\.title), ["Verirrte Aufgabe"])
+    }
+
+    @MainActor
+    func testMergeReportNamesRemovedRecordsAndCalendarWeeks() throws {
+        let container = try makeContainer()
+        let context = container.mainContext
+        let interval = AnkerCalendar.weekInterval(containing: AnkerCalendar.date(year: 2026, month: 8, day: 3))
+        let first = insertFullWeek(interval: interval, in: context)
+        let second = insertFullWeek(interval: interval, in: context)
+        try context.save()
+
+        let report = StoreMaintenance.merge(weeks: [first, second], modelContext: context)
+
+        // Ohne Protokoll waere die automatische Loeschung nicht nachvollziehbar — genau das
+        // ist der Punkt des Befunds.
+        XCTAssertEqual(report.removedWeeks, 1)
+        XCTAssertEqual(report.removedDays, 7)
+        XCTAssertEqual(report.removedTotal, 8)
+        XCTAssertEqual(report.affectedWeeks, ["\(interval.isoYear)-KW\(String(format: "%02d", interval.isoWeek))"])
+        XCTAssertTrue(report.summary.contains("zusammengeführt"))
+    }
+
+    @MainActor
+    func testMergeReportIsEmptyWithoutDuplicates() throws {
+        let container = try makeContainer()
+        let context = container.mainContext
+        let week = SampleData.insertReferenceWeek(in: context)
+        try context.save()
+
+        let report = StoreMaintenance.merge(weeks: [week], modelContext: context)
+
+        XCTAssertTrue(report.isEmpty)
+        XCTAssertTrue(report.affectedWeeks.isEmpty)
+        XCTAssertEqual(report.summary, "Keine Duplikate")
+    }
+
+    // MARK: - Datenexport und Loeschung
+
+    @MainActor
+    func testExportContainsEveryStoredRecord() throws {
+        let container = try makeContainer()
+        let context = container.mainContext
+        let week = SampleData.insertReferenceWeek(in: context)
+        try context.save()
+
+        let snapshot = try decodedExport(from: context)
+
+        XCTAssertEqual(snapshot.formatVersion, 1)
+        XCTAssertEqual(snapshot.weeks.count, 1)
+
+        let exportedWeek = try XCTUnwrap(snapshot.weeks.first)
+        XCTAssertEqual(exportedWeek.id, week.id)
+        XCTAssertEqual(exportedWeek.isoWeek, week.isoWeek)
+        XCTAssertEqual(exportedWeek.goals.count, week.goalList.count)
+        XCTAssertEqual(exportedWeek.days.count, week.dayList.count)
+
+        // Vollstaendigkeit ist der Kern von Art. 15 und 20: keine Aufgabe darf fehlen.
+        let storedTasks = try context.fetch(FetchDescriptor<AnkerTask>())
+        let exportedTasks = exportedWeek.days.flatMap(\.tasks)
+        XCTAssertEqual(Set(exportedTasks.map(\.id)), Set(storedTasks.map(\.id)))
+
+        let linkedTask = try XCTUnwrap(exportedTasks.first { $0.linkedGoalID != nil })
+        let storedLinked = try XCTUnwrap(storedTasks.first { $0.id == linkedTask.id })
+        XCTAssertEqual(linkedTask.linkedGoalID, storedLinked.linkedGoal?.id)
+        XCTAssertEqual(linkedTask.title, storedLinked.title)
+        XCTAssertEqual(linkedTask.priority, storedLinked.priority.rawValue)
+    }
+
+    @MainActor
+    func testExportIncludesRecordsWithoutWeekOrDay() throws {
+        let container = try makeContainer()
+        let context = container.mainContext
+        SampleData.insertReferenceWeek(in: context)
+
+        // Ueber die Oberflaeche nicht erreichbar, im Store aber vorhanden — eine Auskunft
+        // muss solche Reste trotzdem enthalten.
+        let orphanGoal = Goal(title: "Ziel ohne Woche", colorHex: "#5B6EE8")
+        let orphanTask = AnkerTask(title: "Aufgabe ohne Tag", priority: .c, order: 0)
+        context.insert(orphanGoal)
+        context.insert(orphanTask)
+        try context.save()
+
+        let snapshot = try decodedExport(from: context)
+
+        XCTAssertFalse(snapshot.unassigned.isEmpty)
+        XCTAssertEqual(snapshot.unassigned.goals.map(\.id), [orphanGoal.id])
+        XCTAssertEqual(snapshot.unassigned.tasks.map(\.id), [orphanTask.id])
+        XCTAssertFalse(snapshot.weeks.contains { $0.goals.contains { $0.id == orphanGoal.id } })
+    }
+
+    @MainActor
+    func testDeleteAllDataRemovesEveryRecord() throws {
+        let container = try makeContainer()
+        let context = container.mainContext
+        SampleData.insertReferenceWeek(in: context)
+        context.insert(Goal(title: "Ziel ohne Woche", colorHex: "#5B6EE8"))
+        try context.save()
+
+        let report = DataPortability.deleteAllData(in: context)
+
+        XCTAssertTrue(report.didSave)
+        XCTAssertEqual(report.weeks, 1)
+        XCTAssertGreaterThan(report.tasks, 0)
+        XCTAssertGreaterThan(report.total, 0)
+
+        XCTAssertTrue(try context.fetch(FetchDescriptor<Week>()).isEmpty)
+        XCTAssertTrue(try context.fetch(FetchDescriptor<Goal>()).isEmpty)
+        XCTAssertTrue(try context.fetch(FetchDescriptor<Day>()).isEmpty)
+        XCTAssertTrue(try context.fetch(FetchDescriptor<AnkerTask>()).isEmpty)
+        XCTAssertTrue(try context.fetch(FetchDescriptor<TimeBlock>()).isEmpty)
+
+        // Nach der Loeschung muss auch ein zweiter Export leer sein — sonst haette
+        // irgendwo noch ein Rest ueberlebt.
+        let snapshot = try decodedExport(from: context)
+        XCTAssertTrue(snapshot.weeks.isEmpty)
+        XCTAssertTrue(snapshot.unassigned.isEmpty)
+    }
+
+    @MainActor
+    func testResetStoredPreferencesClearsOnboardingState() throws {
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: "AnchorTests.\(#function)"))
+        defaults.set(true, forKey: "hasCompletedOnboarding")
+        defaults.set(2, forKey: "onboardingVersion")
+
+        DataPortability.resetStoredPreferences(in: defaults)
+
+        XCTAssertNil(defaults.object(forKey: "hasCompletedOnboarding"))
+        XCTAssertNil(defaults.object(forKey: "onboardingVersion"))
+        defaults.removePersistentDomain(forName: "AnchorTests.\(#function)")
+    }
+
+    @MainActor
+    func testSaveChangesPersistsAndReportsNoFailure() throws {
+        let container = try makeContainer()
+        let context = container.mainContext
+        PersistenceFailureCenter.shared.clear()
+
+        let week = makeWeek(in: context)
+        XCTAssertTrue(context.saveChanges())
+
+        XCTAssertFalse(context.hasChanges)
+        XCTAssertEqual(try context.fetch(FetchDescriptor<Week>()).map(\.id), [week.id])
+        XCTAssertNil(PersistenceFailureCenter.shared.failure)
+        // Ohne Aenderungen ist der Aufruf ein No-op und meldet trotzdem Erfolg.
+        XCTAssertTrue(context.saveChanges())
+    }
+
+    // MARK: - Suche
+
+    @MainActor
+    func testSearchFindsTasksGoalsNotesFocusAndTimeBlocks() throws {
+        let container = try makeContainer()
+        let context = container.mainContext
+        let week = SampleData.insertReferenceWeek(in: context)
+        let notedDay = try XCTUnwrap(week.dayList.min { $0.date < $1.date })
+        notedDay.notes = "Absprache mit Revision zur Freigabe"
+        try context.save()
+
+        XCTAssertEqual(kinds(for: "Workshop", in: [week]), [.task, .goal])
+        XCTAssertEqual(kinds(for: "Revision", in: [week]), [.note])
+        XCTAssertEqual(kinds(for: "Team-Sync", in: [week]), [.timeBlock])
+
+        // "Jahresplanung 2026" ist Zieltitel und Tagesfokus — beide muessen kommen.
+        XCTAssertEqual(kinds(for: "Jahresplanung", in: [week]), [.goal, .focus])
+
+        let taskHit = try XCTUnwrap(AnkerSearch.results(for: "Executive", in: [week]).first)
+        XCTAssertEqual(taskHit.kind, .task)
+        XCTAssertEqual(taskHit.title, "Executive Summary finalisieren")
+        XCTAssertNotNil(taskHit.dayID)
+        // Prioritaet und zugeordnetes Ziel gehoeren in die Zeile, sonst ist ein Treffer
+        // ohne Kontext nicht einzuordnen.
+        XCTAssertTrue(taskHit.context.contains("Prio A"))
+        XCTAssertTrue(taskHit.context.contains("Jahresplanung 2026"))
+    }
+
+    @MainActor
+    func testSearchIgnoresCaseDiacriticsAndTooShortQueries() throws {
+        let container = try makeContainer()
+        let context = container.mainContext
+        let week = SampleData.insertReferenceWeek(in: context)
+        try context.save()
+
+        // "Rückmeldung an R+V senden" — klein geschrieben und ohne Umlaut trotzdem finden.
+        XCTAssertEqual(AnkerSearch.results(for: "ruckmeldung", in: [week]).first?.kind, .task)
+        XCTAssertEqual(AnkerSearch.results(for: "RÜCKMELDUNG", in: [week]).first?.kind, .task)
+
+        // Ein Zeichen liefert bewusst nichts: sonst waere praktisch jeder Datensatz ein Treffer.
+        XCTAssertTrue(AnkerSearch.results(for: "R", in: [week]).isEmpty)
+        XCTAssertTrue(AnkerSearch.results(for: "   ", in: [week]).isEmpty)
+        XCTAssertTrue(AnkerSearch.results(for: "", in: [week]).isEmpty)
+    }
+
+    @MainActor
+    func testSearchReturnsSeparateResultsForNoteAndFocusOnSameDay() throws {
+        let container = try makeContainer()
+        let context = container.mainContext
+        let week = makeWeek(in: context)
+        let day = try XCTUnwrap(week.dayList.first)
+        day.focusNote = "Angebot pruefen"
+        day.notes = "Angebot liegt beim Einkauf"
+        try context.save()
+
+        let results = AnkerSearch.results(for: "Angebot", in: [week])
+
+        // Gleiche Tages-ID auf beiden Treffern wuerde ein `ForEach` einen davon verschlucken.
+        XCTAssertEqual(results.count, 2)
+        XCTAssertEqual(Set(results.map(\.kind)), [.focus, .note])
+        XCTAssertEqual(Set(results.map(\.id)).count, 2)
+        XCTAssertEqual(Set(results.compactMap(\.dayID)), [day.id])
+    }
+
+    func testSearchSnippetShowsSurroundingsOfLongNote() {
+        let filler = String(repeating: "x", count: 200)
+        let note = "\(filler) Vertragsentwurf \(filler)"
+
+        let snippet = AnkerSearch.snippet(of: note, around: "Vertragsentwurf")
+
+        XCTAssertTrue(snippet.contains("Vertragsentwurf"))
+        XCTAssertTrue(snippet.hasPrefix("… "))
+        XCTAssertTrue(snippet.hasSuffix(" …"))
+        XCTAssertLessThan(snippet.count, note.count)
+    }
+
+    // MARK: - Einstellungen
+
+    func testAppearanceModeDefaultsToSystemAndRoundTrips() throws {
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: "AnchorTests.\(#function)"))
+        defer { defaults.removePersistentDomain(forName: "AnchorTests.\(#function)") }
+
+        XCTAssertEqual(AppearanceMode.stored(in: defaults), .system)
+
+        defaults.set(AppearanceMode.dark.rawValue, forKey: AppSettingsKey.appearance)
+        XCTAssertEqual(AppearanceMode.stored(in: defaults), .dark)
+
+        // Unbekannter Wert darf nicht zu einem Absturz oder zu Dunkel fuehren.
+        defaults.set("sepia", forKey: AppSettingsKey.appearance)
+        XCTAssertEqual(AppearanceMode.stored(in: defaults), .system)
+    }
+
+    @MainActor
+    func testCloudSyncPreferenceDefaultsToEnabledUntilChosen() throws {
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: "AnchorTests.\(#function)"))
+        defer { defaults.removePersistentDomain(forName: "AnchorTests.\(#function)") }
+
+        // Standard eingeschaltet: bestehende Installationen synchronisieren bereits, ein
+        // stiller Wechsel auf "aus" waere aus Nutzersicht Datenverlust.
+        XCTAssertTrue(CloudSyncPreference.isEnabled(in: defaults))
+        XCTAssertFalse(CloudSyncPreference.hasBeenChosen(in: defaults))
+
+        CloudSyncPreference.set(false, in: defaults)
+        XCTAssertFalse(CloudSyncPreference.isEnabled(in: defaults))
+        XCTAssertTrue(CloudSyncPreference.hasBeenChosen(in: defaults))
+
+        CloudSyncPreference.set(true, in: defaults)
+        XCTAssertTrue(CloudSyncPreference.isEnabled(in: defaults))
+        XCTAssertTrue(CloudSyncPreference.hasBeenChosen(in: defaults))
+    }
+
+    @MainActor
+    private func kinds(for query: String, in weeks: [Week]) -> [AnkerSearch.Kind] {
+        var seen: [AnkerSearch.Kind] = []
+        for result in AnkerSearch.results(for: query, in: weeks) where !seen.contains(result.kind) {
+            seen.append(result.kind)
+        }
+        return seen
+    }
+
+    @MainActor
+    private func decodedExport(from context: ModelContext) throws -> DataPortability.Snapshot {
+        let data = try DataPortability.encodedSnapshot(from: context)
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        return try decoder.decode(DataPortability.Snapshot.self, from: data)
     }
 
     @MainActor

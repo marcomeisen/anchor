@@ -37,6 +37,8 @@ final class CloudSyncStatusCenter: ObservableObject {
         case syncing
         case synced
         case issue
+        /// Vom Nutzer abgeschaltet — kein Fehler, deshalb eine eigene Phase statt `.issue`.
+        case disabled
 
         var title: String {
             switch self {
@@ -52,6 +54,8 @@ final class CloudSyncStatusCenter: ObservableObject {
                 "Aktuell"
             case .issue:
                 "Sync pruefen"
+            case .disabled:
+                "Sync aus"
             }
         }
 
@@ -65,14 +69,14 @@ final class CloudSyncStatusCenter: ObservableObject {
                 "arrow.triangle.2.circlepath"
             case .synced:
                 "icloud.fill"
-            case .issue:
+            case .issue, .disabled:
                 "icloud.slash"
             }
         }
 
         var tint: Color {
             switch self {
-            case .starting, .ready:
+            case .starting, .ready, .disabled:
                 AnkerColor.muted
             case .pendingExport:
                 AnkerColor.brass
@@ -94,8 +98,16 @@ final class CloudSyncStatusCenter: ObservableObject {
     /// wenn der Status gerade einen Import oder Export meldet.
     @Published private(set) var accountSummary = "Wird geprüft"
 
+    /// Was `StoreMaintenance` in dieser Sitzung automatisch zusammengefuehrt hat.
+    ///
+    /// Das Aufraeumen loescht Datensaetze ohne Rueckfrage. Sichtbar zu machen, dass es
+    /// stattgefunden hat, ist die einzige Gelegenheit fuer den Nutzer, einen Fehler in der
+    /// Zusammenfuehrung ueberhaupt zu bemerken.
+    @Published private(set) var maintenanceSummary: String?
+
     private var observers: [NSObjectProtocol] = []
     private var pendingExportWatchdog: Task<Void, Never>?
+    private var isSyncDisabled = false
 
     private init() {
         let cloudKitObserver = NotificationCenter.default.addObserver(
@@ -166,10 +178,28 @@ final class CloudSyncStatusCenter: ObservableObject {
         tooltip = "iCloud ist eingerichtet. Sobald CloudKit Import oder Export meldet, wird der Status hier aktualisiert."
     }
 
+    /// Der Nutzer hat den Sync abgeschaltet.
+    ///
+    /// Setzt zusaetzlich einen Riegel vor alle weiteren Statuswechsel: die Beobachter fuer
+    /// lokale Saves laufen weiter und wuerden den Status sonst auf "Export ausstehend" ziehen,
+    /// obwohl gar nichts exportiert wird.
+    func markCloudSyncDisabled() {
+        pendingExportWatchdog?.cancel()
+        pendingExportWatchdog = nil
+        isSyncDisabled = true
+        phase = .disabled
+        detail = "Nur auf diesem Gerät"
+        tooltip = "Der iCloud-Sync ist in den Einstellungen abgeschaltet. Änderungen bleiben lokal und werden nicht auf andere Geräte übertragen."
+        accountSummary = "Sync abgeschaltet"
+        cloudSyncLog.notice("iCloud-Sync ist per Einstellung abgeschaltet")
+    }
+
     /// Fragt den iCloud-Account direkt ab, statt das Problem aus einem Core-Data-Fehler
     /// abzuleiten. Ohne angemeldeten Account startet CloudKit gar nicht — das ist die
     /// haeufigste Ursache und soll auch so dastehen.
     func refreshAccountStatus() async {
+        guard !isSyncDisabled else { return }
+
         guard CloudSyncConfiguration.usesCloudKit else {
             accountSummary = "CloudKit in diesem Build abgeschaltet"
             return
@@ -227,6 +257,23 @@ final class CloudSyncStatusCenter: ObservableObject {
         }
     }
 
+    /// Meldet eine automatische Zusammenfuehrung doppelter Datensaetze.
+    ///
+    /// Summiert ueber die Sitzung statt zu ueberschreiben: mehrere Importe koennen mehrfach
+    /// aufraeumen, und fuer die Beurteilung zaehlt die Gesamtzahl.
+    func noteMaintenance(_ report: StoreMaintenance.MergeReport) {
+        guard !report.isEmpty else { return }
+
+        var parts = [report.summary]
+        if let existing = maintenanceSummary {
+            parts.insert(existing, at: 0)
+        }
+        if !report.affectedWeeks.isEmpty {
+            parts.append("(\(report.affectedWeeks.joined(separator: ", ")))")
+        }
+        maintenanceSummary = parts.joined(separator: " · ")
+    }
+
     /// Der Store laeuft ohne CloudKit weiter — sichtbar machen statt stillschweigend
     /// nur lokal zu speichern.
     func markCloudUnavailable(_ error: Error) {
@@ -255,6 +302,8 @@ final class CloudSyncStatusCenter: ObservableObject {
     }
 
     private func apply(_ update: CloudSyncEventUpdate) {
+        guard !isSyncDisabled else { return }
+
         pendingExportWatchdog?.cancel()
         pendingExportWatchdog = nil
         phase = update.phase
@@ -263,7 +312,7 @@ final class CloudSyncStatusCenter: ObservableObject {
     }
 
     private func markLocalChangeSaved() {
-        guard phase != .syncing else { return }
+        guard !isSyncDisabled, phase != .syncing else { return }
 
         phase = .pendingExport
         detail = "Lokale Änderung gesichert"
@@ -272,7 +321,7 @@ final class CloudSyncStatusCenter: ObservableObject {
     }
 
     private func markRemoteChangeSeen() {
-        guard phase != .syncing else { return }
+        guard !isSyncDisabled, phase != .syncing else { return }
 
         pendingExportWatchdog?.cancel()
         pendingExportWatchdog = nil
@@ -343,6 +392,15 @@ struct CloudSyncStatusRow: View {
                     .font(.system(size: 10.5, weight: .medium))
                     .foregroundStyle(AnkerColor.muted)
                     .lineLimit(1)
+
+                // Nur sichtbar, wenn tatsaechlich aufgeraeumt wurde — im Normalfall
+                // bleibt die Zeile weg und der Fuss so kompakt wie bisher.
+                if let maintenanceSummary = status.maintenanceSummary {
+                    Text(maintenanceSummary)
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundStyle(AnkerColor.brass)
+                        .lineLimit(2)
+                }
             }
 
             Spacer(minLength: 0)
@@ -355,7 +413,7 @@ struct CloudSyncStatusRow: View {
             RoundedRectangle(cornerRadius: 8)
                 .stroke(AnkerColor.line)
         )
-        .help(status.tooltip)
+        .help(status.maintenanceSummary.map { "\(status.tooltip)\n\nAutomatisch aufgeräumt: \($0)" } ?? status.tooltip)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("iCloud: \(status.phase.title), \(status.detail)")
     }
@@ -423,6 +481,10 @@ private struct CloudSyncStatusDetail: View {
                 diagnosticRow("Container", CloudSyncDiagnostics.containerIdentifier)
                 Divider()
                 diagnosticRow("App-Version", CloudSyncDiagnostics.appVersion)
+                if let maintenanceSummary = status.maintenanceSummary {
+                    Divider()
+                    diagnosticRow("Aufgeräumt", maintenanceSummary)
+                }
             }
             .background(AnkerColor.card)
             .overlay(RoundedRectangle(cornerRadius: AnkerRadius.card).stroke(AnkerColor.line, lineWidth: 1))

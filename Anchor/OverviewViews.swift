@@ -25,6 +25,7 @@ struct AnkerRootView: View {
     @State private var selectedDestination: AppDestination = .today
     @State private var showingNewTask = false
     @State private var showingNewGoal = false
+    @State private var showingSearch = false
 
     private let requiredOnboardingVersion = 2
     private let onboardingPlaceholderTitle = "Erstes Wochenziel"
@@ -90,11 +91,16 @@ struct AnkerRootView: View {
                     .presentationDetents([.medium])
             }
         }
+        .sheet(isPresented: $showingSearch) {
+            SearchSheet(weeks: weeks) { result in
+                openSearchResult(result)
+            }
+        }
         .task {
             removeReferenceDataIfNeeded()
             ensureCurrentWeek()
             ensureSelectedWeek()
-            try? modelContext.save()
+            modelContext.saveChanges()
         }
         // Laeuft erneut, sobald ein CloudKit-Import doppelte Wochen oder Tage einspielt.
         // Bei sauberem Datenstand ist die Signatur leer und `normalize` ein No-op.
@@ -132,6 +138,7 @@ struct AnkerRootView: View {
             .toolbar {
                 creationToolbarItems
 #if os(iOS)
+                searchToolbarItem
                 syncStatusToolbarItem
 #endif
             }
@@ -169,6 +176,9 @@ struct AnkerRootView: View {
                 },
                 onFocusDay: { selectedDay in
                     focusDay(selectedDay)
+                },
+                onSelectSearchResult: { result in
+                    openSearchResult(result)
                 }
             )
         } detail: {
@@ -186,7 +196,9 @@ struct AnkerRootView: View {
                     WeeklyReviewView(week: week)
                 case .goal(let id):
                     if let goal = week.goalList.first(where: { $0.id == id }) {
-                        GoalDetailView(goal: goal, week: week)
+                        GoalDetailView(goal: goal, week: week) {
+                            selectedDestination = .week
+                        }
                     } else {
                         weekOverview(week: week, day: day)
                     }
@@ -236,10 +248,29 @@ struct AnkerRootView: View {
 
     private var currentWeekTitle: String {
         let interval = AnkerCalendar.weekInterval(containing: Date())
-        let start = interval.monday.formatted(.dateTime.locale(Locale(identifier: "de_DE")).day(.twoDigits).month(.twoDigits))
-        let end = interval.sunday.formatted(.dateTime.locale(Locale(identifier: "de_DE")).day(.twoDigits).month(.twoDigits).year())
+        let start = interval.monday.formatted(.dateTime.day(.twoDigits).month(.twoDigits))
+        let end = interval.sunday.formatted(.dateTime.day(.twoDigits).month(.twoDigits).year())
         return "\(start) - \(end)"
     }
+
+#if os(iOS)
+    /// Nur im iPhone-Zweig: im Split-Layout steht das Suchfeld in der Sidebar.
+    ///
+    /// Links, weil rechts schon Anlegen-Buttons und der Sync-Status sitzen — und nicht
+    /// `.principal`, das den Titel der jeweiligen Ansicht ersetzen wuerde.
+    @ToolbarContentBuilder
+    private var searchToolbarItem: some ToolbarContent {
+        ToolbarItem(placement: .topBarLeading) {
+            Button {
+                showingSearch = true
+            } label: {
+                Image(systemName: "magnifyingglass")
+            }
+            .help("Ziele, Aufgaben und Notizen durchsuchen")
+            .accessibilityLabel("Suchen")
+        }
+    }
+#endif
 
     @ToolbarContentBuilder
     private var creationToolbarItems: some ToolbarContent {
@@ -272,7 +303,7 @@ struct AnkerRootView: View {
         selectedWeekStart = week.monday
         selectedDayDate = Date()
         selectedDestination = .goal(goal.id)
-        try? modelContext.save()
+        modelContext.saveChanges()
     }
 
     @discardableResult
@@ -288,7 +319,7 @@ struct AnkerRootView: View {
             ensureCurrentWeek()
         }
 
-        try? modelContext.save()
+        modelContext.saveChanges()
         return true
     }
 
@@ -343,7 +374,7 @@ struct AnkerRootView: View {
         selectedDayDate = targetDay
         selectedDestination = .week
         ensureSelectedWeek()
-        try? modelContext.save()
+        modelContext.saveChanges()
     }
 
     private func moveMonth(by offset: Int) {
@@ -354,7 +385,7 @@ struct AnkerRootView: View {
         selectedDayDate = targetDay
         selectedDestination = .week
         ensureSelectedWeek()
-        try? modelContext.save()
+        modelContext.saveChanges()
     }
 
     private func moveToCurrentWeek() {
@@ -362,14 +393,14 @@ struct AnkerRootView: View {
         selectedDayDate = Date()
         selectedDestination = .today
         ensureSelectedWeek()
-        try? modelContext.save()
+        modelContext.saveChanges()
     }
 
     private func moveToWeek(starting monday: Date) {
         selectedWeekStart = AnkerCalendar.weekInterval(containing: monday).monday
         selectedDayDate = monday
         ensureSelectedWeek()
-        try? modelContext.save()
+        modelContext.saveChanges()
     }
 
     /// Klick auf einen Tag: oeffnet die Tagesdetailansicht.
@@ -384,7 +415,34 @@ struct AnkerRootView: View {
         selectedWeekStart = AnkerCalendar.weekInterval(containing: day.date).monday
         selectedDayDate = day.date
         ensureSelectedWeek()
-        try? modelContext.save()
+        modelContext.saveChanges()
+    }
+
+    /// Springt zum Treffer aus der Suche.
+    ///
+    /// Wochenziele brauchen erst den Wochenwechsel: `AnkerRootView` loest `.goal(id)` gegen
+    /// die Ziele der ausgewaehlten Woche auf und wuerde sonst auf die Wochenuebersicht
+    /// zurueckfallen.
+    private func openSearchResult(_ result: AnkerSearch.Result) {
+        if result.kind == .goal, let goalID = result.goalID {
+            selectedWeekStart = AnkerCalendar.weekInterval(containing: result.date).monday
+            selectedDayDate = result.date
+            ensureSelectedWeek()
+            selectedDestination = .goal(goalID)
+            modelContext.saveChanges()
+            return
+        }
+
+        guard let dayID = result.dayID,
+              let day = weeks.flatMap(\.dayList).first(where: { $0.id == dayID }) else {
+            return
+        }
+
+        selectedWeekStart = AnkerCalendar.weekInterval(containing: day.date).monday
+        selectedDayDate = day.date
+        ensureSelectedWeek()
+        selectedDestination = .day
+        modelContext.saveChanges()
     }
 
     private func moveToPlannedDate(_ date: Date) {
@@ -392,7 +450,7 @@ struct AnkerRootView: View {
         selectedDayDate = date
         selectedDestination = .week
         ensureSelectedWeek()
-        try? modelContext.save()
+        modelContext.saveChanges()
     }
 }
 
@@ -410,9 +468,23 @@ struct SidebarView: View {
     var onSelectWeek: (Date) -> Void = { _ in }
     var onSelectDay: (Day) -> Void = { _ in }
     var onFocusDay: (Day) -> Void = { _ in }
+    var onSelectSearchResult: (AnkerSearch.Result) -> Void = { _ in }
 
     @State private var targetedWeekStart: Date?
     @State private var targetedDayID: UUID?
+    @State private var goalPendingDeletion: Goal?
+    @State private var showingSettings = false
+    @State private var searchQuery = ""
+
+    private var searchResults: [AnkerSearch.Result] {
+        AnkerSearch.results(for: searchQuery, in: weeks)
+    }
+
+    /// Waehrend gesucht wird, treten Monatsnavigation und Zielliste zurueck. Sonst muesste
+    /// der Nutzer in einer langen Sidebar nach den Treffern suchen.
+    private var isSearching: Bool {
+        searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).count >= 2
+    }
 
     private var monthGroups: [SidebarMonthGroup] {
         let calendar = Calendar.current
@@ -452,25 +524,42 @@ struct SidebarView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 10) {
                 searchField
-                primaryNavigation
-                monthNavigation
 
-                Text(verbatim: String(week.isoYear))
-                    .font(.system(size: 12, weight: .bold))
-                    .foregroundStyle(AnkerColor.muted)
-                    .tracking(0.48)
-                    .padding(.horizontal, 10)
-                    .padding(.top, 8)
+                if isSearching {
+                    SearchResultsList(query: searchQuery, results: searchResults) { result in
+                        onSelectSearchResult(result)
+                        searchQuery = ""
+                    }
+                } else {
+                    primaryNavigation
+                    monthNavigation
 
-                ForEach(monthGroups) { group in
-                    monthSection(group)
+                    Text(verbatim: String(week.isoYear))
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundStyle(AnkerColor.muted)
+                        .tracking(0.48)
+                        .padding(.horizontal, 10)
+                        .padding(.top, 8)
+
+                    ForEach(monthGroups) { group in
+                        monthSection(group)
+                    }
+
+                    goalsSection
+                    reviewSection
+                    settingsSection
                 }
-
-                goalsSection
-                reviewSection
             }
             .padding(.horizontal, 10)
             .padding(.vertical, 14)
+        }
+        .sheet(isPresented: $showingSettings) {
+            NavigationStack {
+                SettingsView()
+            }
+#if os(macOS)
+            .frame(minWidth: 460, minHeight: 560)
+#endif
         }
         .background(.regularMaterial)
         .safeAreaInset(edge: .bottom, spacing: 0) {
@@ -549,15 +638,35 @@ struct SidebarView: View {
     }
 
     private var searchField: some View {
-        Text("⌕ Ziele, Aufgaben, Notizen")
-            .font(.system(size: 12, weight: .medium))
-            .foregroundStyle(AnkerColor.muted)
-            .lineLimit(1)
-            .padding(.vertical, 7)
-            .padding(.horizontal, 10)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(AnkerColor.card, in: RoundedRectangle(cornerRadius: 8))
-            .overlay(RoundedRectangle(cornerRadius: 8).stroke(AnkerColor.line))
+        HStack(spacing: 6) {
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(AnkerColor.muted)
+
+            TextField("Ziele, Aufgaben, Notizen", text: $searchQuery)
+                .textFieldStyle(.plain)
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(AnkerColor.ink)
+                .accessibilityLabel("In Zielen, Aufgaben, Notizen und Zeitblöcken suchen")
+
+            if !searchQuery.isEmpty {
+                Button {
+                    searchQuery = ""
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 11))
+                        .foregroundStyle(AnkerColor.muted)
+                }
+                .buttonStyle(.plain)
+                .help("Suche zurücksetzen")
+                .accessibilityLabel("Suche zurücksetzen")
+            }
+        }
+        .padding(.vertical, 7)
+        .padding(.horizontal, 10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(AnkerColor.card, in: RoundedRectangle(cornerRadius: 8))
+        .overlay(RoundedRectangle(cornerRadius: 8).stroke(AnkerColor.line))
     }
 
     private var monthNavigation: some View {
@@ -635,7 +744,7 @@ struct SidebarView: View {
     }
 
     private func dayLabel(_ day: Day) -> String {
-        day.date.formatted(.dateTime.locale(Locale(identifier: "de_DE")).weekday(.wide).day().month())
+        day.date.formatted(.dateTime.weekday(.wide).day().month())
     }
 
     private func weekDropButton(_ target: SidebarWeekTarget) -> some View {
@@ -681,10 +790,25 @@ struct SidebarView: View {
                         .font(.system(size: 12, weight: selection == .goal(goal.id) ? .bold : .medium))
                         .foregroundStyle(selection == .goal(goal.id) ? AnkerColor.indigoDark : AnkerColor.ink)
                         .lineLimit(1)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .contentShape(Rectangle())
                         .padding(.horizontal, 10)
                         .padding(.vertical, 5)
                 }
                 .buttonStyle(.plain)
+                .contextMenu {
+                    Button(role: .destructive) {
+                        goalPendingDeletion = goal
+                    } label: {
+                        Label("Wochenziel löschen", systemImage: "trash")
+                    }
+                }
+            }
+        }
+        .goalDeleteConfirmation(goal: $goalPendingDeletion, week: week) {
+            // Falls gerade das geloeschte Ziel offen war, zurueck auf die Wochenuebersicht.
+            if case .goal = selection {
+                selection = .week
             }
         }
     }
@@ -701,6 +825,21 @@ struct SidebarView: View {
         }
         .buttonStyle(.plain)
         .padding(.top, 4)
+    }
+
+    private var settingsSection: some View {
+        Button {
+            showingSettings = true
+        } label: {
+            Label("Einstellungen", systemImage: "gearshape")
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(AnkerColor.muted)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 5)
+        }
+        .buttonStyle(.plain)
+        .help("Erscheinungsbild, iCloud-Sync, Daten und Datenschutz")
+        .accessibilityLabel("Einstellungen öffnen")
     }
 
     private func belongs(_ target: SidebarWeekTarget, to group: SidebarMonthGroup) -> Bool {
@@ -870,7 +1009,7 @@ private struct SidebarDayRow: View {
 
     var body: some View {
         HStack(spacing: 6) {
-            Text(day.date.formatted(.dateTime.locale(Locale(identifier: "de_DE")).weekday(.abbreviated).day(.twoDigits).month(.twoDigits)))
+            Text(day.date.formatted(.dateTime.weekday(.abbreviated).day(.twoDigits).month(.twoDigits)))
                 .font(.system(size: 11, weight: isSelected || isDropTarget ? .bold : .medium))
 
             Spacer(minLength: 4)
@@ -942,6 +1081,7 @@ struct WeekOverviewView: View {
     var onFocusDay: (Day) -> Void = { _ in }
 
     @State private var targetedDayID: UUID?
+    @State private var goalPendingDeletion: Goal?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -962,6 +1102,13 @@ struct WeekOverviewView: View {
             HStack(spacing: 10) {
                 ForEach(week.goalList.prefix(4), id: \.id) { goal in
                     GoalPill(goal: goal)
+                        .contextMenu {
+                            Button(role: .destructive) {
+                                goalPendingDeletion = goal
+                            } label: {
+                                Label("Wochenziel löschen", systemImage: "trash")
+                            }
+                        }
                 }
             }
             .padding(.horizontal, 18)
@@ -985,6 +1132,7 @@ struct WeekOverviewView: View {
 #endif
         }
         .navigationTitle("Wochenübersicht")
+        .goalDeleteConfirmation(goal: $goalPendingDeletion, week: week)
     }
 
     private func dayDropButton(_ day: Day) -> some View {
@@ -1021,7 +1169,7 @@ struct WeekOverviewView: View {
     }
 
     private func shortDate(_ date: Date) -> String {
-        date.formatted(.dateTime.locale(Locale(identifier: "de_DE")).day(.twoDigits).month(.twoDigits).year())
+        date.formatted(.dateTime.day(.twoDigits).month(.twoDigits).year())
     }
 
     private func weekLabel(offset: Int) -> String {
@@ -1073,10 +1221,10 @@ private struct WeekGridRow: View {
     var body: some View {
         HStack(alignment: .center, spacing: 12) {
             VStack(alignment: .leading, spacing: 2) {
-                Text(day.date.formatted(.dateTime.locale(Locale(identifier: "de_DE")).weekday(.wide)))
+                Text(day.date.formatted(.dateTime.weekday(.wide)))
                     .font(.system(size: 12.5, weight: .bold))
                     .foregroundStyle(isSelected ? AnkerColor.indigoText : AnkerColor.ink)
-                Text(day.date.formatted(.dateTime.locale(Locale(identifier: "de_DE")).day(.twoDigits).month(.twoDigits)))
+                Text(day.date.formatted(.dateTime.day(.twoDigits).month(.twoDigits)))
                     .font(.system(size: 10.5, weight: .regular, design: .monospaced))
                     .foregroundStyle(AnkerColor.muted)
             }
@@ -1341,7 +1489,7 @@ struct YearOverviewView: View {
 
     private func monthName(for month: Int) -> String {
         AnkerCalendar.date(year: week.isoYear, month: month, day: 1)
-            .formatted(.dateTime.locale(Locale(identifier: "de_DE")).month(.wide))
+            .formatted(.dateTime.month(.wide))
     }
 }
 

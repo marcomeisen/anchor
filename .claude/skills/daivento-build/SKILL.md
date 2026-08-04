@@ -52,26 +52,23 @@ xcrun simctl list devices available
 xcodebuild -project Anchor.xcodeproj -scheme Anchor -showdestinations
 ```
 
-Unit-Tests. Ein normaler `test`-Lauf braucht ein gültiges Signing-Zertifikat, weil der
-Testhost die echte App ist. Ohne Apple-ID im Xcode-Account scheitert er bereits am Build
-(`No signing certificate "Mac Development" found`). Dann diese Variante nehmen — sie signiert
-ad-hoc, nimmt Sandbox und Hardened Runtime raus (letzteres blockiert sonst die eingeschleuste
-Test-Bundle) und lässt die UI-Tests weg:
+Unit-Tests (macOS ist die verlässlichere Variante):
 
 ```bash
 xcodebuild -project Anchor.xcodeproj -scheme Anchor -destination 'platform=macOS' \
-  -only-testing:AnchorTests test \
-  CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual PROVISIONING_PROFILE_SPECIFIER="" \
-  DEVELOPMENT_TEAM="" CODE_SIGN_ENTITLEMENTS="" \
-  ENABLE_APP_SANDBOX=NO ENABLE_HARDENED_RUNTIME=NO 2>&1 | grep -E "error:|Test case|TEST "
+  -only-testing:AnchorTests test 2>&1 | grep -E "error:|Test case|TEST "
 ```
 
-Mit gültiger Signatur genügt:
+**Der Testlauf braucht eine gültige Signatur.** Der Testhost ist die echte App, und die öffnet
+beim Start einen CloudKit-Store. Fehlen die iCloud-Entitlements, bricht CloudKit den Prozess
+asynchron ab und der Lauf endet mit `The test runner crashed before establishing connection`.
+Ad-hoc-Signieren, Entitlements-Strippen oder Sandbox-Abschalten helfen **nicht** — das ist
+ausprobiert. Ohne Apple-ID in Xcode → Settings → Accounts scheitert der Lauf schon am Build
+(`No signing certificate "Mac Development" found`).
 
-```bash
-xcodebuild -project Anchor.xcodeproj -scheme Anchor \
-  -destination 'platform=macOS' test 2>&1 | tail -60
-```
+`CloudSyncConfiguration.isRunningTests` hält CloudKit aus dem Testhost heraus, greift aber erst,
+wenn `XCTestConfigurationFilePath` gesetzt ist — verlass dich nicht darauf, dass das einen
+unsignierten Lauf rettet.
 
 Einzelnen Test laufen lassen:
 

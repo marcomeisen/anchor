@@ -96,7 +96,7 @@ struct DayDetailView: View {
     }
 
     private var navigationTitle: String {
-        let weekday = day.date.formatted(.dateTime.locale(Locale(identifier: "de_DE")).weekday(.wide))
+        let weekday = day.date.formatted(.dateTime.weekday(.wide))
         return isToday ? "\(weekday) — Heute" : weekday
     }
 
@@ -111,7 +111,7 @@ struct DayDetailView: View {
                         .foregroundStyle(AnkerColor.muted)
                         .tracking(0.35)
 
-                    Text(day.date.formatted(.dateTime.locale(Locale(identifier: "de_DE")).weekday(.wide)))
+                    Text(day.date.formatted(.dateTime.weekday(.wide)))
                         .font(.system(size: 22, weight: .bold))
                         .foregroundStyle(AnkerColor.ink)
                 }
@@ -149,7 +149,7 @@ struct DayDetailView: View {
     }
 
     private var headerMeta: String {
-        let date = day.date.formatted(.dateTime.locale(Locale(identifier: "de_DE")).day(.twoDigits).month(.twoDigits).year())
+        let date = day.date.formatted(.dateTime.day(.twoDigits).month(.twoDigits).year())
         return "\(date) · KW \(String(format: "%02d", week.isoWeek))"
     }
 
@@ -410,7 +410,7 @@ struct DayDetailView: View {
         }
 
         if didChange {
-            try? modelContext.save()
+            modelContext.saveChanges()
         }
     }
 

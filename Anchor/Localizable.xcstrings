@@ -1,0 +1,513 @@
+{
+  "sourceLanguage" : "de",
+  "strings" : {
+    "%@ - %@" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ - %2$@"
+          }
+        }
+      }
+    },
+    "%@ · %@" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ · %2$@"
+          }
+        }
+      }
+    },
+    "%@ – %@" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ – %2$@"
+          }
+        }
+      }
+    },
+    "%@, %lld Prozent erreicht" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@, %2$lld Prozent erreicht"
+          }
+        }
+      }
+    },
+    "%@, %lld Wochen, %lld Wochenziele, %lld von %lld Tasks erledigt" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@, %2$lld Wochen, %3$lld Wochenziele, %4$lld von %5$lld Tasks erledigt"
+          }
+        }
+      }
+    },
+    "%@: %@, %@%@" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@: %2$@, %3$@%4$@"
+          }
+        }
+      }
+    },
+    "%lld" : {
+
+    },
+    "%lld %@" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld %2$@"
+          }
+        }
+      }
+    },
+    "%lld Aufgaben verschieben" : {
+
+    },
+    "%lld Aufgaben werden entfernt." : {
+
+    },
+    "%lld KW" : {
+
+    },
+    "%lld Prozent des Tages erledigt" : {
+
+    },
+    "%lld Prozent erreicht" : {
+
+    },
+    "%lld Treffer" : {
+
+    },
+    "%lld ausgewählt" : {
+
+    },
+    "%lld offene Aufgaben" : {
+
+    },
+    "%lld von %lld an diesem Tag" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld von %2$lld an diesem Tag"
+          }
+        }
+      }
+    },
+    "%lld/4 Wochenziele" : {
+
+    },
+    "Abbrechen" : {
+
+    },
+    "Alle Daten als JSON-Datei exportieren" : {
+
+    },
+    "Alle Daten löschen" : {
+
+    },
+    "Alle Daten löschen?" : {
+
+    },
+    "Alle Daten unwiderruflich löschen" : {
+
+    },
+    "Als erledigt markieren" : {
+
+    },
+    "Als offen markieren" : {
+
+    },
+    "Auf allen Geräten?" : {
+
+    },
+    "Aufgabe auf Woche %@ verschieben" : {
+
+    },
+    "Aufgabe bearbeiten" : {
+
+    },
+    "Aufgabe löschen" : {
+
+    },
+    "Aufgabe löschen?" : {
+
+    },
+    "Aufgabe verschieben" : {
+
+    },
+    "Aufgabenaktionen" : {
+
+    },
+    "Aus dem Kalender übernommen" : {
+
+    },
+    "Ausgewählt" : {
+
+    },
+    "Ausgewählte Aufgaben löschen?" : {
+
+    },
+    "Bearbeiten" : {
+
+    },
+    "Daivento" : {
+
+    },
+    "Daivento jetzt neu starten, damit die Sync-Einstellung greift" : {
+
+    },
+    "Daivento kann deine Wochen, Ziele, Aufgaben und Notizen über deinen iCloud-Account zwischen iPhone, iPad und Mac gleich halten. Die Daten liegen in deiner privaten iCloud-Datenbank; niemand sonst hat Zugriff darauf." : {
+
+    },
+    "Daivento — Heute" : {
+
+    },
+    "Daten und Datenschutz" : {
+
+    },
+    "Daten und Datenschutz öffnen" : {
+
+    },
+    "Der Schalter überträgt keine Löschung: bereits in iCloud gespeicherte Daten bleiben dort. Zum Entfernen die vollständige Löschung unter Daten und Datenschutz nutzen." : {
+
+    },
+    "Der Sync endet beim nächsten Start von Daivento." : {
+
+    },
+    "Der Sync startet beim nächsten Start von Daivento." : {
+
+    },
+    "Die Woche wird beim Sichern angelegt. Wochenziele kannst du danach direkt fuer diese Woche erstellen." : {
+
+    },
+    "Die Woche wird beim Sichern angelegt. Ziele kannst du anschließend zuordnen." : {
+
+    },
+    "Diese Aufgabe wird dauerhaft entfernt." : {
+
+    },
+    "Diese Woche" : {
+
+    },
+    "Duplizieren" : {
+
+    },
+    "Einstellungen" : {
+
+    },
+    "Einstellungen öffnen" : {
+
+    },
+    "Erledigt" : {
+
+    },
+    "Erneut sichern" : {
+
+    },
+    "Erscheinungsbild" : {
+
+    },
+    "Erscheinungsbild wählen" : {
+
+    },
+    "Erscheinungsbild, iCloud-Sync, Daten" : {
+
+    },
+    "Erscheinungsbild, iCloud-Sync, Daten und Datenschutz" : {
+
+    },
+    "Export sichern" : {
+
+    },
+    "Exportieren oder vollständig löschen" : {
+
+    },
+    "Fertig" : {
+
+    },
+    "Fokus des Tages" : {
+
+    },
+    "Folgt der Systemeinstellung dieses Geräts." : {
+
+    },
+    "Geräte synchronisieren nur bei gleichem iCloud-Account und gleicher Umgebung. Development und Production sind getrennte Datenbestände." : {
+
+    },
+    "Gilt nur für Daivento, unabhängig vom System." : {
+
+    },
+    "Heute" : {
+
+    },
+    "In Zielen, Aufgaben, Notizen und Zeitblöcken suchen" : {
+
+    },
+    "Jahresübersicht" : {
+
+    },
+    "Jetzt neu starten" : {
+
+    },
+    "KW %@" : {
+
+    },
+    "Kein Ziel" : {
+
+    },
+    "Keine Planung" : {
+
+    },
+    "Laufende Woche" : {
+
+    },
+    "Löschen" : {
+
+    },
+    "Maximal 4 Wochenziele pro Woche" : {
+
+    },
+    "Mein Wochenziel" : {
+
+    },
+    "Mit Sync sind Wochen, Ziele, Aufgaben und Notizen auf allen Geräten mit demselben Apple-Account gleich. Ohne Sync bleibt alles auf diesem Gerät." : {
+
+    },
+    "Mit Ziel verknüpfen" : {
+
+    },
+    "Morgen" : {
+
+    },
+    "Neu" : {
+
+    },
+    "Neue Aufgabe" : {
+
+    },
+    "Neue Aufgabe erstellen" : {
+
+    },
+    "Neue Aufgabe für diesen Tag" : {
+
+    },
+    "Neue Aufgabe für diesen Tag erstellen" : {
+
+    },
+    "Neues Wochenziel" : {
+
+    },
+    "Neues Wochenziel erstellen" : {
+
+    },
+    "Nicht ausgewählt" : {
+
+    },
+    "Notizen zum Tag" : {
+
+    },
+    "Nur auf diesem Gerät" : {
+
+    },
+    "Nächste Woche" : {
+
+    },
+    "Offen" : {
+
+    },
+    "Ohne iCloud, nur auf diesem Gerät speichern" : {
+
+    },
+    "Plane deine Woche" : {
+
+    },
+    "Prio %@" : {
+
+    },
+    "Priorität" : {
+
+    },
+    "Priorität %@" : {
+
+    },
+    "Priorität ändern" : {
+
+    },
+    "Rückgängig" : {
+
+    },
+    "Schließen" : {
+
+    },
+    "Schnell erfassen" : {
+
+    },
+    "Schritt %lld von 2" : {
+
+    },
+    "Setze dein erstes Wochenziel. Jede Tagesaufgabe, die du erledigst, bleibt sichtbar mit ihrem Ziel verbunden." : {
+
+    },
+    "Sichern" : {
+
+    },
+    "Später jederzeit in den Einstellungen änderbar. Ein Wechsel greift beim nächsten Start." : {
+
+    },
+    "Suche zurücksetzen" : {
+
+    },
+    "Suchen" : {
+
+    },
+    "Tag %@ öffnen" : {
+
+    },
+    "Tag öffnen oder Aufgabe auf diesen Tag ziehen" : {
+
+    },
+    "Tag öffnen oder Aufgabe hierher ziehen" : {
+
+    },
+    "Tastaturkurzbefehle: Command Punkt erledigt, Command Rückschritt löschen, Command Shift M verschieben, Command D duplizieren" : {
+
+    },
+    "Verschieben" : {
+
+    },
+    "Was ist dein Wochenziel?" : {
+
+    },
+    "Was nimmst du mit in die nächste Woche?" : {
+
+    },
+    "Was steht an?" : {
+
+    },
+    "Woche %@" : {
+
+    },
+    "Woche wird beim Ablegen angelegt" : {
+
+    },
+    "Wochenrückblick" : {
+
+    },
+    "Wochenziel löschen" : {
+
+    },
+    "Wochenziel löschen?" : {
+
+    },
+    "Wochenziel · KW %@ · geplant seit %@" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Wochenziel · KW %1$@ · geplant seit %2$@"
+          }
+        }
+      }
+    },
+    "Wochenübersicht" : {
+
+    },
+    "Worauf kommt es heute an?" : {
+
+    },
+    "Wähle Woche und Zieltag." : {
+
+    },
+    "Ziel" : {
+
+    },
+    "Ziel %@, %lld Prozent erreicht, %lld von %lld Aufgaben an diesem Tag erledigt" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Ziel %1$@, %2$lld Prozent erreicht, %3$lld von %4$lld Aufgaben an diesem Tag erledigt"
+          }
+        }
+      }
+    },
+    "Ziel öffnen: %@" : {
+
+    },
+    "Ziele" : {
+
+    },
+    "Ziele, Aufgaben, Notizen" : {
+
+    },
+    "Zielfarbe" : {
+
+    },
+    "Zugeordnet zu %@" : {
+
+    },
+    "Zur Wochenübersicht" : {
+
+    },
+    "Zurück zur Wochenübersicht" : {
+
+    },
+    "iCloud-Status: %@, %@. Antippen für Details." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "iCloud-Status: %1$@, %2$@. Antippen für Details."
+          }
+        }
+      }
+    },
+    "iCloud-Sync ein- oder ausschalten" : {
+
+    },
+    "iCloud: %@, %@" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "iCloud: %1$@, %2$@"
+          }
+        }
+      }
+    },
+    "·" : {
+
+    },
+    "Änderung nicht gespeichert" : {
+
+    },
+    "Über iCloud synchronisieren" : {
+
+    },
+    "—" : {
+
+    },
+    "← Tag" : {
+
+    },
+    "← Ziel" : {
+
+    }
+  },
+  "version" : "1.0"
+}

@@ -73,7 +73,7 @@ enum TaskActions {
             normalizeOrders(in: day)
         }
 
-        try? modelContext.save()
+        modelContext.saveChanges()
     }
 
     static func delete(_ task: AnkerTask, modelContext: ModelContext) {
@@ -87,7 +87,7 @@ enum TaskActions {
         }
 
         modelContext.delete(task)
-        try? modelContext.save()
+        modelContext.saveChanges()
     }
 
     @discardableResult
@@ -105,18 +105,18 @@ enum TaskActions {
         modelContext.insert(copy)
         day.appendTask(copy)
         normalizeOrders(in: day)
-        try? modelContext.save()
+        modelContext.saveChanges()
         return copy
     }
 
     static func setPriority(_ task: AnkerTask, to priority: Priority, modelContext: ModelContext) {
         task.priority = priority
-        try? modelContext.save()
+        modelContext.saveChanges()
     }
 
     static func link(_ task: AnkerTask, to goal: Goal?, modelContext: ModelContext) {
         task.linkedGoal = goal
-        try? modelContext.save()
+        modelContext.saveChanges()
     }
 
     static func snapshot(_ task: AnkerTask) -> TaskSnapshot {
@@ -198,7 +198,7 @@ enum TaskActions {
             )
         }
 
-        try? modelContext.save()
+        modelContext.saveChanges()
     }
 
     private static func deleteCreatedTasks(_ snapshots: [TaskSnapshot], weeks: [Week], modelContext: ModelContext) {
@@ -210,7 +210,7 @@ enum TaskActions {
             delete(task, modelContext: modelContext)
         }
 
-        try? modelContext.save()
+        modelContext.saveChanges()
     }
 
     private static func restoreTaskOrder(
@@ -255,7 +255,7 @@ enum TaskActions {
         let targetDay = ensureDay(containing: targetDate, in: targetWeek)
 
         if let currentDay = task.day, currentDay.id == targetDay.id {
-            try? modelContext.save()
+            modelContext.saveChanges()
             return
         }
 
@@ -272,7 +272,7 @@ enum TaskActions {
         task.order = targetDay.taskList.count
         targetDay.tasks = targetDay.taskList.filter { $0.id != task.id } + [task]
         normalizeOrders(in: targetDay)
-        try? modelContext.save()
+        modelContext.saveChanges()
     }
 
     static func move(_ task: AnkerTask, byDays offset: Int, weeks: [Week], modelContext: ModelContext) {
@@ -518,7 +518,7 @@ struct TaskEditorSheet: View {
                         selectedDate = date
                     } label: {
                         VStack(spacing: 3) {
-                            Text(date.formatted(.dateTime.locale(Locale(identifier: "de_DE")).weekday(.abbreviated)).replacing(".", with: ""))
+                            Text(date.formatted(.dateTime.weekday(.abbreviated)).replacing(".", with: ""))
                                 .font(.system(size: 9.5, weight: .bold))
                             Text(date.formatted(.dateTime.day(.twoDigits)))
                                 .font(.system(size: 12.5, weight: .bold, design: .monospaced))
@@ -530,7 +530,7 @@ struct TaskEditorSheet: View {
                         .clipShape(RoundedRectangle(cornerRadius: 9))
                     }
                     .buttonStyle(.plain)
-                    .accessibilityLabel(date.formatted(.dateTime.locale(Locale(identifier: "de_DE")).weekday(.wide).day().month()))
+                    .accessibilityLabel(date.formatted(.dateTime.weekday(.wide).day().month()))
                 }
             }
         }
@@ -617,11 +617,11 @@ struct TaskEditorSheet: View {
         task.priority = priority
         task.isDone = isDone
         task.linkedGoal = task.day?.week?.goalList.first { $0.id == selectedGoalID }
-        try? modelContext.save()
+        modelContext.saveChanges()
     }
 
     private func shortDate(_ date: Date) -> String {
-        date.formatted(.dateTime.locale(Locale(identifier: "de_DE")).day(.twoDigits).month(.twoDigits))
+        date.formatted(.dateTime.day(.twoDigits).month(.twoDigits))
     }
 }
 
@@ -697,7 +697,7 @@ struct TaskMoveSheet: View {
                                 selectedDate = date
                             } label: {
                                 VStack(spacing: 3) {
-                                    Text(date.formatted(.dateTime.locale(Locale(identifier: "de_DE")).weekday(.abbreviated)).replacing(".", with: ""))
+                                    Text(date.formatted(.dateTime.weekday(.abbreviated)).replacing(".", with: ""))
                                         .font(.system(size: 9.5, weight: .bold))
                                     Text(date.formatted(.dateTime.day(.twoDigits)))
                                         .font(.system(size: 12.5, weight: .bold, design: .monospaced))
@@ -769,6 +769,6 @@ struct TaskMoveSheet: View {
     }
 
     private func shortDate(_ date: Date) -> String {
-        date.formatted(.dateTime.locale(Locale(identifier: "de_DE")).day(.twoDigits).month(.twoDigits))
+        date.formatted(.dateTime.day(.twoDigits).month(.twoDigits))
     }
 }

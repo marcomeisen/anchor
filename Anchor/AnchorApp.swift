@@ -38,37 +38,38 @@ enum CloudSyncConfiguration {
     /// CloudKit richtet sich nach `ModelContainer.init` asynchron auf einem Hintergrund-Queue
     /// ein und bricht den Prozess ab, wenn der Container nicht in den Entitlements steht —
     /// das ist per `do`/`catch` nicht abfangbar. Ein Testhost ohne Signatur bzw. ohne
-    /// iCloud-Entitlements wuerde deshalb sofort abstuerzen.
-    /// Die Umgebungsvariable allein reicht nicht — sie erreicht den Host-Prozess nicht in jeder
-    /// Testkonfiguration. Ist das Testbundle injiziert, wurde XCTest per `DYLD_INSERT_LIBRARIES`
-    /// vor `main` geladen und die Klasse ist ab dem ersten Moment auffindbar.
+    /// iCloud-Entitlements wuerde deshalb sofort abstuerzen — der Testlauf braucht also einen
+    /// signierten Host, und CloudKit bleibt dabei trotzdem aussen vor.
     static var isRunningTests: Bool {
         ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
-            || NSClassFromString("XCTestCase") != nil
     }
 
-    /// Ist CloudKit in diesem Prozess ueberhaupt angebunden?
+    /// Ist CloudKit in diesem Prozess angebunden?
     ///
-    /// Wer ohne iCloud-Entitlements einen `CKContainer` anspricht, bekommt keinen Fehler,
-    /// sondern einen Abbruch ("BUG IN CLIENT OF CLOUDKIT: Not entitled"). Jeder CloudKit-Zugriff
-    /// muss deshalb hierueber abgesichert sein.
-    /// `DAIVENTO_DISABLE_CLOUDKIT=1` schaltet CloudKit hart ab. Notwendig fuer Testlaeufe mit
-    /// unsigniertem Host: XCTest wird erst nach der App-Initialisierung nachgeladen, `isRunningTests`
-    /// greift zu diesem Zeitpunkt also noch nicht. `xcodebuild` reicht die Variable mit dem
-    /// Praefix `TEST_RUNNER_` an den Host durch.
+    /// Wer ohne iCloud-Entitlements einen `CKContainer` anspricht oder einen CloudKit-Store
+    /// oeffnet, bekommt keinen Fehler, sondern einen Abbruch aus CloudKit heraus. Jeder
+    /// CloudKit-Zugriff muss deshalb hierueber abgesichert sein.
+    ///
+    /// Zusaetzlich zaehlt die Nutzereinstellung, und zwar in dem Stand, den sie beim Start
+    /// hatte — siehe `CloudSyncPreference.activeAtLaunch`.
+    @MainActor
     static var usesCloudKit: Bool {
-        guard ProcessInfo.processInfo.environment["DAIVENTO_DISABLE_CLOUDKIT"] != "1" else {
-            return false
+        !isRunningTests && CloudSyncPreference.activeAtLaunch
+    }
+
+    @MainActor
+    static func modelConfiguration(schema: Schema) -> ModelConfiguration {
+        // `cloudKitDatabase` ist standardmaessig `.automatic` — ohne die explizite Angabe
+        // wuerde SwiftData CloudKit selbst einschalten und im unsignierten Testhost abbrechen.
+        if isRunningTests {
+            return ModelConfiguration(schema: schema, isStoredInMemoryOnly: true, cloudKitDatabase: .none)
         }
 
-        return !isRunningTests
-    }
-
-    static func modelConfiguration(schema: Schema) -> ModelConfiguration {
-        guard usesCloudKit else {
-            // `cloudKitDatabase` ist standardmaessig `.automatic` — SwiftData wuerde CloudKit
-            // sonst selbst einschalten und im unsignierten Testhost abbrechen.
-            return ModelConfiguration(schema: schema, isStoredInMemoryOnly: true, cloudKitDatabase: .none)
+        guard CloudSyncPreference.activeAtLaunch else {
+            // Bewusst dieselbe Store-Datei wie mit Sync, nur ohne Mirroring: wer den Sync
+            // abschaltet, will nicht seine Daten verlieren, sondern sie nur nicht mehr
+            // uebertragen. Beim Wiedereinschalten liest CloudKit denselben Store weiter.
+            return ModelConfiguration(schema: schema, cloudKitDatabase: .none)
         }
 
         return ModelConfiguration(
@@ -79,6 +80,10 @@ enum CloudSyncConfiguration {
 
     @MainActor
     static func registerForRemoteNotifications() {
+        // Ohne Sync gibt es nichts zu empfangen; die Registrierung wuerde nur unnoetig
+        // einen Push-Token anfordern.
+        guard usesCloudKit else { return }
+
 #if os(macOS)
         NSApplication.shared.registerForRemoteNotifications()
 #elseif os(iOS)
@@ -214,7 +219,9 @@ struct AnchorApp: App {
                 .onAppear {
                     CloudSyncConfiguration.registerForRemoteNotifications()
 
-                    if let cloudKitError = store.cloudKitError {
+                    if !CloudSyncPreference.activeAtLaunch {
+                        CloudSyncStatusCenter.shared.markCloudSyncDisabled()
+                    } else if let cloudKitError = store.cloudKitError {
                         CloudSyncStatusCenter.shared.markCloudUnavailable(cloudKitError)
                     } else {
                         CloudSyncStatusCenter.shared.markReady()
@@ -230,6 +237,16 @@ struct AnchorApp: App {
 #endif
         }
         .modelContainer(sharedModelContainer)
+
+#if os(macOS)
+        // Eigenes Fenster ueber Command-Komma, wie auf dem Mac erwartet. Der Eintrag in der
+        // Sidebar bleibt zusaetzlich, weil er auf dem iPad der einzige Weg ist.
+        Settings {
+            SettingsView(showsDoneButton: false)
+                .frame(width: 460, height: 560)
+        }
+        .modelContainer(sharedModelContainer)
+#endif
     }
 }
 

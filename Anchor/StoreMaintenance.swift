@@ -1,4 +1,5 @@
 import Foundation
+import OSLog
 import SwiftData
 
 /// Fuehrt Datensaetze zusammen, die durch den iCloud-Sync doppelt entstehen.
@@ -65,32 +66,82 @@ enum StoreMaintenance {
             .sorted()
     }
 
+    /// Was eine Zusammenfuehrung entfernt hat.
+    ///
+    /// Das Zusammenfuehren loescht Datensaetze vollautomatisch und ohne Rueckholmoeglichkeit.
+    /// Ein Fehler in der Logik waere sonst stiller Datenverlust — deshalb wird jeder Durchlauf
+    /// protokolliert und im Sync-Status ausgewiesen, statt nur eine Zahl zurueckzugeben.
+    struct MergeReport: Sendable, Equatable {
+        var removedWeeks = 0
+        var removedDays = 0
+        /// Betroffene Kalenderwochen als `2026-KW31`, damit im Log nachvollziehbar ist,
+        /// wo eingegriffen wurde.
+        var affectedWeeks: [String] = []
+
+        var removedTotal: Int { removedWeeks + removedDays }
+        var isEmpty: Bool { removedTotal == 0 }
+
+        var summary: String {
+            guard !isEmpty else { return "Keine Duplikate" }
+
+            var parts: [String] = []
+            if removedWeeks > 0 { parts.append("\(removedWeeks) doppelte Wochen") }
+            if removedDays > 0 { parts.append("\(removedDays) doppelte Tage") }
+            return "\(parts.joined(separator: ", ")) zusammengeführt"
+        }
+    }
+
     /// Fuehrt doppelte Wochen und doppelte Tage zusammen. Gibt die Anzahl entfernter
     /// Datensaetze zurueck.
     @discardableResult
     static func normalize(weeks: [Week], modelContext: ModelContext) -> Int {
-        var removed = 0
+        merge(weeks: weeks, modelContext: modelContext).removedTotal
+    }
+
+    /// Wie `normalize`, aber mit vollem Protokoll.
+    @discardableResult
+    static func merge(weeks: [Week], modelContext: ModelContext) -> MergeReport {
+        var report = MergeReport()
 
         let weekGroups = Dictionary(grouping: weeks, by: weekKey).filter { $0.value.count > 1 }
-        for group in weekGroups.values {
+        for (key, group) in weekGroups {
             guard let survivor = electSurvivor(group) else { continue }
 
+            let label = "\(key.isoYear)-KW\(String(format: "%02d", key.isoWeek))"
+            report.affectedWeeks.append(label)
+
             for duplicate in group where duplicate !== survivor {
+                cloudSyncLog.notice(
+                    "Zusammenfuehrung \(label, privacy: .public): Woche \(duplicate.id.uuidString, privacy: .public) mit \(duplicate.dayList.count, privacy: .public) Tagen und \(duplicate.goalList.count, privacy: .public) Zielen geht in \(survivor.id.uuidString, privacy: .public) auf"
+                )
                 merge(duplicate, into: survivor, modelContext: modelContext)
-                removed += 1
+                report.removedWeeks += 1
             }
         }
 
         let survivingWeeks = weeks.filter { !$0.isDeleted }
         for week in survivingWeeks {
-            removed += mergeDuplicateDays(in: week, modelContext: modelContext)
+            let removedDays = mergeDuplicateDays(in: week, modelContext: modelContext)
+            guard removedDays > 0 else { continue }
+
+            report.removedDays += removedDays
+            let label = "\(week.isoYear)-KW\(String(format: "%02d", week.isoWeek))"
+            if !report.affectedWeeks.contains(label) {
+                report.affectedWeeks.append(label)
+            }
         }
 
-        if removed > 0 {
-            try? modelContext.save()
+        report.affectedWeeks.sort()
+
+        if !report.isEmpty {
+            let saved = modelContext.saveChanges()
+            cloudSyncLog.notice(
+                "Zusammenfuehrung abgeschlossen: \(report.removedWeeks, privacy: .public) Wochen und \(report.removedDays, privacy: .public) Tage entfernt in \(report.affectedWeeks.joined(separator: ", "), privacy: .public), gespeichert=\(saved, privacy: .public)"
+            )
+            CloudSyncStatusCenter.shared.noteMaintenance(report)
         }
 
-        return removed
+        return report
     }
 
     /// Deterministische Auswahl, damit beide Geraete unabhaengig voneinander denselben
@@ -139,6 +190,9 @@ enum StoreMaintenance {
             guard let survivor = electSurvivor(group) else { continue }
 
             for duplicate in group where duplicate !== survivor {
+                cloudSyncLog.notice(
+                    "Zusammenfuehrung Tag \(dayKey(duplicate), privacy: .public): \(duplicate.id.uuidString, privacy: .public) mit \(duplicate.taskList.count, privacy: .public) Aufgaben und \(duplicate.timeBlockList.count, privacy: .public) Zeitbloecken geht in \(survivor.id.uuidString, privacy: .public) auf"
+                )
                 merge(duplicate, into: survivor, modelContext: modelContext)
                 removed += 1
             }

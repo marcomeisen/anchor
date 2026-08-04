@@ -459,7 +459,7 @@ struct TaskCard: View {
                     Button {
                         performMove(to: date)
                     } label: {
-                        Label(date.formatted(.dateTime.locale(Locale(identifier: "de_DE")).weekday(.wide).day().month()), systemImage: "calendar")
+                        Label(date.formatted(.dateTime.weekday(.wide).day().month()), systemImage: "calendar")
                     }
                 }
             } label: {
@@ -825,7 +825,7 @@ struct WeekDot: View {
     var isDropTarget = false
 
     private var weekday: String {
-        date.formatted(.dateTime.locale(Locale(identifier: "de_DE")).weekday(.abbreviated))
+        date.formatted(.dateTime.weekday(.abbreviated))
             .replacing(".", with: "")
     }
 

@@ -152,7 +152,7 @@ struct NewTaskSheet: View {
                     selectedDate = date
                 } label: {
                     VStack(spacing: 3) {
-                        Text(date.formatted(.dateTime.locale(Locale(identifier: "de_DE")).weekday(.abbreviated)).replacing(".", with: ""))
+                        Text(date.formatted(.dateTime.weekday(.abbreviated)).replacing(".", with: ""))
                             .font(.system(size: 9.5, weight: .bold))
                         Text(date.formatted(.dateTime.day(.twoDigits)))
                             .font(.system(size: 12.5, weight: .bold, design: .monospaced))
@@ -164,7 +164,7 @@ struct NewTaskSheet: View {
                     .clipShape(RoundedRectangle(cornerRadius: 9))
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel(date.formatted(.dateTime.locale(Locale(identifier: "de_DE")).weekday(.wide).day().month()))
+                .accessibilityLabel(date.formatted(.dateTime.weekday(.wide).day().month()))
             }
         }
     }
@@ -197,7 +197,7 @@ struct NewTaskSheet: View {
         )
         modelContext.insert(task)
         day.appendTask(task)
-        try? modelContext.save()
+        modelContext.saveChanges()
         onScheduled(selectedDate)
     }
 
@@ -230,7 +230,7 @@ struct NewTaskSheet: View {
     }
 
     private func shortDate(_ date: Date) -> String {
-        date.formatted(.dateTime.locale(Locale(identifier: "de_DE")).day(.twoDigits).month(.twoDigits))
+        date.formatted(.dateTime.day(.twoDigits).month(.twoDigits))
     }
 }
 
@@ -316,7 +316,7 @@ struct QuickCapturePopover: View {
         .onAppear {
             let week = ensureCurrentWeek()
             selectedGoalID = selectedGoalID ?? week.goalList.first?.id
-            try? modelContext.save()
+            modelContext.saveChanges()
         }
         .padding(16)
         .frame(width: 300)
@@ -340,7 +340,7 @@ struct QuickCapturePopover: View {
         )
         modelContext.insert(task)
         currentDay.appendTask(task)
-        try? modelContext.save()
+        modelContext.saveChanges()
         title = ""
         selectedGoalID = week.goalList.first?.id
     }
@@ -523,7 +523,7 @@ struct NewGoalSheet: View {
         let goal = Goal(title: cleanTitle, colorHex: selectedColor, week: week)
         modelContext.insert(goal)
         week.appendGoal(goal)
-        try? modelContext.save()
+        modelContext.saveChanges()
         onScheduled(week.monday)
     }
 
@@ -544,7 +544,7 @@ struct NewGoalSheet: View {
     }
 
     private func shortDate(_ date: Date) -> String {
-        date.formatted(.dateTime.locale(Locale(identifier: "de_DE")).day(.twoDigits).month(.twoDigits))
+        date.formatted(.dateTime.day(.twoDigits).month(.twoDigits))
     }
 }
 
@@ -573,6 +573,7 @@ struct CaptureChip: View {
 struct WeeklyReviewView: View {
     let week: Week
     @State private var reflection = ""
+    @State private var showingSettings = false
 
     private var reachedGoals: Int {
         week.goalList.filter { $0.progress >= 1 }.count
@@ -630,18 +631,59 @@ struct WeeklyReviewView: View {
                 .background(AnkerColor.card)
                 .overlay(RoundedRectangle(cornerRadius: AnkerRadius.card).stroke(AnkerColor.line))
                 .clipShape(RoundedRectangle(cornerRadius: AnkerRadius.card))
+
+                // Der Tab Mehr ist auf dem iPhone der einzige Ort ausserhalb der Sidebar —
+                // Einstellungen, Export und Loeschung muessen auch ohne Split-Layout
+                // erreichbar sein.
+                SectionLabel(title: "App")
+                Button {
+                    showingSettings = true
+                } label: {
+                    HStack(spacing: 10) {
+                        Image(systemName: "gearshape")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(AnkerColor.indigoText)
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text("Einstellungen")
+                                .font(.system(size: 12.5, weight: .semibold))
+                                .foregroundStyle(AnkerColor.ink)
+                            Text("Erscheinungsbild, iCloud-Sync, Daten")
+                                .font(.system(size: 11))
+                                .foregroundStyle(AnkerColor.muted)
+                        }
+                        Spacer(minLength: 0)
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundStyle(AnkerColor.muted)
+                    }
+                    .padding(11)
+                    .contentShape(Rectangle())
+                    .background(AnkerColor.card)
+                    .overlay(RoundedRectangle(cornerRadius: AnkerRadius.card).stroke(AnkerColor.line))
+                    .clipShape(RoundedRectangle(cornerRadius: AnkerRadius.card))
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Einstellungen öffnen")
             }
             .padding(.horizontal, AnkerSpacing.screenPadding)
             .padding(.bottom, 28)
         }
         .background(AnkerColor.paper)
         .navigationTitle("Wochenrückblick")
+        .sheet(isPresented: $showingSettings) {
+            NavigationStack {
+                SettingsView()
+            }
+        }
     }
 }
 
 struct GoalDetailView: View {
     let goal: Goal
     let week: Week
+    var onDeleted: () -> Void = {}
+
+    @State private var goalPendingDeletion: Goal?
 
     private var linkedTasks: [AnkerTask] {
         week.dayList.flatMap(\.taskList).filter { $0.linkedGoal?.id == goal.id }
@@ -663,6 +705,19 @@ struct GoalDetailView: View {
                         .foregroundStyle(AnkerColor.muted)
                 }
                 Spacer()
+
+                Button(role: .destructive) {
+                    goalPendingDeletion = goal
+                } label: {
+                    Image(systemName: "trash")
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundStyle(Color(hex: "#D93327"))
+                        .frame(width: 30, height: 30)
+                        .background(Color(hex: "#D93327").opacity(0.10), in: RoundedRectangle(cornerRadius: 8))
+                }
+                .buttonStyle(.plain)
+                .help("Wochenziel löschen")
+                .accessibilityLabel("Wochenziel löschen")
             }
             .padding(.horizontal, 20)
             .padding(.top, 20)
@@ -694,7 +749,7 @@ struct GoalDetailView: View {
                     ForEach(week.dayList.sorted { $0.date < $1.date }, id: \.id) { day in
                         let dayTasks = day.taskList.filter { $0.linkedGoal?.id == goal.id }
                         if !dayTasks.isEmpty {
-                            Text(day.date.formatted(.dateTime.locale(Locale(identifier: "de_DE")).weekday(.wide).day(.twoDigits).month(.twoDigits)))
+                            Text(day.date.formatted(.dateTime.weekday(.wide).day(.twoDigits).month(.twoDigits)))
                                 .font(.system(size: 10.5, weight: .bold))
                                 .foregroundStyle(AnkerColor.muted)
                                 .textCase(.uppercase)
@@ -714,6 +769,7 @@ struct GoalDetailView: View {
         }
         .background(AnkerColor.paper)
         .navigationTitle("Ziel")
+        .goalDeleteConfirmation(goal: $goalPendingDeletion, week: week, onDeleted: onDeleted)
     }
 
     private var activeDays: Int {
@@ -723,7 +779,7 @@ struct GoalDetailView: View {
     }
 
     private func shortDate(_ date: Date) -> String {
-        date.formatted(.dateTime.locale(Locale(identifier: "de_DE")).weekday(.abbreviated).day(.twoDigits).month(.twoDigits))
+        date.formatted(.dateTime.weekday(.abbreviated).day(.twoDigits).month(.twoDigits))
     }
 }
 
@@ -756,7 +812,7 @@ private struct TimelineDayBar: View {
 
     var body: some View {
         VStack(spacing: 5) {
-            Text(day.date.formatted(.dateTime.locale(Locale(identifier: "de_DE")).weekday(.abbreviated)))
+            Text(day.date.formatted(.dateTime.weekday(.abbreviated)))
                 .font(.system(size: 9.5))
                 .foregroundStyle(AnkerColor.muted)
             GeometryReader { proxy in
@@ -779,6 +835,18 @@ struct OnboardingView: View {
     let weekIntervalTitle: String
     var onCreateGoal: (String) -> Void
 
+    /// Zwei Schritte: erst die Sync-Entscheidung, dann das erste Wochenziel.
+    ///
+    /// Die Reihenfolge ist Absicht. Die Sync-Einstellung wirkt sich darauf aus, wohin die
+    /// Daten gehen, und soll deshalb beantwortet sein, bevor die ersten entstehen. Wird der
+    /// Sync hier abgeschaltet, greift das erst beim naechsten Start — dieser Prozess hat den
+    /// Store bereits geoeffnet. Der Schritt sagt das ausdruecklich, statt es zu verschweigen.
+    private enum Step {
+        case cloudSync
+        case goal
+    }
+
+    @State private var step: Step = CloudSyncPreference.hasBeenChosen() ? .goal : .cloudSync
     @State private var goalTitle = ""
 
     var body: some View {
@@ -791,6 +859,72 @@ struct OnboardingView: View {
                 .shadow(color: AnkerColor.indigo.opacity(0.45), radius: 15, x: 0, y: 8)
                 .padding(.bottom, 26)
 
+            switch step {
+            case .cloudSync:
+                cloudSyncStep
+            case .goal:
+                goalStep
+            }
+
+            Spacer()
+        }
+        .padding(.horizontal, 32)
+        .background(AnkerColor.paper)
+    }
+
+    // MARK: - Schritt 1: iCloud
+
+    private var cloudSyncStep: some View {
+        VStack(spacing: 0) {
+            Text("Auf allen Geräten?")
+                .font(.system(size: 21, weight: .bold))
+                .foregroundStyle(AnkerColor.ink)
+                .padding(.bottom, 10)
+
+            Text("Daivento kann deine Wochen, Ziele, Aufgaben und Notizen über deinen iCloud-Account zwischen iPhone, iPad und Mac gleich halten. Die Daten liegen in deiner privaten iCloud-Datenbank; niemand sonst hat Zugriff darauf.")
+                .font(.system(size: 13))
+                .foregroundStyle(Color(hex: "#5A5D6A", darkHex: "#C4C6D0"))
+                .lineSpacing(4)
+                .multilineTextAlignment(.center)
+                .padding(.bottom, 20)
+
+            stepIndicator(activeIndex: 0)
+                .padding(.bottom, 22)
+
+            primaryButton("Mit iCloud synchronisieren") {
+                CloudSyncPreference.set(true)
+                step = .goal
+            }
+            .padding(.bottom, 10)
+
+            Button {
+                CloudSyncPreference.set(false)
+                step = .goal
+            } label: {
+                Text("Nur auf diesem Gerät")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(AnkerColor.indigoText)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                    .background(AnkerColor.surfaceRaised, in: RoundedRectangle(cornerRadius: AnkerRadius.sheet))
+                    .overlay(RoundedRectangle(cornerRadius: AnkerRadius.sheet).stroke(AnkerColor.line))
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Ohne iCloud, nur auf diesem Gerät speichern")
+
+            Text("Später jederzeit in den Einstellungen änderbar. Ein Wechsel greift beim nächsten Start.")
+                .font(.system(size: 11))
+                .foregroundStyle(AnkerColor.muted)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.top, 12)
+        }
+    }
+
+    // MARK: - Schritt 2: erstes Wochenziel
+
+    private var goalStep: some View {
+        VStack(spacing: 0) {
             Text("Plane deine Woche")
                 .font(.system(size: 21, weight: .bold))
                 .foregroundStyle(AnkerColor.ink)
@@ -819,37 +953,48 @@ struct OnboardingView: View {
                 .clipShape(RoundedRectangle(cornerRadius: 10))
                 .padding(.bottom, 22)
 
-            HStack(spacing: 6) {
-                Capsule().fill(AnkerColor.indigo).frame(width: 16, height: 6)
-                Circle().fill(AnkerColor.line).frame(width: 6, height: 6)
-                Circle().fill(AnkerColor.line).frame(width: 6, height: 6)
-            }
-            .padding(.bottom, 22)
+            stepIndicator(activeIndex: 1)
+                .padding(.bottom, 22)
 
-            Button {
+            primaryButton("Erstes Wochenziel setzen") {
                 onCreateGoal(cleanGoalTitle)
-            } label: {
-                Text("Erstes Wochenziel setzen")
-                    .font(.system(size: 14, weight: .bold))
-                    .foregroundStyle(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 13)
-                    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: AnkerRadius.sheet))
-                    .background(
-                        LinearGradient(colors: [Color(hex: "#8C9BF5").opacity(0.95), AnkerColor.indigoText.opacity(0.95)], startPoint: .topLeading, endPoint: .bottomTrailing),
-                        in: RoundedRectangle(cornerRadius: AnkerRadius.sheet)
-                    )
-                    .overlay(RoundedRectangle(cornerRadius: AnkerRadius.sheet).stroke(.white.opacity(0.35), lineWidth: 1))
-                    .shadow(color: AnkerColor.indigoText.opacity(0.35), radius: 18, x: 0, y: 8)
             }
-            .buttonStyle(.plain)
             .disabled(cleanGoalTitle.isEmpty)
             .opacity(cleanGoalTitle.isEmpty ? 0.58 : 1)
-
-            Spacer()
         }
-        .padding(.horizontal, 32)
-        .background(AnkerColor.paper)
+    }
+
+    // MARK: - Bausteine
+
+    private func stepIndicator(activeIndex: Int) -> some View {
+        HStack(spacing: 6) {
+            ForEach(0..<2, id: \.self) { index in
+                if index == activeIndex {
+                    Capsule().fill(AnkerColor.indigo).frame(width: 16, height: 6)
+                } else {
+                    Circle().fill(AnkerColor.line).frame(width: 6, height: 6)
+                }
+            }
+        }
+        .accessibilityLabel("Schritt \(activeIndex + 1) von 2")
+    }
+
+    private func primaryButton(_ title: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(title)
+                .font(.system(size: 14, weight: .bold))
+                .foregroundStyle(.white)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 13)
+                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: AnkerRadius.sheet))
+                .background(
+                    LinearGradient(colors: [Color(hex: "#8C9BF5").opacity(0.95), AnkerColor.indigoText.opacity(0.95)], startPoint: .topLeading, endPoint: .bottomTrailing),
+                    in: RoundedRectangle(cornerRadius: AnkerRadius.sheet)
+                )
+                .overlay(RoundedRectangle(cornerRadius: AnkerRadius.sheet).stroke(.white.opacity(0.35), lineWidth: 1))
+                .shadow(color: AnkerColor.indigoText.opacity(0.35), radius: 18, x: 0, y: 8)
+        }
+        .buttonStyle(.plain)
     }
 
     private var cleanGoalTitle: String {

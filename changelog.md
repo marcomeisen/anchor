@@ -1,5 +1,23 @@
 # Changelog
 
+## 2026-08-04
+
+- Neuer Einstellungen-Bildschirm (`SettingsView`) mit Erscheinungsbild, iCloud-Sync und dem Weg zu Daten und Datenschutz. Erreichbar aus der Sidebar (Mac, iPad), aus dem Tab Mehr (iPhone) und auf dem Mac zusaetzlich ueber Command-Komma.
+- Farbmodus einstellbar: System, Hell oder Dunkel. Auf macOS wird zusaetzlich `NSApp.appearance` gesetzt, sonst blieben die Farbtokens und das Statusbar-Popover im Systemmodus stehen.
+- iCloud-Sync abschaltbar. Ohne Sync laeuft dieselbe Store-Datei ohne Mirroring weiter — vorhandene Daten bleiben, sie werden nur nicht mehr uebertragen. Der Wechsel greift beim naechsten Start, weil derselbe Store nicht zur Laufzeit erneut mit CloudKit verbunden werden kann (Core Data 134422); auf dem Mac gibt es dafuer einen Neustart-Knopf. Der Sync-Status hat dafuer eine eigene Phase "Sync aus" statt einer Fehlermeldung.
+- Onboarding fragt die Sync-Entscheidung im ersten Schritt ab, das erste Wochenziel im zweiten.
+- Suche ueber Aufgaben, Wochenziele, Tagesnotizen, Tagesfokus und Zeitbloecke (`AnkerSearch`). Das Suchfeld in der Sidebar war bisher eine Attrappe und funktioniert jetzt; auf dem iPhone fuehrt eine Lupe in der Navigationsleiste zum Suchblatt. Gross-/Kleinschreibung und Umlaute werden ignoriert, Notiztreffer auf die Fundstelle gekuerzt, und ein Klick springt zum Tag oder zum Wochenziel.
+- Sieben Unit-Tests fuer Suche und Einstellungen ergaenzt; alle 26 Unit-Tests und beide Plattform-Builds laufen.
+
+- Speicherfehler werden nicht mehr verschluckt: die 26 verbliebenen `try? modelContext.save()` laufen jetzt ueber `ModelContext.saveChanges()`, das den Fehler protokolliert und ueber `PersistenceFailureCenter` als Dialog anzeigt — mit der Moeglichkeit, erneut zu sichern. Vorher verschwand eine nicht gespeicherte Aenderung beim naechsten Start unbemerkt.
+- Datenexport ergaenzt: alle Wochen, Ziele, Aufgaben, Zeitbloecke und Notizen lassen sich als JSON sichern, inklusive Datensaetzen ohne Woche oder Tag (Art. 15 und 20 DSGVO).
+- Vollstaendige Loeschung ergaenzt: entfernt jeden Datensatz einzeln, damit die Loeschung auch nach iCloud exportiert wird und nicht bei der naechsten Installation zurueckkommt (Art. 17 DSGVO). Der Bestaetigungsdialog nennt die betroffenen Anzahlen; der Onboarding-Zustand wird mit zurueckgesetzt.
+- Neuer Bildschirm "Daten und Datenschutz" mit Bestand, Export und Loeschung, erreichbar aus der Sidebar (Mac, iPad) und aus dem Tab Mehr (iPhone). Der macOS-Sandbox-Zugriff auf vom Nutzer gewaehlte Dateien ist dafuer von `readonly` auf `readwrite` gesetzt.
+- `PrivacyInfo.xcprivacy` angelegt: kein Tracking, "Other User Content" zur App-Funktionalitaet, `UserDefaults`-Zugriff mit Grund `CA92.1`. Ohne dieses Manifest lehnt der App Store die Einreichung ab.
+- Lokalisierung eingerichtet: `Localizable.xcstrings` mit Deutsch als Quellsprache und 115 extrahierten Texten, Projektsprache von `en` auf `de` umgestellt. Die 28 hartkodierten `Locale(identifier: "de_DE")` sind entfernt — Datumsangaben folgen jetzt der Regionseinstellung des Nutzers statt sie zu ueberschreiben.
+- Automatische Zusammenfuehrung doppelter Datensaetze protokolliert jetzt jeden Eingriff (betroffene Kalenderwoche, Gewinner-ID, Anzahl Kinder) und weist das Ergebnis im Sync-Status und in der Sidebar aus. Vorher loeschte `StoreMaintenance` still und ohne Spur.
+- Sieben Unit-Tests fuer Export, Loeschung, zentrales Speichern und das Zusammenfuehrungsprotokoll ergaenzt; alle 20 Unit-Tests und beide Plattform-Builds laufen.
+
 ## 2026-08-03
 
 - `CLAUDE.md` mit Projektueberblick, Dateikarte, Referenzdokumenten und Konventionen ergaenzt.
@@ -29,6 +47,10 @@
 - `cloudKitDatabase` wird ueberall explizit gesetzt. Der Standard ist `.automatic`, wodurch der lokale Fallback-Store und die In-Memory-Container fuer Tests und Previews CloudKit ungewollt wieder aktiviert haetten.
 - CoreData+CloudKit-Fehler werden erkannt: sie kommen als `NSCocoaErrorDomain` (134400, 134406, 134422 …) statt als `CKError`, und die Aussage steckt in `NSLocalizedFailureReason` und `encounteredErrors` — beides wurde vorher verworfen.
 - iCloud-Accountstatus wird beim Start und bei `CKAccountChanged` direkt abgefragt. Fehlt der Account, steht das jetzt als "Kein iCloud-Account" da, statt sich hinter einem Core-Data-Fehler zu verstecken.
+- Wochenziele koennen geloescht werden (`GoalActions`), erreichbar aus Sidebar-Kontextmenue, Wochenuebersicht und Zieldetail. Zugeordnete Aufgaben bleiben erhalten und verlieren nur ihre Zielzuordnung; der Bestaetigungsdialog nennt die betroffene Anzahl.
+- Unit-Tests fuer das Loeschen von Wochenzielen ergaenzt: Aufgaben ueberleben, Verknuepfung wird geloest, andere Ziele bleiben unberuehrt.
+- Analyse zu Security, DSGVO, Architektur und Code samt Massnahmenplan in `Analyse_und_Massnahmenplan.md` abgelegt.
+- iCloud-Sync auf beiden Plattformen verifiziert lauffaehig.
 - Sync-Details zeigen zusaetzlich Accountzustand, CloudKit-Umgebung, Container-Identifier und App-Version. Damit ist am Gerät ablesbar, ob Development oder Production laeuft und welcher Build getestet wird — bei TestFlight-Builds sonst nicht feststellbar.
 
 ## 2026-08-01

@@ -23,6 +23,9 @@ enum AnkerColor {
     static let muted = textSoft
     static let indigoDark = indigoText
     static let success = successIcon
+    /// Rot fuer destruktive Aktionen. Gleicher Farbwert wie `prioA`, aber eigene Benennung —
+    /// eine Loeschaktion ist keine Prioritaet A und soll sich unabhaengig davon aendern lassen.
+    static let destructive = prioA
 
     static let month: [Color] = [
         "#8FA8E8", "#7FCDA8", "#B9D97A", "#F0C955",
