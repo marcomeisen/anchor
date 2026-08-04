@@ -213,8 +213,7 @@ struct WeeklyReviewView: View {
                 .scrollContentBackground(.hidden)
                 .frame(minHeight: 88)
                 .padding(AnkerSpacing.s3)
-                .background(AnkerColor.surface)
-                .overlay(Rectangle().stroke(AnkerColor.dividerStrong, lineWidth: AnkerBorder.rule))
+                .ankerField()
                 .focused($isEditing)
                 .accessibilityLabel("Antwort auf die Wochenfrage")
                 .accessibilityIdentifier("reviewAnswer")
@@ -260,7 +259,7 @@ struct WeeklyReviewView: View {
                     ) { decision in
                         decisions[task.id] = decision
                     }
-                    AnkerRule()
+                    AnkerRule(weight: .row)
                 }
             }
             .padding(.horizontal, AnkerSpacing.screenPadding)
@@ -426,7 +425,8 @@ private struct CarryRow: View {
                 reanchorMenu
             }
             .fixedSize()
-            .overlay(Rectangle().stroke(AnkerColor.ink, lineWidth: AnkerBorder.rule))
+            .clipShape(RoundedRectangle(cornerRadius: AnkerRadius.control, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: AnkerRadius.control, style: .continuous).stroke(AnkerColor.ink, lineWidth: AnkerBorder.rule))
         }
         .padding(.vertical, AnkerSpacing.s3)
         .accessibilityElement(children: .contain)

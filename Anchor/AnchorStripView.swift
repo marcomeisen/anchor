@@ -42,7 +42,8 @@ struct AnchorStripView: View {
                         }
                     }
                 }
-                .overlay(Rectangle().stroke(AnkerColor.ink, lineWidth: AnkerBorder.rule))
+                .clipShape(RoundedRectangle(cornerRadius: AnkerRadius.control, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: AnkerRadius.control, style: .continuous).stroke(AnkerColor.ink, lineWidth: AnkerBorder.rule))
                 .padding(.bottom, AnkerSpacing.s3)
             }
         }
@@ -202,7 +203,8 @@ struct AnkerViewSwitcher: View {
             }
         }
         .fixedSize()
-        .overlay(Rectangle().stroke(AnkerColor.ink, lineWidth: AnkerBorder.rule))
+        .clipShape(RoundedRectangle(cornerRadius: AnkerRadius.control, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: AnkerRadius.control, style: .continuous).stroke(AnkerColor.ink, lineWidth: AnkerBorder.rule))
     }
 }
 

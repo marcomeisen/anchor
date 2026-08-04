@@ -34,7 +34,7 @@ struct WeekOverviewView: View {
             .ankerEdge(.bottom)
 
             HStack(spacing: AnkerSpacing.s3) {
-                ForEach(week.goalList.prefix(4), id: \.id) { goal in
+                ForEach(GoalOrdering.anchors(in: week), id: \.id) { goal in
                     GoalPill(goal: goal)
                         .contextMenu {
                             Button(role: .destructive) {
@@ -48,7 +48,7 @@ struct WeekOverviewView: View {
             .padding(.horizontal, AnkerSpacing.s4)
             .padding(.vertical, AnkerSpacing.s4)
             .background(AnkerColor.ground)
-            .overlay(alignment: .bottom) { Rectangle().fill(AnkerColor.divider).frame(height: 1) }
+            .ankerEdge(.bottom)
 
             ScrollView {
                 VStack(spacing: 0) {
@@ -136,9 +136,7 @@ private struct GoalPill: View {
         }
         .padding(.horizontal, AnkerSpacing.s3)
         .padding(.vertical, AnkerSpacing.s3)
-        .background(AnkerColor.surface)
-        .overlay(Rectangle().stroke(AnkerColor.divider, lineWidth: AnkerBorder.rule))
-        .clipShape(Rectangle())
+        .ankerCard()
     }
 }
 
@@ -167,13 +165,12 @@ private struct WeekGridRow: View {
         }
         .padding(.vertical, AnkerSpacing.s2)
         .padding(.horizontal, (isSelected || isDropTarget) ? 18 : 0)
-        .background(rowBackground)
-        .clipShape(Rectangle())
+        .background(rowBackground, in: RoundedRectangle(cornerRadius: AnkerRadius.tile, style: .continuous))
         .overlay(
-            Rectangle()
-                .stroke(isDropTarget ? AnkerColor.accentFill : Color.clear, lineWidth: 1.5)
+            RoundedRectangle(cornerRadius: AnkerRadius.tile, style: .continuous)
+                .stroke(isDropTarget ? AnkerColor.accentFill : Color.clear, lineWidth: AnkerBorder.rule)
         )
-        .overlay(alignment: .bottom) { Rectangle().fill(AnkerColor.divider).frame(height: 1) }
+        .overlay(alignment: .bottom) { AnkerRule(weight: .row) }
         .scaleEffect(isDropTarget ? 1.01 : 1)
         .animation(.easeOut(duration: 0.12), value: isDropTarget)
     }
@@ -215,9 +212,7 @@ private struct MiniTask: View {
             }
             .padding(.horizontal, AnkerSpacing.s2)
             .padding(.vertical, AnkerSpacing.s1)
-            .background(AnkerColor.surface)
-            .overlay(Rectangle().stroke(AnkerColor.divider, lineWidth: AnkerBorder.rule))
-            .clipShape(Rectangle())
+            .ankerControl()
         }
         .buttonStyle(.plain)
         .contextMenu { taskMenuItems }
@@ -286,9 +281,7 @@ private struct TaskShortcutHintBar: View {
         .padding(.horizontal, AnkerSpacing.s4)
         .padding(.vertical, AnkerSpacing.s2)
         .background(AnkerColor.surface)
-        .overlay(alignment: .top) {
-            Rectangle().fill(AnkerColor.divider).frame(height: 1)
-        }
+        .ankerEdge(.top)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("Tastaturkurzbefehle: Command Punkt erledigt, Command Rückschritt löschen, Command Shift M verschieben, Command D duplizieren")
     }

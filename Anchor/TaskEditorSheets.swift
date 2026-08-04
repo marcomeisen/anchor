@@ -26,7 +26,7 @@ struct TaskEditorSheet: View {
     }
 
     private var selectedWeekGoals: [Goal] {
-        selectedWeek?.goalList ?? []
+        selectedWeek.map(GoalOrdering.anchors(in:)) ?? []
     }
 
     private var cleanTitle: String {
@@ -88,8 +88,7 @@ struct TaskEditorSheet: View {
                 .foregroundStyle(AnkerColor.ink)
                 .padding(.horizontal, AnkerSpacing.s3)
                 .padding(.vertical, AnkerSpacing.s3)
-                .background(AnkerColor.surface)
-                .overlay(Rectangle().stroke(AnkerColor.divider, lineWidth: AnkerBorder.rule))
+                .ankerField()
         }
     }
 
@@ -146,8 +145,7 @@ struct TaskEditorSheet: View {
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, AnkerSpacing.s2)
-                .background(AnkerColor.surface, in: Rectangle())
-                .overlay(Rectangle().stroke(AnkerColor.divider, lineWidth: AnkerBorder.rule))
+                .ankerControl()
 
                 iconButton(ankerIcon: .chevronRight, label: "Nächste Woche") {
                     moveSelectedWeek(by: 1)
@@ -173,11 +171,13 @@ struct TaskEditorSheet: View {
                             Text(AnkerDateFormat.dayNumber(date))
                                 .ankerType(AnkerType.numericSmall)
                         }
-                        .foregroundStyle(AnkerCalendar.isSameDay(date, selectedDate) ? .white : AnkerColor.ink)
+                        .foregroundStyle(AnkerCalendar.isSameDay(date, selectedDate) ? AnkerColor.onAccent : AnkerColor.ink)
                         .frame(maxWidth: .infinity, minHeight: 44)
-                        .background(AnkerCalendar.isSameDay(date, selectedDate) ? AnkerColor.accentFill : AnkerColor.surface)
-                        .overlay(Rectangle().stroke(AnkerCalendar.isSameDay(date, selectedDate) ? Color.clear : AnkerColor.divider))
-                        .clipShape(Rectangle())
+                        .ankerControl(
+                            fill: AnkerCalendar.isSameDay(date, selectedDate) ? AnkerColor.accentFill : AnkerColor.surface,
+                            stroke: AnkerCalendar.isSameDay(date, selectedDate) ? nil : AnkerColor.divider,
+                            radius: AnkerRadius.tile
+                        )
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel(AnkerDateFormat.weekdayLongWithDayMonth(date))
@@ -229,8 +229,7 @@ struct TaskEditorSheet: View {
         Button(action: action) {
             Image(ankerIcon).ankerIcon(AnkerIconSize.s)
                 .frame(width: 36, height: 36)
-                .background(AnkerColor.surface, in: Rectangle())
-                .overlay(Rectangle().stroke(AnkerColor.divider, lineWidth: AnkerBorder.rule))
+                .ankerControl()
         }
         .buttonStyle(.plain)
         .accessibilityLabel(label)
@@ -323,8 +322,7 @@ struct TaskMoveSheet: View {
                         }
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, AnkerSpacing.s3)
-                        .background(AnkerColor.surface, in: Rectangle())
-                        .overlay(Rectangle().stroke(AnkerColor.divider, lineWidth: AnkerBorder.rule))
+                        .ankerControl()
 
                         moveButton(ankerIcon: .chevronRight, label: "Nächste Woche") {
                             moveSelectedWeek(by: 1)
@@ -348,11 +346,13 @@ struct TaskMoveSheet: View {
                                     Text(AnkerDateFormat.dayNumber(date))
                                         .ankerType(AnkerType.numericSmall)
                                 }
-                                .foregroundStyle(AnkerCalendar.isSameDay(date, selectedDate) ? .white : AnkerColor.ink)
+                                .foregroundStyle(AnkerCalendar.isSameDay(date, selectedDate) ? AnkerColor.onAccent : AnkerColor.ink)
                                 .frame(maxWidth: .infinity, minHeight: 46)
-                                .background(AnkerCalendar.isSameDay(date, selectedDate) ? AnkerColor.accentFill : AnkerColor.surface)
-                                .overlay(Rectangle().stroke(AnkerCalendar.isSameDay(date, selectedDate) ? Color.clear : AnkerColor.divider))
-                                .clipShape(Rectangle())
+                                .ankerControl(
+                                    fill: AnkerCalendar.isSameDay(date, selectedDate) ? AnkerColor.accentFill : AnkerColor.surface,
+                                    stroke: AnkerCalendar.isSameDay(date, selectedDate) ? nil : AnkerColor.divider,
+                                    radius: AnkerRadius.tile
+                                )
                             }
                             .buttonStyle(.plain)
                         }
@@ -406,8 +406,7 @@ struct TaskMoveSheet: View {
         Button(action: action) {
             Image(ankerIcon).ankerIcon(AnkerIconSize.s)
                 .frame(width: 38, height: 38)
-                .background(AnkerColor.surface, in: Rectangle())
-                .overlay(Rectangle().stroke(AnkerColor.divider, lineWidth: AnkerBorder.rule))
+                .ankerControl()
         }
         .buttonStyle(.plain)
         .accessibilityLabel(label)

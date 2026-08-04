@@ -29,7 +29,7 @@ struct NewTaskSheet: View {
     }
 
     private var selectedWeekGoals: [Goal] {
-        selectedWeek?.goalList ?? []
+        selectedWeek.map(GoalOrdering.anchors(in:)) ?? []
     }
 
     var body: some View {
@@ -41,8 +41,7 @@ struct NewTaskSheet: View {
                         .ankerType(AnkerType.body)
                         .padding(.horizontal, AnkerSpacing.s3)
                         .padding(.vertical, AnkerSpacing.s2)
-                        .background(AnkerColor.surface)
-                        .overlay(Rectangle().stroke(AnkerColor.divider, lineWidth: AnkerBorder.rule))
+                        .ankerField()
 
                     planningPicker
 
@@ -135,8 +134,7 @@ struct NewTaskSheet: View {
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, AnkerSpacing.s2)
-            .background(AnkerColor.surface, in: Rectangle())
-            .overlay(Rectangle().stroke(AnkerColor.divider, lineWidth: AnkerBorder.rule))
+            .ankerControl()
 
             planningButton(ankerIcon: .chevronRight, label: "Nächste Woche") {
                 moveSelectedWeek(by: 1)
@@ -160,11 +158,13 @@ struct NewTaskSheet: View {
                         Text(AnkerDateFormat.dayNumber(date))
                             .ankerType(AnkerType.numericSmall)
                     }
-                    .foregroundStyle(AnkerCalendar.isSameDay(date, selectedDate) ? .white : AnkerColor.ink)
+                    .foregroundStyle(AnkerCalendar.isSameDay(date, selectedDate) ? AnkerColor.onAccent : AnkerColor.ink)
                     .frame(maxWidth: .infinity, minHeight: 44)
-                    .background(AnkerCalendar.isSameDay(date, selectedDate) ? AnkerColor.accentFill : AnkerColor.surface)
-                    .overlay(Rectangle().stroke(AnkerCalendar.isSameDay(date, selectedDate) ? Color.clear : AnkerColor.divider))
-                    .clipShape(Rectangle())
+                    .ankerControl(
+                        fill: AnkerCalendar.isSameDay(date, selectedDate) ? AnkerColor.accentFill : AnkerColor.surface,
+                        stroke: AnkerCalendar.isSameDay(date, selectedDate) ? nil : AnkerColor.divider,
+                        radius: AnkerRadius.tile
+                    )
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel(AnkerDateFormat.weekdayLongWithDayMonth(date))
@@ -176,8 +176,7 @@ struct NewTaskSheet: View {
         Button(action: action) {
             Image(ankerIcon).ankerIcon(AnkerIconSize.s)
                 .frame(width: 34, height: 34)
-                .background(AnkerColor.surface, in: Rectangle())
-                .overlay(Rectangle().stroke(AnkerColor.divider, lineWidth: AnkerBorder.rule))
+                .ankerControl()
         }
         .buttonStyle(.plain)
         .accessibilityLabel(label)
@@ -248,7 +247,7 @@ struct QuickCapturePopover: View {
     }
 
     private var goals: [Goal] {
-        Array((currentWeek?.goalList ?? []).prefix(4))
+        currentWeek.map(GoalOrdering.anchors(in:)) ?? []
     }
 
     var body: some View {
@@ -262,8 +261,7 @@ struct QuickCapturePopover: View {
                 .ankerType(AnkerType.body)
                 .padding(.horizontal, AnkerSpacing.s3)
                 .padding(.vertical, AnkerSpacing.s2)
-                .background(AnkerColor.surface, in: Rectangle())
-                .overlay(Rectangle().stroke(AnkerColor.divider, lineWidth: AnkerBorder.rule))
+                .ankerField()
 
             Text("Priorität")
                 .ankerType(AnkerType.eyebrow)
@@ -309,7 +307,7 @@ struct QuickCapturePopover: View {
         }
         .onAppear {
             let week = ensureCurrentWeek()
-            selectedGoalID = selectedGoalID ?? week.goalList.first?.id
+            selectedGoalID = selectedGoalID ?? GoalOrdering.anchors(in: week).first?.id
             modelContext.saveChanges()
         }
         .padding(AnkerSpacing.s4)
@@ -330,7 +328,7 @@ struct QuickCapturePopover: View {
         ) != nil else { return }
 
         title = ""
-        selectedGoalID = week.goalList.first?.id
+        selectedGoalID = GoalOrdering.anchors(in: week).first?.id
     }
 
     @discardableResult
@@ -403,8 +401,7 @@ struct NewGoalSheet: View {
                     .ankerType(AnkerType.body)
                     .padding(.horizontal, AnkerSpacing.s3)
                     .padding(.vertical, AnkerSpacing.s2)
-                    .background(AnkerColor.surface)
-                    .overlay(Rectangle().stroke(AnkerColor.divider, lineWidth: AnkerBorder.rule))
+                    .ankerField()
 
                 Text("Woche")
                     .ankerType(AnkerType.eyebrow)
@@ -472,8 +469,7 @@ struct NewGoalSheet: View {
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, AnkerSpacing.s2)
-            .background(AnkerColor.surface, in: Rectangle())
-            .overlay(Rectangle().stroke(AnkerColor.divider, lineWidth: AnkerBorder.rule))
+            .ankerControl()
 
             weekButton(ankerIcon: .chevronRight, label: "Nächste Woche") {
                 moveSelectedWeek(by: 1)
@@ -489,8 +485,7 @@ struct NewGoalSheet: View {
         Button(action: action) {
             Image(ankerIcon).ankerIcon(AnkerIconSize.s)
                 .frame(width: 34, height: 34)
-                .background(AnkerColor.surface, in: Rectangle())
-                .overlay(Rectangle().stroke(AnkerColor.divider, lineWidth: AnkerBorder.rule))
+                .ankerControl()
         }
         .buttonStyle(.plain)
         .accessibilityLabel(label)
@@ -544,30 +539,36 @@ struct CaptureChip: View {
         Button(action: action) {
             Text(title)
                 .ankerType(AnkerType.caption)
-                .foregroundStyle(isSelected ? .white : AnkerColor.inkSecond)
+                .foregroundStyle(isSelected ? AnkerColor.onAccent : AnkerColor.inkSecond)
                 .lineLimit(1)
                 .padding(.horizontal, AnkerSpacing.s2)
                 .padding(.vertical, AnkerSpacing.s1)
-                .background(isSelected ? selectedColor : Color.clear)
-                .overlay(Rectangle().stroke(isSelected ? selectedColor : AnkerColor.divider))
-                .clipShape(Rectangle())
+                .ankerControl(
+                    fill: isSelected ? selectedColor : Color.clear,
+                    stroke: isSelected ? nil : AnkerColor.divider,
+                    radius: AnkerRadius.tile
+                )
         }
         .buttonStyle(.plain)
     }
 }
 
-/// Ein Farbfeld in der Zielfarbwahl — quadratisch, mit 2px-Kante wenn gewaehlt.
+/// Ein Farbfeld in der Zielfarbwahl — eine Auswahlkachel, also gerundet.
 private struct GoalColorSwatch: View {
     let colorHex: String
     let isSelected: Bool
 
+    private var shape: RoundedRectangle {
+        RoundedRectangle(cornerRadius: AnkerRadius.tile, style: .continuous)
+    }
+
     var body: some View {
-        Rectangle()
+        shape
             .fill(AnkerColor.goalTint(colorHex))
             .frame(width: 24, height: 24)
             // Immer 2px — das System kennt keine Haarlinie. Den Zustand traegt die Farbe.
-            .overlay(Rectangle().stroke(edgeColor, lineWidth: AnkerBorder.rule))
-            .contentShape(Rectangle())
+            .overlay(shape.stroke(edgeColor, lineWidth: AnkerBorder.rule))
+            .contentShape(shape)
     }
 
     private var edgeColor: Color {

@@ -161,7 +161,7 @@ struct DayDetailView: View {
         HStack(spacing: AnkerSpacing.s2) {
             statTile(value: openCount, label: "Offen", tint: AnkerColor.accentInk)
             statTile(value: doneCount, label: "Erledigt", tint: AnkerColor.ink)
-            statTile(value: day.timeBlockList.count, label: "Zeitblöcke", tint: AnkerColor.neutral[500])
+            statTile(value: day.timeBlockList.count, label: "Zeitblöcke", tint: AnkerColor.inkTertiary)
         }
         .padding(.top, AnkerSpacing.s4)
     }
@@ -178,9 +178,7 @@ struct DayDetailView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, AnkerSpacing.s3)
         .padding(.vertical, AnkerSpacing.s3)
-        .background(AnkerColor.surface)
-        .overlay(Rectangle().stroke(AnkerColor.divider, lineWidth: AnkerBorder.rule))
-        .clipShape(Rectangle())
+        .ankerCard()
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(value) \(label)")
     }
@@ -198,9 +196,7 @@ struct DayDetailView: View {
                 .foregroundStyle(AnkerColor.ink)
                 .padding(.horizontal, AnkerSpacing.s3)
                 .padding(.vertical, AnkerSpacing.s3)
-                .background(AnkerColor.surface)
-                .overlay(Rectangle().stroke(AnkerColor.divider, lineWidth: AnkerBorder.rule))
-                .clipShape(Rectangle())
+                .ankerField()
                 .onChange(of: focusDraft) { _, _ in scheduleCommit() }
                 .accessibilityLabel("Fokus des Tages")
         }
@@ -253,9 +249,7 @@ struct DayDetailView: View {
             }
             .padding(.horizontal, AnkerSpacing.s3)
             .padding(.vertical, AnkerSpacing.s3)
-            .background(AnkerColor.surface)
-            .overlay(Rectangle().stroke(AnkerColor.divider, lineWidth: AnkerBorder.rule))
-            .clipShape(Rectangle())
+            .ankerCard()
         }
         .buttonStyle(.plain)
         .help("Ziel öffnen: \(goal.title)")
@@ -271,11 +265,16 @@ struct DayDetailView: View {
             if day.timeBlockList.isEmpty {
                 emptyHint("Für diesen Tag sind keine Zeitblöcke eingetragen.")
             } else {
+                let blocks = day.timeBlockList.sorted { $0.startTime < $1.startTime }
                 VStack(spacing: 0) {
-                    ForEach(day.timeBlockList.sorted { $0.startTime < $1.startTime }, id: \.id) { block in
+                    ForEach(Array(blocks.enumerated()), id: \.element.id) { index, block in
                         DayTimeBlockRow(block: block)
+                        if index < blocks.count - 1 {
+                            AnkerRule(color: AnkerColor.cardDivider, weight: .row)
+                        }
                     }
                 }
+                .ankerCard()
             }
         }
     }
@@ -334,9 +333,7 @@ struct DayDetailView: View {
                 .frame(minHeight: 96)
                 .padding(.horizontal, AnkerSpacing.s2)
                 .padding(.vertical, AnkerSpacing.s2)
-                .background(AnkerColor.surface)
-                .overlay(Rectangle().stroke(AnkerColor.divider, lineWidth: AnkerBorder.rule))
-                .clipShape(Rectangle())
+                .ankerField()
                 .onChange(of: notesDraft) { _, _ in scheduleCommit() }
                 .accessibilityLabel("Notizen zum Tag")
         }
@@ -349,9 +346,7 @@ struct DayDetailView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, AnkerSpacing.s3)
             .padding(.vertical, AnkerSpacing.s4)
-            .background(AnkerColor.surface.opacity(0.6))
-            .overlay(Rectangle().stroke(AnkerColor.divider, lineWidth: AnkerBorder.rule))
-            .clipShape(Rectangle())
+            .ankerCard(fill: AnkerColor.surface.opacity(0.6), elevated: false)
     }
 
     // MARK: - Aktionen
@@ -455,54 +450,10 @@ private struct DayTimeBlockRow: View {
                         .accessibilityLabel("Aus dem Kalender übernommen")
                 }
             }
-            .padding(.horizontal, AnkerSpacing.s3)
-            .padding(.vertical, AnkerSpacing.s2)
-            .background(AnkerColor.surface)
-            .overlay(Rectangle().stroke(AnkerColor.divider, lineWidth: AnkerBorder.rule))
-            .clipShape(Rectangle())
         }
-        .padding(.vertical, AnkerSpacing.s2)
+        .padding(.horizontal, AnkerSpacing.s3)
+        .padding(.vertical, AnkerSpacing.s3)
         .accessibilityElement(children: .combine)
     }
 }
 
-private struct TimeBlockRow: View {
-    let block: TimeBlock
-    let isAnchored: Bool
-
-    var body: some View {
-        HStack(spacing: AnkerSpacing.s3) {
-            Text(AnkerDateFormat.timeOfDay(block.startTime))
-                .ankerType(AnkerType.numericSmall)
-                .foregroundStyle(AnkerColor.inkSecond)
-                .frame(width: 38, alignment: .leading)
-
-            HStack {
-                Text(block.title)
-                    .ankerType(AnkerType.caption)
-                    .foregroundStyle(AnkerColor.ink)
-                    .lineLimit(1)
-                Spacer(minLength: AnkerSpacing.s2)
-                if isAnchored {
-                    Rectangle()
-                        .fill(AnkerColor.accentMark)
-                        .frame(width: 7, height: 7)
-                }
-            }
-            .padding(.horizontal, AnkerSpacing.s3)
-            .padding(.vertical, AnkerSpacing.s2)
-            .background(AnkerColor.surface)
-            .overlay(
-                Rectangle()
-                    .stroke(AnkerColor.divider, lineWidth: AnkerBorder.rule)
-            )
-            .clipShape(Rectangle())
-        }
-        .padding(.vertical, AnkerSpacing.s2)
-        .overlay(alignment: .bottom) {
-            Rectangle()
-                .fill(AnkerColor.divider)
-                .frame(height: 1)
-        }
-    }
-}

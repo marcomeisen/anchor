@@ -44,12 +44,32 @@ struct AnkerRootView: View {
         WeekPlanning.needsOnboarding(in: weeks, hasCompletedOnboarding: hasCompletedOnboarding)
     }
 
+    /// Könnte iCloud noch Bestand nachliefern?
+    ///
+    /// Nur wenn der Sync in diesem Prozess wirklich läuft **und** noch keine Runde
+    /// abgeschlossen ist. `activeAtLaunch` statt der Einstellung: die greift erst beim Neustart,
+    /// und auf ein Warten wollen wir nur verweisen, wenn tatsächlich etwas unterwegs sein kann.
+    private var isAwaitingFirstSync: Bool {
+        guard CloudSyncPreference.activeAtLaunch else { return false }
+        switch cloudSyncStatus.phase {
+        case .starting, .ready, .syncing:
+            return true
+        // `pendingExport` heisst: lokal liegt etwas an, das hinausgehen soll. Dann gibt es hier
+        // Bestand, und das Onboarding steht ohnehin nicht mehr.
+        case .pendingExport, .synced, .issue, .disabled:
+            return false
+        }
+    }
+
     var body: some View {
         Group {
             if needsOnboarding {
-                OnboardingView(weekIntervalTitle: currentWeekTitle) { titles in
-                    completeOnboarding(with: titles)
-                }
+                OnboardingView(
+                    weekIntervalTitle: currentWeekTitle,
+                    isAwaitingFirstSync: isAwaitingFirstSync,
+                    onCreateAnchors: { titles in completeOnboarding(with: titles) },
+                    onSkip: skipOnboarding
+                )
             } else if let selectedWeek, let selectedDay {
 #if os(macOS)
                 splitContent(week: selectedWeek, day: selectedDay)
@@ -415,7 +435,25 @@ struct AnkerRootView: View {
         move { $0.open(result, dayDate: dayDate) }
     }
 
+    /// Ohne Anker weiter — die App ist auch leer benutzbar: Erfassungszeile und der Knopf für ein
+    /// neues Wochenziel sind da. Wichtig ist, dass niemand im Einrichtungsschritt festsitzt.
+    private func skipOnboarding() {
+        hasCompletedOnboarding = true
+        onboardingVersion = requiredOnboardingVersion
+        ensureSelectedWeek()
+        navigation.moveToToday()
+        modelContext.saveChanges()
+    }
+
     private func completeOnboarding(with titles: [String]) {
+        // Sicherheitsnetz: kam der Bestand zwischen Anzeige und Tippen an, wird nichts angelegt.
+        // `createOnboardingAnchors` prüft das ebenfalls; hier entscheidet es zusätzlich, wohin
+        // die App springt.
+        guard !WeekPlanning.hasContent(in: weeks) else {
+            skipOnboarding()
+            return
+        }
+
         let week = ensureCurrentWeek()
         let anchors = WeekPlanning.createOnboardingAnchors(titles, in: week, modelContext: modelContext)
         hasCompletedOnboarding = true

@@ -40,19 +40,26 @@ struct CaptureBar: View {
             AnkerRule()
 
             HStack(spacing: AnkerSpacing.s3) {
-                Text(verbatim: "+")
-                    .ankerType(AnkerType.headline)
-                    .foregroundStyle(AnkerColor.ink)
-                    .accessibilityHidden(true)
+                // Feld und Knopf sind Objekte: gerundet. Die 2px-Kante der Leiste darueber ist
+                // Struktur und bleibt scharf.
+                HStack(spacing: AnkerSpacing.s2) {
+                    Text(verbatim: "+")
+                        .ankerType(AnkerType.headline)
+                        .foregroundStyle(AnkerColor.ink)
+                        .accessibilityHidden(true)
 
-                TextField("Was steht an?  !a  #2", text: $raw)
-                    .textFieldStyle(.plain)
-                    .ankerType(AnkerType.body)
-                    .foregroundStyle(AnkerColor.ink)
-                    .focused($isFocused)
-                    .onSubmit(commit)
-                    .accessibilityLabel("Aufgabe erfassen")
-                    .accessibilityIdentifier("captureBar.field")
+                    TextField("Was steht an?  !a  #2", text: $raw)
+                        .textFieldStyle(.plain)
+                        .ankerType(AnkerType.body)
+                        .foregroundStyle(AnkerColor.ink)
+                        .focused($isFocused)
+                        .onSubmit(commit)
+                        .accessibilityLabel("Aufgabe erfassen")
+                        .accessibilityIdentifier("captureBar.field")
+                }
+                .padding(.horizontal, AnkerSpacing.s3)
+                .padding(.vertical, AnkerSpacing.s3)
+                .ankerField()
 
                 Button("Sichern", action: commit)
                     .buttonStyle(AnkerButtonStyle.primary)

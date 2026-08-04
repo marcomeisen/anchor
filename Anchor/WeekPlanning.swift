@@ -60,14 +60,29 @@ enum WeekPlanning {
 
     /// Onboarding zeigen?
     ///
-    /// Nicht am `hasCompletedOnboarding`-Flag allein: nach einer vollständigen Löschung ist
-    /// der Bestand leer, und eine leere App, die sich für eingerichtet hält, ist eine
-    /// Sackgasse. Deshalb entscheidet der Datenstand, sobald es eine laufende Woche gibt.
+    /// **Der ganze Bestand entscheidet, nicht die laufende Woche.** Vorher fragte diese Funktion
+    /// nur, ob die laufende Woche Anker hat — und das ist am Montagmorgen regelmäßig nicht der
+    /// Fall. Auf einem neu installierten Gerät landete der Nutzer damit im Onboarding, obwohl
+    /// sein ganzer iCloud-Bestand schon da war, und kam nicht mehr heraus: das Flag wurde in
+    /// diesem Zweig gar nicht mehr gelesen, ein Überspringen wäre also wirkungslos geblieben.
+    ///
+    /// Nicht am Flag allein hängt es weiterhin, weil eine vollständige Löschung den Bestand
+    /// leert — und eine leere App, die sich für eingerichtet hält, ist eine Sackgasse.
     static func needsOnboarding(in weeks: [Week], hasCompletedOnboarding: Bool, now: Date = Date()) -> Bool {
-        guard let currentWeek = week(containing: now, in: weeks) else {
-            return !hasCompletedOnboarding
+        if hasContent(in: weeks) { return false }
+        return !hasCompletedOnboarding
+    }
+
+    /// Benutzt hier schon jemand die App?
+    ///
+    /// Ein echtes Wochenziel **oder** eine Aufgabe irgendwo genügt. Aufgaben zählen mit, weil
+    /// die Erfassungszeile sie auch ohne Anker anlegt — wer so arbeitet, ist kein neuer Nutzer.
+    /// Der Onboarding-Platzhalter zählt nicht, `isUserCreated` filtert ihn.
+    static func hasContent(in weeks: [Week]) -> Bool {
+        weeks.contains { week in
+            week.goalList.contains(where: isUserCreated)
+                || week.dayList.contains { !$0.taskList.isEmpty }
         }
-        return currentWeek.goalList.filter(isUserCreated).isEmpty
     }
 
     static func isUserCreated(_ goal: Goal) -> Bool {
@@ -116,6 +131,11 @@ enum WeekPlanning {
         in week: Week,
         modelContext: ModelContext
     ) -> [Goal] {
+        // Während das Onboarding offen stand, kann der Erstimport aus iCloud Anker gebracht
+        // haben. Dann ist das hier kein neuer Nutzer mehr, und es wird **nichts** angelegt:
+        // sonst stünden seine echten Anker neben vier erfundenen.
+        guard week.goalList.filter(isUserCreated).isEmpty else { return [] }
+
         var created: [Goal] = []
 
         for (index, title) in titles.prefix(GoalOrdering.maxAnchors).enumerated() {

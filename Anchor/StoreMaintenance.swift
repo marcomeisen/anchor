@@ -159,16 +159,51 @@ enum StoreMaintenance {
     /// Absichtlich nicht generisch: `@Model`-Typen erben aus `PersistentModel` ein
     /// `id: PersistentIdentifier`, das hier von der eigenen `id: UUID` verdeckt wird —
     /// in generischem Code ist dann nicht mehr eindeutig, welches `id` gemeint ist.
+    /// Wer bei doppelten Wochen überlebt: **die inhaltsreichere**, bei Gleichstand die kleinere
+    /// UUID.
+    ///
+    /// Vorher entschied allein die UUID, also der Zufall. Das war der Kern eines gemeldeten
+    /// Datenfehlers: installiert man die App neu, legt das Onboarding eine eigene Woche für
+    /// denselben Montag an, während der iCloud-Erstimport dieselbe Woche noch bringt. Gewann die
+    /// Onboarding-Woche, belegten ihre vier frischen Anker die sichtbaren Plätze und die echten
+    /// rutschten in den Überschuss — von außen nicht von „überschrieben" zu unterscheiden.
+    ///
+    /// Der Gleichstandsentscheid muss geräteunabhängig sein: sonst führen zwei Geräte dieselben
+    /// Duplikate verschieden zusammen und laufen auseinander.
     private static func electSurvivor(_ candidates: [Week]) -> Week? {
-        candidates.min { $0.id.uuidString < $1.id.uuidString }
+        candidates.min { left, right in
+            let leftWeight = contentWeight(left), rightWeight = contentWeight(right)
+            if leftWeight != rightWeight { return leftWeight > rightWeight }
+            return left.id.uuidString < right.id.uuidString
+        }
     }
 
+    private static func contentWeight(_ week: Week) -> Int {
+        week.goalList.filter(WeekPlanning.isUserCreated).count
+            + week.dayList.reduce(0) { $0 + $1.taskList.count }
+            + (week.reflection?.isEmpty == false ? 1 : 0)
+    }
+
+    /// Dieselbe Regel für doppelte Tage: der mit mehr Aufgaben führt, damit Notizen und Fokus
+    /// des benutzten Tages die Grundlage bleiben.
     private static func electSurvivor(_ candidates: [Day]) -> Day? {
-        candidates.min { $0.id.uuidString < $1.id.uuidString }
+        candidates.min { left, right in
+            if left.taskList.count != right.taskList.count {
+                return left.taskList.count > right.taskList.count
+            }
+            return left.id.uuidString < right.id.uuidString
+        }
     }
 
     private static func merge(_ duplicate: Week, into survivor: Week, modelContext: ModelContext) {
-        for goal in duplicate.goalList {
+        // Beide Wochen numerieren ihre Anker ab 0. Ohne Umnumerieren stehen nach dem
+        // Zusammenführen zwei Ziele auf Platz 0, und beim Gleichstand entscheidet die UUID,
+        // welche vier sichtbar bleiben — der Nutzer sähe seine echten Anker verschwinden und
+        // fremde an ihrer Stelle. Die Ziele der überlebenden Woche behalten deshalb ihre
+        // Plätze, die der doppelten kommen dahinter.
+        let offset = (survivor.goalList.map(\.order).max() ?? -1) + 1
+        for (index, goal) in GoalOrdering.sorted(duplicate.goalList).enumerated() {
+            goal.order = offset + index
             goal.week = survivor
             if !survivor.goalList.contains(where: { $0.id == goal.id }) {
                 survivor.appendGoal(goal)

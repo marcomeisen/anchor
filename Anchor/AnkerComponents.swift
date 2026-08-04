@@ -5,70 +5,6 @@ import UniformTypeIdentifiers
 import UIKit
 #endif
 
-struct AnchorGlyph: View {
-    var stroke: Color = .white
-
-    var body: some View {
-        GeometryReader { proxy in
-            let side = min(proxy.size.width, proxy.size.height)
-            let lineWidth = max(side * 0.08, 1.2)
-            let center = CGPoint(x: proxy.size.width / 2, y: proxy.size.height / 2)
-
-            ZStack {
-                // Das Rechteckgebot gilt fuer Flaechen und Bedienelemente. Das Ankersymbol ist
-                // eine Zeichnung — sein Ring ist rund. design-guard: erlaubt
-                Circle()
-                    .stroke(stroke, lineWidth: lineWidth)
-                    .frame(width: side * 0.24, height: side * 0.24)
-                    .position(x: center.x, y: center.y - side * 0.28)
-
-                Path { path in
-                    path.move(to: CGPoint(x: center.x, y: center.y - side * 0.16))
-                    path.addLine(to: CGPoint(x: center.x, y: center.y + side * 0.28))
-
-                    path.move(to: CGPoint(x: center.x - side * 0.20, y: center.y + side * 0.02))
-                    path.addLine(to: CGPoint(x: center.x + side * 0.20, y: center.y + side * 0.02))
-
-                    path.move(to: CGPoint(x: center.x - side * 0.34, y: center.y + side * 0.14))
-                    path.addLine(to: CGPoint(x: center.x - side * 0.23, y: center.y + side * 0.27))
-                    path.addQuadCurve(
-                        to: CGPoint(x: center.x, y: center.y + side * 0.32),
-                        control: CGPoint(x: center.x - side * 0.08, y: center.y + side * 0.36)
-                    )
-                    path.addQuadCurve(
-                        to: CGPoint(x: center.x + side * 0.23, y: center.y + side * 0.27),
-                        control: CGPoint(x: center.x + side * 0.08, y: center.y + side * 0.36)
-                    )
-                    path.addLine(to: CGPoint(x: center.x + side * 0.34, y: center.y + side * 0.14))
-                }
-                .stroke(stroke, style: StrokeStyle(lineWidth: lineWidth, lineCap: .round, lineJoin: .round))
-            }
-        }
-            .aspectRatio(1, contentMode: .fit)
-            .accessibilityHidden(true)
-    }
-}
-
-struct DaiventoLogo: View {
-    var body: some View {
-        Image("FokusringB")
-            .resizable()
-            .scaledToFit()
-            .accessibilityHidden(true)
-    }
-}
-
-struct AnchorBadge: View {
-    var color: Color = AnkerColor.accentFill
-
-    var body: some View {
-        Rectangle()
-            .fill(color.opacity(0.12))
-            .frame(width: 26, height: 26)
-            .overlay(DaiventoLogo().padding(AnkerSpacing.s1))
-    }
-}
-
 struct SectionLabel: View {
     let title: String
 
@@ -82,59 +18,19 @@ struct SectionLabel: View {
     }
 }
 
-struct GoalBanner: View {
-    /// `.poster` ist die **eine** Flaeche der App, auf der der Akzent voll laeuft. Ueberall
-    /// sonst ist Rot ein Signal und keine Farbe — das Systemblatt laesst genau eine Ausnahme zu.
-    enum Emphasis { case plain, poster }
-
-    let label: String
-    let title: String
-    var emphasis: Emphasis = .plain
-
-    var body: some View {
-        HStack(spacing: AnkerSpacing.s3) {
-            VStack(alignment: .leading, spacing: AnkerSpacing.s1) {
-                Text(label)
-                    .ankerType(AnkerType.eyebrow)
-                    .foregroundStyle(labelColor)
-                Text(title)
-                    .ankerType(emphasis == .poster ? AnkerType.title3 : AnkerType.subheadline)
-                    .foregroundStyle(titleColor)
-                    .lineLimit(2)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            Spacer(minLength: 0)
-        }
-        .padding(.vertical, AnkerSpacing.s4)
-        .padding(.horizontal, AnkerSpacing.s4)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(emphasis == .poster ? AnkerColor.accentMark : AnkerColor.surface)
-        .ankerEdge(.top, color: edgeColor)
-        .ankerEdge(.bottom, color: edgeColor)
-        .accessibilityElement(children: .combine)
-    }
-
-    private var labelColor: Color {
-        emphasis == .poster ? AnkerColor.accent[300] : AnkerColor.inkSecond
-    }
-
-    private var titleColor: Color {
-        emphasis == .poster ? AnkerColor.onAccent : AnkerColor.ink
-    }
-
-    private var edgeColor: Color {
-        emphasis == .poster ? AnkerColor.onAccent : AnkerColor.divider
-    }
-}
-
 struct PriorityTag: View {
     let priority: Priority
 
+    /// Die Marke traegt Schrift, also muss jede Stufe 4,5:1 mit `onAccent` halten.
+    ///
+    /// Deshalb **nicht** `accentMark`: das ist die 3:1-Markenfarbe fuer Linien und Icons, und mit
+    /// einem Buchstaben darauf kam sie auf 4,20:1. Die Stufen laufen jetzt ueber die Rampe —
+    /// A tiefer als B, C aus der Textrampe.
     var color: Color {
         switch priority {
-        case .a: AnkerColor.accentMark
+        case .a: AnkerColor.accent[700]
         case .b: AnkerColor.accentFill
-        case .c: AnkerColor.neutral[500]
+        case .c: AnkerColor.inkSecond
         }
     }
 
@@ -155,12 +51,12 @@ struct TaskCheckmark: View {
     var size: CGFloat = 22
 
     var body: some View {
-        Rectangle()
+        RoundedRectangle(cornerRadius: AnkerRadius.check, style: .continuous)
             .fill(isDone ? AnkerColor.ink : Color.clear)
             .overlay(
                 // Auch offen eine 2px-Kante in Tinte, nicht in der Trennlinienfarbe: das
                 // Kaestchen ist ein Bedienelement und muss als solches lesbar sein.
-                Rectangle()
+                RoundedRectangle(cornerRadius: AnkerRadius.check, style: .continuous)
                     .stroke(AnkerColor.ink, lineWidth: AnkerBorder.rule)
             )
             .overlay {
@@ -171,7 +67,7 @@ struct TaskCheckmark: View {
                 }
             }
             .frame(width: size, height: size)
-            .contentShape(Rectangle())
+            .contentShape(RoundedRectangle(cornerRadius: AnkerRadius.check, style: .continuous))
             .accessibilityLabel(isDone ? "Erledigt" : "Offen")
     }
 }
@@ -226,8 +122,7 @@ struct TaskTitleField: View {
             // Die 2px-Kante im Akzent ist dieselbe, mit der das System ueberall den Fokus
             // auszeichnet — kein eigenes Idiom fuer diesen Fall.
             .padding(.horizontal, AnkerSpacing.s1)
-            .background(AnkerColor.ground, in: Rectangle())
-            .overlay(Rectangle().stroke(AnkerColor.accentMark, lineWidth: AnkerBorder.focus))
+            .ankerControl(fill: AnkerColor.ground, stroke: AnkerColor.accentMark)
             .task {
                 draft = task.title
                 // Ein `@FocusState` unmittelbar beim Erscheinen zu setzen greift nicht
@@ -301,10 +196,10 @@ struct TaskCard: View {
     private var anchorLabel: String {
         guard let goal = task.linkedGoal else { return "Ohne Anker" }
         guard let week = goal.week,
-              let index = week.goalList.firstIndex(where: { $0.id == goal.id }) else {
+              let number = GoalOrdering.anchorNumber(of: goal, in: week) else {
             return goal.title
         }
-        return "Anker \(index + 1) · \(goal.title)"
+        return "Anker \(number) · \(goal.title)"
     }
 
     private var priorityColor: Color {
@@ -515,7 +410,7 @@ struct TaskCard: View {
                 .ankerIcon(AnkerIconSize.xs)
                 .foregroundStyle(tint)
                 .frame(width: 26, height: 26)
-                .background((isDestructive ? tint.opacity(0.10) : AnkerColor.divider), in: Rectangle())
+                .ankerControl(fill: isDestructive ? tint.opacity(0.10) : AnkerColor.divider, stroke: nil)
         }
         .buttonStyle(.plain)
         .help(help)
@@ -530,8 +425,7 @@ struct TaskCard: View {
                 .ankerType(AnkerType.caption)
                 .foregroundStyle(AnkerColor.inkSecond)
                 .frame(width: 26, height: 26)
-                .background(AnkerColor.surface, in: Rectangle())
-                .overlay(Rectangle().stroke(AnkerColor.divider, lineWidth: AnkerBorder.rule))
+                .ankerControl()
         }
         .buttonStyle(.plain)
         .accessibilityLabel("Aufgabenaktionen")
@@ -895,8 +789,7 @@ private struct TaskContextPreviewCard: View {
         }
         .padding(AnkerSpacing.s4)
         .frame(width: 260, alignment: .leading)
-        .background(AnkerColor.surface)
-        .clipShape(Rectangle())
+        .ankerCard()
     }
 }
 
@@ -915,9 +808,7 @@ private struct TaskDragPreviewCard: View {
         .padding(.horizontal, AnkerSpacing.s3)
         .padding(.vertical, AnkerSpacing.s3)
         .frame(width: 230, alignment: .leading)
-        .background(AnkerColor.surface)
-        .overlay(Rectangle().stroke(AnkerColor.divider, lineWidth: AnkerBorder.rule))
-        .clipShape(Rectangle())
+        .ankerCard()
     }
 }
 
@@ -925,10 +816,10 @@ private struct SelectionCheckmark: View {
     let isSelected: Bool
 
     var body: some View {
-        Rectangle()
+        RoundedRectangle(cornerRadius: AnkerRadius.check, style: .continuous)
             .fill(isSelected ? AnkerColor.accentFill : Color.clear)
             .overlay(
-                Rectangle().stroke(isSelected ? AnkerColor.accentFill : AnkerColor.dividerStrong,
+                RoundedRectangle(cornerRadius: AnkerRadius.check, style: .continuous).stroke(isSelected ? AnkerColor.accentFill : AnkerColor.dividerStrong,
                                    lineWidth: AnkerBorder.rule)
             )
             .overlay {
@@ -939,7 +830,7 @@ private struct SelectionCheckmark: View {
                 }
             }
             .frame(width: 20, height: 20)
-            .contentShape(Rectangle())
+            .contentShape(RoundedRectangle(cornerRadius: AnkerRadius.check, style: .continuous))
             .accessibilityLabel(isSelected ? "Ausgewählt" : "Nicht ausgewählt")
     }
 }
@@ -986,65 +877,6 @@ extension View {
         } else {
             self
         }
-    }
-}
-
-struct WeekDot: View {
-    let date: Date
-    let isActive: Bool
-    let hasGoal: Bool
-    var isDropTarget = false
-
-    private var weekday: String {
-        AnkerDateFormat.weekdayShort(date)
-            .replacing(".", with: "")
-    }
-
-    var body: some View {
-        VStack(spacing: AnkerSpacing.s2) {
-            Text(weekday)
-                .ankerType(AnkerType.caption)
-                .foregroundStyle(AnkerColor.inkSecond)
-
-            ZStack(alignment: .bottom) {
-                Text(AnkerDateFormat.dayNumber(date))
-                    .ankerType(AnkerType.caption)
-                    .foregroundStyle(AnkerColor.ink)
-                    .frame(width: 28, height: 28)
-                    .background(isActive ? AnkerColor.accentFill : AnkerColor.surface)
-                    .overlay(
-                        Rectangle().stroke(
-                            isActive ? Color.clear : AnkerColor.divider,
-                            lineWidth: AnkerBorder.rule
-                        )
-                    )
-                    .overlay {
-                        if isDropTarget {
-                            Rectangle()
-                                .stroke(AnkerColor.accentMark, lineWidth: AnkerBorder.rule)
-                                .padding(-3)
-                        } else if isActive {
-                            Rectangle()
-                                .stroke(AnkerColor.surface, lineWidth: AnkerBorder.rule)
-                                .padding(-2)
-                            Rectangle()
-                                .stroke(AnkerColor.accentMark, lineWidth: AnkerBorder.rule)
-                                .padding(-4)
-                        }
-                    }
-
-                if hasGoal {
-                    Rectangle()
-                        .fill(AnkerColor.neutral[500])
-                        .frame(width: 4, height: 4)
-                        .offset(y: 2)
-                }
-            }
-            .frame(width: 32, height: 32)
-        }
-        .scaleEffect(isDropTarget ? 1.12 : 1)
-        .animation(.easeOut(duration: 0.12), value: isDropTarget)
-        .accessibilityElement(children: .combine)
     }
 }
 
@@ -1107,8 +939,10 @@ struct ChipButton: View {
                 .foregroundStyle(isPrimary ? AnkerColor.onAccent : AnkerColor.inkSecond)
                 .padding(.horizontal, AnkerSpacing.s3)
                 .padding(.vertical, AnkerSpacing.s2)
-                .background(isPrimary ? AnkerColor.accentFill : AnkerColor.surface)
-                .overlay(Rectangle().stroke(AnkerColor.divider, lineWidth: AnkerBorder.rule))
+                .ankerControl(
+                    fill: isPrimary ? AnkerColor.accentFill : AnkerColor.surface,
+                    stroke: isPrimary ? nil : AnkerColor.divider
+                )
         }
         .buttonStyle(.plain)
     }
@@ -1139,9 +973,15 @@ struct GlassTabBar: View {
                 Text(title)
                     .ankerType(AnkerType.microLabel)
             }
-            .foregroundStyle(isSelected(destination) ? AnkerColor.accentFill : AnkerColor.inkSecond)
+            .foregroundStyle(isSelected(destination) ? AnkerColor.accentInk : AnkerColor.inkSecond)
+            // 44pt Mindesthoehe ist Apples Zielgroesse; die Pille darunter ist das
+            // anfassbare Objekt und deshalb rund.
             .frame(maxWidth: .infinity, minHeight: 44)
-            .background(isSelected(destination) ? AnkerColor.accentFill.opacity(0.10) : Color.clear, in: Rectangle())
+            .padding(.vertical, AnkerSpacing.s1)
+            .background(
+                isSelected(destination) ? AnkerColor.accent[100] : Color.clear,
+                in: RoundedRectangle(cornerRadius: AnkerRadius.control, style: .continuous)
+            )
         }
         .buttonStyle(.plain)
         .accessibilityLabel(title)
@@ -1157,25 +997,3 @@ struct GlassTabBar: View {
     }
 }
 
-/// Volle Breite, Beschriftung buendig links. Ersetzt den schwebenden Rundknopf: der war
-/// Glas, Verlauf, Lichtreflex, weisse Kante und Schatten in einem — fuenf Verstoesse in einer
-/// Ansicht. Ab Stufe 2 uebernimmt die Erfassungszeile diese Stelle.
-struct AnkerPrimaryActionBar: View {
-    var title: LocalizedStringKey = "Neue Aufgabe"
-    var icon: AnkerIcon = .add
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            AnkerLabel(title, icon: icon, size: AnkerIconSize.m, style: AnkerType.label)
-                .foregroundStyle(AnkerColor.onAccent)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, AnkerSpacing.s4)
-                .frame(height: 48)
-                .background(AnkerColor.accentFill)
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(title)
-    }
-}

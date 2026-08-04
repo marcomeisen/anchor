@@ -51,6 +51,15 @@ enum AnkerColor {
 
     static let ground = Color(light: "#F3F2F2", dark: "#1A1918")
     static let surface = Color(light: "#EAE9E9", dark: "#2D2B2B")
+    /// Die Flaeche einer **Karte**, also einer Liste, die schwebt.
+    ///
+    /// Hell geht sie ueber den Grund hinaus (Weiss), dunkel darueber (aufgehellt). Beides ist
+    /// „eine Ebene naeher" — im Dunkeln kann eine Karte nicht heller als Weiss werden, deshalb
+    /// waere eine reine Rampenspiegelung hier falsch.
+    static let card = Color(light: "#FFFFFF", dark: "#242221")
+    /// Trenner **innerhalb** einer Karte. Schwaecher als `divider`: auf der hellen Karte darf die
+    /// Linie nicht staerker wirken als auf dem Grund.
+    static let cardDivider = Color(light: "#E6E3E3", dark: "#332F2E")
 
     // MARK: - Schrift
 
@@ -76,12 +85,22 @@ enum AnkerColor {
     /// Marke: 2px-Regeln, Fokusring, Marker, Vollflaeche. Braucht nur 3:1.
     static let accentMark = Color(light: "#EC3013", dark: "#FF563C")
     /// Flaeche unter weisser Schrift. Eine Rampenstufe tiefer, damit 4,74:1 statt 4,20:1.
-    static let accentFill = Color(hex: "#DD2B0F")
+    /// Flaeche unter Schrift.
+    ///
+    /// Hell eine Rampenstufe tiefer als die Marke, damit weisse Schrift 4,74:1 statt 4,20:1
+    /// erreicht. **Dunkel geht sie hoch** statt zu bleiben: `#DD2B0F` auf dunklem Grund ist als
+    /// Flaeche kaum noch zu sehen — sie saeuft ab. Die Folge ist, dass `onAccent` im Dunkeln
+    /// kippen muss; siehe dort.
+    static let accentFill = Color(light: "#DD2B0F", dark: "#FF563C")
     /// Akzent **als Schrift** auf Grund oder Flaeche. 6,41:1 hell, 5,56:1 dunkel.
     static let accentInk = Color(light: "#AE1800", dark: "#FF563C")
     /// Schrift auf `accentFill` und auf dem Plakat. Bewusst statisch — dynamisch wuerde es
     /// die Plakatflaeche invertieren.
-    static let onAccent = Color(hex: "#FFFFFF")
+    /// Schrift **auf** `accentFill`.
+    ///
+    /// Kippt mit der Fuellung: hell steht Weiss auf dunklem Rot, dunkel steht die Tinte auf
+    /// hellem Rot. Fest auf Weiss zu bleiben waere im Dunkelmodus 1,9:1 — unlesbar.
+    static let onAccent = Color(light: "#FFFFFF", dark: "#1A1918")
 
     // MARK: - Linien
 
@@ -106,11 +125,26 @@ enum AnkerColor {
     static func goalTint(_ hex: String) -> Color {
         let normalized = hex.uppercased()
         if let mapped = legacyGoalTints[normalized] { return mapped }
+        // Die angebotenen Zielfarben **sind** Rampenstufen. Ueber die spiegelnde Rampe
+        // aufgeloest, kippen sie im Dunkelmodus mit — sonst ist ein dunkles Ziel wie `#2D2B2B`
+        // als Balken auf dunklem Grund nicht mehr zu sehen. Ein Wert, der zu keiner Stufe passt,
+        // bleibt wie er ist: es ist Nutzereingabe, keine Rampe.
+        if let step = rampStep(for: normalized) { return step }
         return Color(hex: hex)
     }
 
+    /// Findet die Rampenstufe zu einem gespeicherten Hexwert.
+    private static func rampStep(for hex: String) -> Color? {
+        if let index = Raw.neutral.firstIndex(of: hex) { return neutral[(index + 1) * 100] }
+        if let index = Raw.accent.firstIndex(of: hex) { return accent[(index + 1) * 100] }
+        return nil
+    }
+
     /// Auswahl im Zielformular. Tinte und Rampe statt Regenbogen.
-    /// Jede Stufe traegt weisse Schrift mit mindestens 4,5:1 — geprueft in `AnkerThemeTests`.
+    ///
+    /// Die Werte sind Rampenstufen und spiegeln deshalb im Dunkelmodus mit. Sie tragen **keine**
+    /// Schrift — sie sind Balkenfarbe, Marker und Farbfeld. Was sie halten muessen, ist 3:1 gegen
+    /// den Grund; geprueft in `AnkerThemeTests`.
     static let goalTintOptions = ["#DD2B0F", "#2D2B2B", "#444141", "#605D5D"]
 
     /// Monate unterscheidbar, ohne Bedeutung zu behaupten: eine Wanderung durch die
@@ -156,11 +190,45 @@ enum AnkerSpacing {
 }
 
 enum AnkerBorder {
-    /// Trennlinien und Rahmen. Es gibt keine Haarlinie.
+    /// **Sektionsgrenze.** Trennt Bereiche, die verschiedene Fragen beantworten.
     static let rule: CGFloat = 2
+    /// **Trenner innerhalb einer Liste.**
+    ///
+    /// Runde 3 nimmt die Regel „es gibt keine Haarlinie" für diesen einen Fall zurück, mit
+    /// Begründung aus dem Entwurf: 2px zwischen *jeder* Zeile liest sich wie ein Tabellengitter
+    /// statt wie eine Liste. Die Sektionsgrenze bleibt 2px — der Unterschied ist die Aussage.
+    static let hairline: CGFloat = 1
     static let focus: CGFloat = 2
     /// Plakatrahmen und Marker.
     static let heavy: CGFloat = 3
+}
+
+/// Radius nach Rolle, nicht nach Zahl.
+///
+/// Runde 3 („Objekte werden rund. Struktur bleibt scharf.") trennt zwei Mengen, statt den
+/// Nullradius aufzuweichen: **rund** ist, was man anfasst oder was schwebt — Knöpfe, Felder,
+/// Karten, Häkchen, Filter-Pills. **Scharf** bleibt die Struktur — das 4×7-Raster, die
+/// Fortschrittsbalken, alle Sektionskanten und das Rückblick-Plakat. Daten und Flächen sind
+/// keine Objekte.
+///
+/// Es gibt bewusst keinen `AnkerRadius.small`/`.medium`: eine Rolle sagt, *warum* etwas rund ist,
+/// eine Größe nur *wie sehr*. Ein neuer Wert braucht eine neue Rolle.
+enum AnkerRadius {
+    /// Knöpfe und Eingabefelder.
+    static let control: CGFloat = 8
+    /// Karten, die eine Liste tragen, und getönte Hinweisflächen.
+    static let card: CGFloat = 10
+    /// Das Erledigt-Kästchen.
+    static let check: CGFloat = 4
+    /// Auswahlkachel in der Seitenleiste — dasselbe Maß wie ein Knopf, es ist einer.
+    static let tile = control
+}
+
+extension AnkerColor {
+    /// Die enge Schattenlage einer Karte — macht die Kante sichtbar.
+    static let elevationNear = Color(hex: "#2D2B2B1A", darkHex: "#00000066")
+    /// Die weite Lage — macht die Ebene sichtbar.
+    static let elevationFar = Color(hex: "#2D2B2B0F", darkHex: "#00000040")
 }
 
 /// Das Systemblatt definiert `shadow sm/md/lg` (0 1px 2px @14 %, 0 3px 10px @16 %,

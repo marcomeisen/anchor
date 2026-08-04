@@ -329,14 +329,16 @@ private struct MatrixTaskChip: View {
             .padding(.horizontal, AnkerSpacing.s2)
             .padding(.vertical, AnkerSpacing.s1 + 3)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(task.isDone ? Color.clear : AnkerColor.ground)
-            .overlay(Rectangle().stroke(AnkerColor.divider, lineWidth: AnkerBorder.rule))
+            // Das Raster ist Struktur und bleibt scharf — der Chip darin ist das, was man
+            // anfasst und in eine andere Zelle zieht.
+            .ankerControl(fill: task.isDone ? Color.clear : AnkerColor.ground)
             // Prioritaet A als Kante links: sichtbar, ohne eine zweite Farbe einzufuehren.
             .overlay(alignment: .leading) {
                 Rectangle()
                     .fill(task.priority == .a ? AnkerColor.accentMark : Color.clear)
                     .frame(width: AnkerBorder.heavy)
             }
+            .clipShape(RoundedRectangle(cornerRadius: AnkerRadius.control, style: .continuous))
     }
 
     @ViewBuilder

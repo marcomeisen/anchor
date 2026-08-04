@@ -2,6 +2,82 @@
 
 ## 2026-08-04
 
+### Entwurfsrunde 3 — Objekte werden rund, Struktur bleibt scharf
+
+Grundlage ist `Daivento Apple-getunt.dc.html`, umgesetzt ist **3b** fuer iOS und Mac. Der Entwurf
+weicht den Nullradius nicht auf, er trennt zwei Mengen: Apple rundet, was man **anfasst oder was
+schwebt**; Modernist setzt Nullradius fuer **Struktur**.
+
+- **Rund** sind jetzt Knoepfe und Felder (8pt), Karten (10pt), das Erledigt-Kaestchen (4pt) und Auswahlkacheln — immer `style: .continuous`, nie `.circular`. `AnkerRadius` benennt **Rollen**, keine Groessen: eine Rolle sagt, warum etwas rund ist.
+- **Scharf** bleiben das 4x7-Raster, die Fortschrittsbalken, alle Sektionskanten und das Rueckblick-Plakat. Daten und Flaechen sind keine Objekte.
+- **2px trennt Bereiche, 1px trennt Zeilen** (`AnkerRule.Weight`). Eine 2px-Kante an jeder Listenzeile liest sich wie ein Tabellengitter statt wie eine Liste. Auf dem Mac gehen damit auch Fenster- und Segmenttrenner auf Hairline.
+- **Elevation statt Rahmen:** Listen sitzen in `.ankerCard()` mit zwei Schattenlagen. Das ist die einzige Stelle, an der „nichts schwebt" bewusst zurueckgenommen ist; `.shadow(` bleibt ausserhalb der Tokendateien verboten, damit es dabei bleibt.
+- **Mac:** die Sidebar-Auswahl ist eine 8pt-Kachel im Akzent statt einer Kantenmarke. Die Kennzahlenreihe behaelt ihre 2px-Kanten — sie ist Struktur.
+- **Die Schranken pruefen jetzt nicht mehr *ob*, sondern *wie*:** roher Radius, fehlendes `.continuous` und `.circular` sind Verstoesse; das pauschale Radius- und Kapselverbot ist weg. 15 Schranken bleiben es.
+- **Zwei echte Fehler kamen dabei heraus**, beide im Dunkelmodus und beide durch den gekippten Akzent aufgedeckt:
+  - `onAccent` war fest Weiss. Im Dunkelmodus stand der Haken damit weiss auf der hellen Kaestchenfuellung — unsichtbar. Jetzt kippt er mit der Fuellung auf Tinte; als Test festgehalten.
+  - Die angebotenen Zielfarben sind Rampenstufen, wurden aber als rohe Hexwerte aufgeloest. Ein dunkles Ziel wie `#2D2B2B` war als Balken auf dunklem Grund nicht zu sehen (1,25:1). Sie laufen jetzt ueber die spiegelnde Rampe.
+- Der Kontrasttest pruefte ausserdem eine Paarung, die es in der App nicht gibt (weisse Schrift auf Zielfarben). Er prueft jetzt, was wirklich vorkommt: Zielfarben als Marke gegen den Grund, 3:1 in beiden Modi.
+- Vier neue Tests halten die Mengentrennung fest: Radiusrollen und ihre Ordnung, Sektions- gegen Zeilenlinie, Karte heller als ihr Grund in beiden Modi, Zeilentrenner schwaecher als ein Rahmen. 133 Tests gruen, beide Plattformen.
+
+### Entwurfsrunde 3b auf alle Flaechen gezogen
+
+Runde 3 hatte die Mengentrennung eingefuehrt, aber nur dort angewandt, wo der Entwurf zeichnet.
+Der Rest lief weiter auf dem alten Muster `background(surface)` + `Rectangle().stroke(divider, 2px)`
++ `clipShape(Rectangle())` — 29 Stellen ueber neun Dateien.
+
+- **Vier Flaechen-Idiome statt eines handgebauten Musters.** `.ankerCard()` traegt Inhalt und schwebt, `.ankerCard(elevated: false)` ist eine getoente Hinweisflaeche, `.ankerField()` ein Eingabefeld, das neue `.ankerControl()` ein Knopf oder eine Auswahlkachel. `.ankerPanel()` bleibt der scharfen Struktur.
+- **Neun Eingabefelder waren noch eckig** — Aufgabentitel in drei Blaettern, Tagesfokus, Notizen, Onboarding-Anker, Rueckblickantwort, das Inline-Titelfeld. Ebenso alle Schrittpfeile, Wochenanzeigen, Tagesauswahlen, Erfassungschips und Farbfelder.
+- **Der Systemschalter hatte sein eigenes Kaestchen** (scharfes Quadrat mit Innenquadrat). Er benutzt jetzt dieselbe Form wie das Erledigt-Kaestchen an einer Aufgabe — zwei Formen fuer denselben Ja-Nein-Zustand waren zwei Aussagen ueber eine Sache.
+- **Der Zeitplan im Tagesdetail war ein Tabellengitter:** jede Zeile mit eigener 2px-Kante. Jetzt eine Karte mit Haarlinien darin. Dasselbe fuer die iCloud-Diagnoseliste, deren `Divider()` durch `AnkerRule(weight: .row)` ersetzt sind.
+- **Segmentleisten** (Ankerstreifen, Ansichtswechsel Heute/Woche/Jahr, Behalten/Streichen/Verankern) werden als ein gerundetes Objekt geklippt, damit die Auswahlfuellung nicht eckig an die runde Kante stoesst.
+- **Zeilentrenner auf Haarlinie** in Archiv, Onboarding, Ankerliste, Uebertragsliste und Sidebar-Fuss. Die Kennzahlengitter behalten ihre 2px — sie sind Struktur.
+- Undo-Hinweis, Mehrfachauswahl-Leiste und beide Ziehvorschauen sind Karten: sie schweben buchstaeblich ueber dem Inhalt.
+
+**Drei Fehlerklassen kamen dabei heraus, alle mit Test oder Schranke abgesichert:**
+
+- **`#9B9797` als Schrift, an sechs Stellen.** Genau der Wert, den das Projekt fuer die Mikrobeschriftung schon einmal als unlesbar verworfen hatte — auf der iCloud-Statuszeile gemessene 2,4:1. Alle sechs laufen jetzt ueber die Textrampe. Und `PriorityTag` benutzte `accentMark` als Flaeche mit einem Buchstaben darauf: das ist die 3:1-Markenfarbe, gemessen 4,20:1. Die drei Stufen kommen jetzt aus der Rampe.
+- **Die Ankerreihenfolge kam siebenmal aus `week.goalList`.** Diese Beziehung ist nach einem CloudKit-Sync ungeordnet: „Anker 2" vor einem Titel war damit eine geraeteabhaengige Aussage, der Ankerstreifen auf Heute zeigte alle Ziele statt der vier, und der Tagesfokus fiel auf ein zufaelliges Ziel zurueck. Alles laeuft jetzt ueber `GoalOrdering`; eine neue Schranke faengt den Rueckfall.
+- **Fuenf Ansichten ohne einen einzigen Aufrufer** (`AnchorGlyph`, `GoalBanner`, `WeekDot`, `AnkerPrimaryActionBar`, `TimeBlockRow`) sind entfernt statt mitgezogen — sonst waeren sie eine zweite Sprache fuer nichts.
+
+Drei neue Schranken: rohes `.white`/`.black` (die bisherige Regel prueste nur `Color.white` und hat
+die Dunkelmodusfehler durchgelassen), `clipShape(Rectangle())` und ungeordnete Ankerzugriffe. 18
+Schranken, 128 Unit- plus 6 UI-Tests gruen, beide Plattformen. Ein neuer Test misst getoente
+Hinweisflaechen **zusammengesetzt** statt im Aufruf — dort stirbt Kontrast unbemerkt, und genau er
+hat die 2,4:1 gefunden.
+
+### Datenfehler behoben: Onboarding auf einem neuen Gerät
+
+Gemeldet als „das Onboarding laesst sich nach dem iCloud-Sync nicht abbrechen, dadurch werden die
+Staende der anderen Geraete mit den Onboarding-Inhalten ueberschrieben". Dahinter steckten **drei**
+getrennte Defekte. Jeder hat jetzt seinen Test.
+
+- **Das Onboarding fragte nur die laufende Woche.** `WeekPlanning.needsOnboarding` prueft jetzt den ganzen Bestand: ein echtes Wochenziel oder eine Aufgabe irgendwo heisst, dass dieser Nutzer eingerichtet ist. Vorher entschied allein, ob die *laufende* Woche Anker hat — und die hat am Montagmorgen regelmaessig keine. Ein neu installiertes Geraet landete damit im Onboarding, obwohl der ganze iCloud-Bestand schon da war.
+- **Es gab keinen Ausweg.** Sobald irgendeine Woche existierte, wurde `hasCompletedOnboarding` gar nicht mehr gelesen — ein Ueberspringen waere wirkungslos geblieben. Das Flag zaehlt jetzt wieder, und es gibt „Spaeter einrichten" in beiden Schritten. Die App ist auch leer benutzbar: Erfassungszeile und der Knopf fuer ein neues Wochenziel sind da.
+- **Beim Zusammenfuehren doppelter Wochen entschied die UUID, welche vier Anker sichtbar bleiben.** Legt ein neues Geraet eine Woche an, waehrend der Erstimport dieselbe Woche noch bringt, entstehen zwei Datensaetze fuer denselben Montag. Beide numerieren ihre Anker ab 0; nach dem Zusammenfuehren standen zwei Ziele auf Platz 0, und der Gleichstand ging nach UUID. Gewann die Onboarding-Woche, belegten ihre vier frischen Anker die sichtbaren Plaetze und die echten rutschten in den Ueberschuss — von aussen nicht von „ueberschrieben" zu unterscheiden. Jetzt ueberlebt die **inhaltsreichere** Woche (Ziele, Aufgaben, Rueckblick), bei echtem Gleichstand weiter die kleinere UUID, damit zwei Geraete nicht auseinanderlaufen. Die Ziele der ueberlebenden Woche behalten ihre Plaetze, die der doppelten kommen dahinter.
+- **Zwei Sicherheitsnetze fuer das Rennen:** `createOnboardingAnchors` legt nichts an, wenn die Woche schon echte Anker hat, und `completeOnboarding` springt in diesem Fall direkt in die App. Kam der Import also zwischen Anzeige und Tippen an, entstehen keine acht Anker aus vier Eingaben.
+- **Waehrend der Erstimport laufen kann, wird nicht nach Ankern gefragt.** Stattdessen ein ehrlicher Zwischenschritt („iCloud holt deine Wochen") mit zwei Auswegen. Nach acht Sekunden geht es von selbst weiter, damit ein wirklich neuer Nutzer nicht auf einen Spinner starrt, der nie endet.
+- Ein Bestandstest hielt das alte Verhalten fest und ist mitgeaendert — samt Begruendung, warum der Vertrag sich aendert. Die Sorge dahinter (eine leere App haelt sich nach einer DSGVO-Loeschung fuer eingerichtet) traegt das Flag selbst: `DataPortability` entfernt es mit.
+- Zusammen 129 Tests gruen, beide Plattformen, alle 15 Schranken.
+
+### App-Icons Apple-konform
+
+- **macOS bekommt die gerundete Form mitgeliefert.** macOS maskiert App-Icons nicht — ein randloses Quadrat stand im Dock als harte Kante neben allen anderen Apps. Die sieben macOS-Groessen folgen jetzt Apples Raster: Koerper 824 von 1024 zentriert (also 100 Punkte Rand), Eckenradius 185,4, Rand transparent. Nachgemessen: exakt 9,77 % Rand bei 1024.
+- Die Ecke kommt aus SwiftUIs `RoundedRectangle(style: .continuous)`, nicht aus einem Kreisbogen. Apples Ecke ist eine fortlaufende Kurve; ein `CGPath(roundedRect:)` waere sichtbar kantiger.
+- **iOS bleibt bewusst randlos und ohne Rundung.** Dort maskiert das System selbst mit demselben Quadrat — eine mitgelieferte Rundung ergaebe eine doppelte Kante. Gepruefte Frage dabei: schneidet Apples Maske Rasterzellen ab? Gemessen **null** von 310.960 Rasterpunkten, in beiden Erscheinungen.
+- Damit sind die Dateien getrennt: `AppIcon-*` fuer iOS (randlos, RGB ohne Alpha), `AppIconMac-*` fuer macOS (gerundet, RGBA mit transparentem Rand). Vorher diente eine Datei beiden Zwecken, was sich ausschliesst.
+- Neu [Scripts/make-app-icons.swift](Scripts/make-app-icons.swift): erzeugt den Satz aus `assets/icon/`. Die macOS-Varianten sind abgeleitet, und ihre Vorschrift soll nachlesbar sein statt in sieben Dateien zu stecken. Geprueft, dass ein zweiter Lauf byteidentische Dateien liefert.
+- Das Menueleisten-Icon war schon konform und blieb unberuehrt: Form ueber Alpha, null farbige Punkte — nachgemessen, nicht angenommen.
+
+### Neues App-Icon
+
+- App-Icon ist die **4 mal 7 Matrix** — vier Anker, sieben Tage, das Datenmodell als Marke. Quelle sind die Vorlagen in `assets/icon/`. Alle macOS-Groessen von 16 bis 1024 sind echte Vorlagen statt hochskalierter Kopien; vorher diente eine 1024er Datei fuer 512@2x mit.
+- iOS bekommt eine eigene **dunkle** Variante (dieselbe Marke auf dunklem Grund) statt dreimal derselben hellen. Die getoente Variante bleibt die helle, wie zuvor.
+- **Der Alphakanal ist entfernt.** Der App Store lehnt iOS-App-Icons mit Alphakanal ab, auch einen vollstaendig deckenden — und die Vorlagen hatten einen. Gemessen war er ueberall deckend, das Abflachen also verlustfrei.
+- Neuer Menueleisten-Glyph (`MenuBarTemplate`, 18pt und 36pt, als Template): die Matrix auf vier Balken reduziert. Der Statusleistenknopf zeigt jetzt darauf.
+- Das alte Ringlogo ist weg: `FokusringB` und `FokusringBMenu` samt der Ansichten `DaiventoLogo` und `AnchorBadge`, die es benutzten — beide hatte niemand aufgerufen.
+- Beim Einbau lief ein Abflachen ueber `NSImage.draw` in einen selbst gesetzten `NSGraphicsContext` still ins Leere: ohne `NSApplication` zeichnet das nichts, die Bitmap blieb genullt, und beide 1024er Dateien kamen byteidentisch heraus. Aufgefallen an gleichen Hashes; ersetzt durch reines CoreGraphics.
+
 ### Aufgaben bearbeiten — eine Regel statt drei Sonderfaelle
 
 - **Das Kaestchen hakt ab, der Titel wird bearbeitet.** In der Matrix hakte vorher ein Klick auf die ganze Chipflaeche ab: jeder Versuch, eine Aufgabe anzusehen, aenderte ihren Zustand, und der Titel war per Klick gar nicht erreichbar. Der Chip hat jetzt ein eigenes 14pt-Kaestchen (statt 22pt — in einer schmalen Spalte bliebe sonst kein Platz fuer den Titel).

@@ -80,8 +80,10 @@ struct SidebarView: View {
             .frame(minWidth: 460, minHeight: 560)
 #endif
         }
+        // Hairline statt 2px: der Entwurf zieht die Fensterteilung auf dem Mac fein. 2px bleibt
+        // die Grenze zwischen Bereichen **innerhalb** einer Ansicht.
         .overlay(alignment: .trailing) {
-            AnkerRule(axis: .vertical)
+            AnkerRule(axis: .vertical, weight: .row)
                 .allowsHitTesting(false)
         }
         .navigationTitle("Daivento")
@@ -121,8 +123,7 @@ struct SidebarView: View {
         .padding(.vertical, AnkerSpacing.s2)
         .padding(.horizontal, AnkerSpacing.s2)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(AnkerColor.ground, in: Rectangle())
-        .overlay(Rectangle().stroke(AnkerColor.ink, lineWidth: AnkerBorder.rule))
+        .ankerField()
         .padding(AnkerSpacing.s3)
         .ankerEdge(.bottom)
     }
@@ -139,13 +140,17 @@ struct SidebarView: View {
 
             HStack(spacing: 0) {
                 stepperButton("‹", help: "Vorherige Woche", action: onPreviousWeek)
-                AnkerRule(axis: .vertical)
+                AnkerRule(axis: .vertical, color: AnkerColor.ink, weight: .row)
                 stepperButton("Heute", help: "Zur laufenden Woche", isLabel: true, action: onCurrentWeek)
-                AnkerRule(axis: .vertical)
+                AnkerRule(axis: .vertical, color: AnkerColor.ink, weight: .row)
                 stepperButton("›", help: "Nächste Woche", action: onNextWeek)
             }
             .fixedSize()
-            .overlay(Rectangle().stroke(AnkerColor.ink, lineWidth: AnkerBorder.rule))
+            .clipShape(RoundedRectangle(cornerRadius: AnkerRadius.control, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: AnkerRadius.control, style: .continuous)
+                    .stroke(AnkerColor.ink, lineWidth: AnkerBorder.rule)
+            )
         }
         .padding(.horizontal, AnkerSpacing.s4)
         .padding(.top, AnkerSpacing.s4)
@@ -250,9 +255,9 @@ struct SidebarView: View {
             AnkerRule(color: AnkerColor.ink)
 
             reviewRow
-            AnkerRule()
+            AnkerRule(weight: .row)
             archiveRow
-            AnkerRule()
+            AnkerRule(weight: .row)
             settingsRow
 
             CloudSyncStatusRow(status: cloudSyncStatus)
@@ -295,8 +300,12 @@ struct SidebarView: View {
             .padding(.horizontal, AnkerSpacing.s4)
             .padding(.vertical, AnkerSpacing.s3)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(isArmed ? AnkerColor.accentFill : Color.clear, in: Rectangle())
-            .contentShape(Rectangle())
+            .background(
+                isArmed ? AnkerColor.accentFill : Color.clear,
+                in: RoundedRectangle(cornerRadius: AnkerRadius.tile, style: .continuous)
+            )
+            .padding(.horizontal, AnkerSpacing.s1)
+            .contentShape(RoundedRectangle(cornerRadius: AnkerRadius.tile, style: .continuous))
         }
         .buttonStyle(.plain)
         .accessibilityIdentifier("sidebarReview")
@@ -427,26 +436,21 @@ private struct SidebarWeekRow: View {
                     .foregroundStyle(AnkerColor.inkTertiary)
             }
         }
-        .padding(.horizontal, AnkerSpacing.s4)
+        .foregroundStyle(isSelected ? AnkerColor.onAccent : AnkerColor.ink)
+        .padding(.horizontal, AnkerSpacing.s3)
         .padding(.vertical, AnkerSpacing.s2)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(background, in: Rectangle())
-        .ankerEdge(.top)
-        // Der Marker an der Kante statt einer starken Füllung: dasselbe Idiom, mit dem der
-        // Entwurf überall das Aktive auszeichnet.
-        .overlay(alignment: .leading) {
-            if isSelected {
-                Rectangle()
-                    .fill(AnkerColor.accentMark)
-                    .frame(width: AnkerBorder.heavy)
-            }
-        }
-        .contentShape(Rectangle())
+        // Runde 3: die Auswahl ist auf dem Mac ein **Objekt**, keine Kantenmarke — eine 8pt-
+        // Kachel im Akzent. Die Hairline zwischen den Zeilen ersetzt die 2px-Kante: 2px zwischen
+        // jeder Zeile liest sich wie ein Tabellengitter.
+        .background(background, in: RoundedRectangle(cornerRadius: AnkerRadius.tile, style: .continuous))
+        .padding(.horizontal, AnkerSpacing.s1)
+        .contentShape(RoundedRectangle(cornerRadius: AnkerRadius.tile, style: .continuous))
     }
 
     private var background: Color {
-        if isDropTarget { return AnkerColor.accent[100] }
-        return isSelected ? AnkerColor.ground : .clear
+        if isDropTarget { return AnkerColor.accent[200] }
+        return isSelected ? AnkerColor.accentFill : .clear
     }
 }
 
@@ -513,18 +517,15 @@ private struct SidebarDayRow: View {
         }
         .foregroundStyle(foreground)
         .padding(.leading, AnkerSpacing.sidebarIndent)
-        .padding(.trailing, AnkerSpacing.s4)
-        .padding(.vertical, AnkerSpacing.s1)
+        .padding(.trailing, AnkerSpacing.s3)
+        .padding(.vertical, AnkerSpacing.s2)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(isSelected || isDropTarget ? AnkerColor.ground : Color.clear, in: Rectangle())
-        .overlay(alignment: .leading) {
-            if isDropTarget {
-                Rectangle()
-                    .fill(AnkerColor.accentMark)
-                    .frame(width: AnkerBorder.heavy)
-            }
-        }
-        .contentShape(Rectangle())
+        .background(
+            isDropTarget ? AnkerColor.accent[200] : (isSelected ? AnkerColor.surface : Color.clear),
+            in: RoundedRectangle(cornerRadius: AnkerRadius.tile, style: .continuous)
+        )
+        .padding(.horizontal, AnkerSpacing.s1)
+        .contentShape(RoundedRectangle(cornerRadius: AnkerRadius.tile, style: .continuous))
     }
 
     private var foreground: Color {

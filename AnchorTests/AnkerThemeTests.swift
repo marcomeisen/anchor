@@ -104,6 +104,33 @@ final class AnkerThemeTests: XCTestCase {
         })
     }
 
+    // MARK: - Runde 3: Objekte rund, Struktur scharf
+
+    /// Die Radiusrollen sind eine Mengentrennung, keine Skala.
+    ///
+    /// Der Test hält die Werte des Entwurfs fest und dass sie **aufsteigend nach Größe des
+    /// Objekts** liegen: ein Häkchen ist kleiner als ein Knopf, ein Knopf kleiner als eine Karte.
+    /// Wer eine neue Rolle einführt, muss sie hier einordnen — das ist die Absicht.
+    func testRadiusRolesFollowTheDesign() {
+        XCTAssertEqual(AnkerRadius.check, 4)
+        XCTAssertEqual(AnkerRadius.control, 8)
+        XCTAssertEqual(AnkerRadius.card, 10)
+        XCTAssertEqual(AnkerRadius.tile, AnkerRadius.control, "Eine Auswahlkachel ist ein Knopf")
+        XCTAssertLessThan(AnkerRadius.check, AnkerRadius.control)
+        XCTAssertLessThan(AnkerRadius.control, AnkerRadius.card)
+    }
+
+    /// Die Struktur bleibt scharf — und das ist im Code prüfbar, weil sie über eigene Bausteine
+    /// läuft: `AnkerRule` und `AnkerProgressBar` haben keinen Radius, und das Raster der Matrix
+    /// zeichnet `Rectangle`. Was hier zählt, ist die Linienstärke: 2px trennt Sektionen, 1px
+    /// trennt Zeilen **innerhalb** einer Liste.
+    func testSectionAndRowLinesDiffer() {
+        XCTAssertEqual(AnkerRule.Weight.section.thickness, AnkerBorder.rule)
+        XCTAssertEqual(AnkerRule.Weight.row.thickness, AnkerBorder.hairline)
+        XCTAssertGreaterThan(AnkerRule.Weight.section.thickness, AnkerRule.Weight.row.thickness,
+                             "Sonst ist der Unterschied zwischen Bereich und Zeile keine Aussage")
+    }
+
     // MARK: - Kontrast
     //
     // Das Systemblatt gibt einen Akzent an und sagt selbst, dass das Paar nur auf 3:1 getunt
@@ -126,14 +153,29 @@ final class AnkerThemeTests: XCTestCase {
         expect(AnkerColor.ink, on: AnkerColor.surface, atLeast: 7, "Text auf Flaeche (\(mode))", dark: dark)
         expect(AnkerColor.inkSecond, on: AnkerColor.ground, atLeast: 4.5, "Zweite Textstufe (\(mode))", dark: dark)
         expect(AnkerColor.accentInk, on: AnkerColor.ground, atLeast: 4.5, "Akzent als Schrift (\(mode))", dark: dark)
-        expect(AnkerColor.onAccent, on: AnkerColor.accentFill, atLeast: 4.5, "Weiss auf Akzentflaeche (\(mode))", dark: dark)
+        expect(AnkerColor.onAccent, on: AnkerColor.accentFill, atLeast: 4.5, "Schrift auf Akzentflaeche (\(mode))", dark: dark)
+        // Das Erledigt-Kaestchen: der Haken steht in `onAccent` auf einer Flaeche in `ink`.
+        // Vor Runde 3 war `onAccent` fest Weiss — im Dunkelmodus also Weiss auf `#F5F1F1`, ein
+        // unsichtbarer Haken. Der Test haelt die Paarung fest, damit das nicht zurueckkehrt.
+        expect(AnkerColor.onAccent, on: AnkerColor.ink, atLeast: 4.5, "Haken im Kaestchen (\(mode))", dark: dark)
         // Marke, Regeln, Icons: 3:1 genuegt und ist die Zusicherung des Systemblatts.
         expect(AnkerColor.accentMark, on: AnkerColor.ground, atLeast: 3, "Akzent als Marke (\(mode))", dark: dark)
         expect(AnkerColor.inkTertiary, on: AnkerColor.ground, atLeast: 3, "Dritte Textstufe (\(mode))", dark: dark)
 
+        // Die Prioritaetsmarke ist die einzige Kleinflaeche mit Schrift darauf. Stufe C stand
+        // auf `neutral[500]` (#9B9797) — derselbe Wert, den das Projekt fuer die
+        // Mikrobeschriftung schon einmal als unlesbar verworfen hat, hier mit `onAccent` darauf.
+        for (label, fill) in [("A", AnkerColor.accent[700]), ("B", AnkerColor.accentFill), ("C", AnkerColor.inkSecond)] {
+            expect(AnkerColor.onAccent, on: fill, atLeast: 4.5,
+                   "Prioritaet \(label) (\(mode))", dark: dark)
+        }
+
+        // Zielfarben tragen **keine** Schrift: sie sind Balkenfarbe, Marker und Farbfeld. Was der
+        // Test vorher prueste — Weiss darauf — kommt in der App nicht vor. Verlangt ist, dass sie
+        // gegen den Grund sichtbar bleiben, und zwar in beiden Modi.
         for hex in AnkerColor.goalTintOptions {
-            expect(AnkerColor.onAccent, on: AnkerColor.goalTint(hex), atLeast: 4.5,
-                   "Weiss auf Zielfarbe \(hex) (\(mode))", dark: dark)
+            expect(AnkerColor.goalTint(hex), on: AnkerColor.ground, atLeast: 3,
+                   "Zielfarbe \(hex) gegen Grund (\(mode))", dark: dark)
         }
     }
 
@@ -162,6 +204,81 @@ final class AnkerThemeTests: XCTestCase {
             "\(label): \(String(format: "%.2f", ratio)):1, verlangt \(minimum):1",
             file: file, line: line
         )
+    }
+
+    /// Die Kartenfläche muss sich vom Grund abheben, in **beiden** Modi — sonst ist die Elevation
+    /// erfunden.
+    ///
+    /// „Eine Ebene näher" heisst auf beiden Seiten **mehr Licht**: hell geht die Karte über den
+    /// Grund hinaus (Weiss), dunkel darüber (aufgehellt). Eine reine Rampenspiegelung wäre hier
+    /// falsch — im Dunkeln kann eine Karte nicht heller als Weiss werden.
+    func testCardStandsOutFromTheGroundInBothModes() {
+        for dark in [false, true] {
+            let card = relativeLuminance(AnkerColor.card, dark: dark)
+            let ground = relativeLuminance(AnkerColor.ground, dark: dark)
+            XCTAssertGreaterThan(card, ground,
+                                 "Die Karte muss heller als ihr Grund sein (dunkel: \(dark))")
+        }
+    }
+
+    /// Trenner **innerhalb** einer Karte dürfen nicht stärker wirken als die Karte selbst.
+    func testCardDividerIsSubtleOnTheCard() {
+        for dark in [false, true] {
+            let ratio = contrast(AnkerColor.cardDivider, AnkerColor.card, dark: dark)
+            XCTAssertLessThan(ratio, 3, "Ein Zeilentrenner ist kein Rahmen (dunkel: \(dark))")
+            XCTAssertGreaterThan(ratio, 1.05, "Sichtbar muss er trotzdem sein (dunkel: \(dark))")
+        }
+    }
+
+    /// Getönte Hinweisflächen sind teiltransparent — sie **entstehen** erst beim Zeichnen.
+    ///
+    /// Genau dort stirbt Kontrast unbemerkt: im Code steht `surface`, gezeichnet wird eine
+    /// Mischung aus `surface` und dem Grund darunter. Runde 3b hat drei solcher Flächen
+    /// eingeführt (leerer Zustand, Neustarthinweis, Sync-Zeile); dieser Test misst, was
+    /// tatsächlich auf dem Schirm steht, nicht was im Aufruf steht.
+    func testTintedHintSurfacesStayReadable() {
+        for dark in [false, true] {
+            let mode = dark ? "dunkel" : "hell"
+
+            let emptyState = composite(AnkerColor.surface.opacity(0.6), over: AnkerColor.ground, dark: dark)
+            expect(AnkerColor.inkSecond, on: emptyState, atLeast: 4.5,
+                   "Leerer Zustand (\(mode))", dark: dark)
+
+            let restartNotice = composite(AnkerColor.neutral[500].opacity(0.12), over: AnkerColor.ground, dark: dark)
+            expect(AnkerColor.ink, on: restartNotice, atLeast: 7, "Neustarthinweis (\(mode))", dark: dark)
+
+            // Die Sync-Zeile sitzt im Sidebar-Fuß, also auf `surface` statt auf dem Grund.
+            let syncRow = composite(AnkerColor.surface.opacity(0.72), over: AnkerColor.surface, dark: dark)
+            expect(AnkerColor.ink, on: syncRow, atLeast: 7, "Sync-Zeile (\(mode))", dark: dark)
+            expect(AnkerColor.inkTertiary, on: syncRow, atLeast: 3, "Sync-Nebentext (\(mode))", dark: dark)
+
+            // Eine Fläche, die sich nicht vom Grund abhebt, ist keine — dann steht der Hinweis
+            // im Nichts und der Umbau hat nur einen Rahmen entfernt.
+            XCTAssertNotEqual(relativeLuminance(emptyState, dark: dark),
+                              relativeLuminance(AnkerColor.ground, dark: dark),
+                              accuracy: 0.0005,
+                              "Getönte Fläche ohne Unterschied zum Grund (\(mode))")
+        }
+    }
+
+    /// Zwei Farben so mischen, wie SwiftUI sie übereinander zeichnet — deckendes Ergebnis.
+    private func composite(_ color: Color, over backdrop: Color, dark: Bool) -> Color {
+        var result = Color.clear
+        let appearance = NSAppearance(named: dark ? .darkAqua : .aqua)
+        appearance?.performAsCurrentDrawingAppearance {
+            guard let top = NSColor(color).usingColorSpace(.sRGB),
+                  let bottom = NSColor(backdrop).usingColorSpace(.sRGB) else { return }
+            let alpha = top.alphaComponent
+            func mix(_ a: CGFloat, _ b: CGFloat) -> Double { Double(a * alpha + b * (1 - alpha)) }
+            result = Color(
+                .sRGB,
+                red: mix(top.redComponent, bottom.redComponent),
+                green: mix(top.greenComponent, bottom.greenComponent),
+                blue: mix(top.blueComponent, bottom.blueComponent),
+                opacity: 1
+            )
+        }
+        return result
     }
 
     private func contrast(_ lhs: Color, _ rhs: Color, dark: Bool = false) -> Double {

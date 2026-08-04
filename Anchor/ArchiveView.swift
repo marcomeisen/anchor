@@ -32,7 +32,7 @@ struct ArchiveView: View {
 
                     ForEach(entries) { entry in
                         ArchiveRow(entry: entry) { onSelectWeek(entry.monday) }
-                        AnkerRule()
+                        AnkerRule(weight: .row)
                     }
                 }
             }

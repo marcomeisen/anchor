@@ -151,13 +151,17 @@ struct GoalDetailView: View {
             }
             .padding(AnkerSpacing.s4)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(AnkerColor.accent[100])
+            .background(
+                AnkerColor.accent[100],
+                in: RoundedRectangle(cornerRadius: AnkerRadius.card, style: .continuous)
+            )
             .overlay(alignment: .leading) {
                 Rectangle()
                     .fill(AnkerColor.accentMark)
                     .frame(width: AnkerSpacing.s1)
             }
-            .ankerEdge(.top, color: AnkerColor.ink)
+            .clipShape(RoundedRectangle(cornerRadius: AnkerRadius.card, style: .continuous))
+            .padding(.top, AnkerSpacing.s4)
             .accessibilityElement(children: .combine)
             .accessibilityIdentifier("goalPace")
         }
@@ -205,10 +209,19 @@ struct GoalDetailView: View {
                 // haben alle Aufgaben denselben Anker. Vorher stand hier eine eigene Zeile mit
                 // nichts als einem Kästchen — kein Kontextmenü, keine Prioritätsänderung, kein Weg
                 // zum Titel.
-                ForEach(linkedTasks, id: \.id) { task in
-                    TaskCard(task: task, metaLine: .day, onUndoableAction: undo.present)
-                    AnkerRule()
+                // Runde 3: die Liste sitzt in einer Karte, innen Hairlines. Eine 2px-Kante an
+                // jeder Zeile liest sich wie ein Tabellengitter — die Kennzahlenreihe darueber
+                // behaelt ihre 2px, sie ist Struktur.
+                VStack(spacing: 0) {
+                    ForEach(Array(linkedTasks.enumerated()), id: \.element.id) { index, task in
+                        TaskCard(task: task, metaLine: .day, onUndoableAction: undo.present)
+                        if index < linkedTasks.count - 1 {
+                            AnkerRule(color: AnkerColor.cardDivider, weight: .row)
+                        }
+                    }
                 }
+                .padding(.horizontal, AnkerSpacing.s3)
+                .ankerCard()
             }
         }
         .padding(.horizontal, AnkerSpacing.screenPadding)

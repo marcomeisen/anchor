@@ -278,9 +278,7 @@ struct DataPrivacyView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(AnkerSpacing.s4)
-        .background(AnkerColor.surface)
-        .overlay(Rectangle().stroke(AnkerColor.divider, lineWidth: AnkerBorder.rule))
-        .clipShape(Rectangle())
+        .ankerCard()
     }
 }
 

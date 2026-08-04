@@ -28,7 +28,7 @@ Code-Identifier sind Englisch.
 | [Anchor/Models.swift](Anchor/Models.swift) | `@Model`: `Goal`, `Week`, `Day`, `AnkerTask`, `TimeBlock`; `Priority`; `AnkerSchema.models` |
 | [Anchor/TaskActions.swift](Anchor/TaskActions.swift) | `TaskActions` (**die** Mutations-Schicht für Aufgaben), `TaskSnapshot`/Undo, `TaskUndoCoordinator` |
 | [Anchor/GoalEditing.swift](Anchor/GoalEditing.swift) | `GoalActions` — Wochenziele löschen, Aufgaben bleiben erhalten; `goalDeleteConfirmation` |
-| [Anchor/WeekPlanning.swift](Anchor/WeekPlanning.swift) | Wochen und Tage auflösen, Onboarding-Zustand, erstes Wochenziel — ohne View, deshalb testbar |
+| [Anchor/WeekPlanning.swift](Anchor/WeekPlanning.swift) | Wochen und Tage auflösen, `needsOnboarding`/`hasContent`, erste Anker — ohne View, deshalb testbar |
 | [Anchor/AppNavigation.swift](Anchor/AppNavigation.swift) | `AppDestination`, `AnkerNavigationState`: Sprünge, `@SceneStorage`-Wiederherstellung, `daivento://`-Deep-Links |
 | [Anchor/Persistence.swift](Anchor/Persistence.swift) | `ModelContext.saveChanges()` — **statt** `try? save()`; `PersistenceFailureCenter`, Fehlerdialog |
 | [Anchor/StoreMaintenance.swift](Anchor/StoreMaintenance.swift) | Zusammenführen von Wochen/Tagen aus dem Sync, mit `MergeReport` und Protokoll |
@@ -44,11 +44,11 @@ Code-Identifier sind Englisch.
 | [Anchor/SidebarTimeline.swift](Anchor/SidebarTimeline.swift) | Zeitschiene: Wochenzeile mit sieben Tagesquadraten (`DayMark`) — „nichts geplant" ≠ „nichts geschafft" |
 | [Anchor/AnkerArchive.swift](Anchor/AnkerArchive.swift) | Archivierte Wochen: geschlossen **oder** vergangen, mit Kennzahlen pro Woche |
 | **Designtokens** (dürfen die Grundbausteine benutzen, alles andere nicht) | |
-| [Anchor/Theme.swift](Anchor/Theme.swift) | `AnkerColor` (Rampen, dreiteiliger Akzent), `AnkerSpacing`, `AnkerBorder` — **keine** Hex-Werte in Views |
+| [Anchor/Theme.swift](Anchor/Theme.swift) | `AnkerColor` (Rampen, dreiteiliger Akzent, Karten), `AnkerSpacing`, `AnkerBorder`, `AnkerRadius` — **keine** Hex-Werte in Views |
 | [Anchor/ThemeType.swift](Anchor/ThemeType.swift) | `AnkerType` — 20 Typo-Tokens mit Größe, Gewicht, Laufweite, Großschreibung; `.ankerType(_:)` |
 | [Anchor/ThemeFont.swift](Anchor/ThemeFont.swift) | Archivo-Registrierung und Gewichtsachse; Ziffern mit gleicher Laufweite |
 | [Anchor/ThemeIcon.swift](Anchor/ThemeIcon.swift) | `AnkerIcon` (Lucide), `AnkerIconSize`, `AnkerLabel` |
-| [Anchor/ThemeSurfaces.swift](Anchor/ThemeSurfaces.swift) | `AnkerRule`, `ankerPanel()`, `ankerEdge(_:)`, `AnkerProgressBar`, `AnkerButtonStyle`, `AnkerToggleStyle` |
+| [Anchor/ThemeSurfaces.swift](Anchor/ThemeSurfaces.swift) | `AnkerRule` (`.section`/`.row`), die vier Flächen-Idiome `ankerCard()` / `ankerField()` / `ankerControl()` / `ankerPanel()`, `ankerEdge(_:)`, `AnkerProgressBar`, `AnkerButtonStyle`, `AnkerToggleStyle` |
 | [Anchor/SampleData.swift](Anchor/SampleData.swift) | Beispieldaten, nur für Previews und Tests |
 | **Views** | |
 | [Anchor/AnkerRootView.swift](Anchor/AnkerRootView.swift) | Verteilt auf Onboarding, Split-Layout und iPhone-Layout; hält den Navigationszustand |
@@ -68,15 +68,19 @@ Code-Identifier sind Englisch.
 | [Anchor/DataPrivacyView.swift](Anchor/DataPrivacyView.swift) | Bildschirm „Daten und Datenschutz": Bestand, Export, Löschung |
 | [Anchor/TaskCaptureSheets.swift](Anchor/TaskCaptureSheets.swift) | `NewTaskSheet`, `NewGoalSheet`, `QuickCapturePopover`, `CaptureChip` |
 | [Anchor/TaskEditorSheets.swift](Anchor/TaskEditorSheets.swift) | `TaskEditorSheet`, `TaskMoveSheet` |
-| [Anchor/AnkerComponents.swift](Anchor/AnkerComponents.swift) | `TaskCard` (**die** Aufgabenzeile, überall dieselbe), `TaskTitleField` (Titel inline), `TaskCheckmark`, `GoalBanner`, `AnchorRow`, `PriorityTag`, `AnkerPrimaryActionBar`, `TaskDragEvents`/`TaskDropHandling` |
+| [Anchor/AnkerComponents.swift](Anchor/AnkerComponents.swift) | `TaskCard` (**die** Aufgabenzeile, überall dieselbe), `TaskTitleField` (Titel inline), `TaskCheckmark`, `SectionLabel`, `AnchorRow`, `PriorityTag`, `TaskDragEvents`/`TaskDropHandling` |
 | [Anchor/CloudSyncStatus.swift](Anchor/CloudSyncStatus.swift) | `CloudSyncStatusCenter` und die Sync-Anzeigen |
 | **Ressourcen und Tests** | |
 | [Anchor/PrivacyInfo.xcprivacy](Anchor/PrivacyInfo.xcprivacy) | Privacy Manifest — Pflicht für die App-Store-Einreichung |
 | [Anchor/Localizable.xcstrings](Anchor/Localizable.xcstrings) | String Catalog, Quellsprache Deutsch |
 | [Anchor/Fonts/Archivo.ttf](Anchor/Fonts/Archivo.ttf) | Archivo als Variable Font (OFL-1.1); Gewichte über die `wght`-Achse |
-| `Anchor/Assets.xcassets/Icons/` | 42 Lucide-Icons als Vektor-Imagesets (ISC) |
-| [Scripts/design-guard.swift](Scripts/design-guard.swift) | 15 Grep-Schranken gegen Rückfall in die alte Sprache; `swift Scripts/design-guard.swift` |
-| [AnchorTests/](AnchorTests/) | 116 Unit-Tests (SwiftData in-memory): Kern, Matrix, Kennzahlen, Tokens, Erfassungssyntax, Zeitschiene |
+| `Anchor/Assets.xcassets/Icons/` | 43 Lucide-Icons als Vektor-Imagesets (ISC) |
+| `Anchor/Assets.xcassets/AppIcon.appiconset/` | App-Icon: die 4×7-Matrix. `AppIcon-*` für iOS (randlos, ohne Alpha), `AppIconMac-*` für macOS (gerundet, mit Rand) |
+| [Scripts/make-app-icons.swift](Scripts/make-app-icons.swift) | Erzeugt den Iconsatz aus [assets/icon/](assets/icon/); `swift Scripts/make-app-icons.swift` |
+| `Anchor/Assets.xcassets/MenuBarTemplate.imageset/` | Glyph der macOS-Menüleiste, `template-rendering-intent` |
+| [assets/icon/](assets/icon/) | Iconquellen. Was hier liegt, ist die Vorlage — der Katalog hält Kopien |
+| [Scripts/design-guard.swift](Scripts/design-guard.swift) | 18 Grep-Schranken gegen Rückfall in die alte Sprache; `swift Scripts/design-guard.swift` |
+| [AnchorTests/](AnchorTests/) | 128 Unit-Tests (SwiftData in-memory): Kern, Matrix, Kennzahlen, Tokens, Kontrast, Erfassungssyntax, Zeitschiene |
 | [AnchorUITests/AnchorUITests.swift](AnchorUITests/AnchorUITests.swift) | Verankerungs- und Erfassungsfluss; braucht das Startargument `-DaiventoUITest` |
 
 Alles ist ein einziges Multiplattform-Target (`Anchor`, Produkt `Daivento.app`); Plattformunterschiede
@@ -99,6 +103,10 @@ muss dafür nicht angefasst werden.
   Abweichungen sind dort begründet: der Akzent ist für Marke, Fläche und Schrift dreigeteilt (eine
   Farbe erreicht nicht in allen drei Rollen 4,5:1), die Mikro-Beschriftung nutzt `inkSecond` statt
   `#9b9797` (2,59:1 wäre unlesbar), und Archivo liegt als Variable Font statt in statischen Schnitten.
+- **Daivento Apple-getunt.dc.html** (dasselbe Projekt) — Runde 3, Variante **3b** ist umgesetzt
+  („Objekte werden rund. Struktur bleibt scharf."). 3a war der Stand davor, nur als Referenz.
+  Offen aus der Spalte *Mehr als Radius*: SF Symbols statt Lucide (widerspricht der
+  Bündelungsentscheidung, siehe Konventionen), Dynamic Type, Federn und Haptik.
 - **Daivento Mac Sidebar.dc.html** (dasselbe Projekt) — Runde 2. Legte **zwei** unvereinbare
   Sidebars vor; gewählt ist **2a „Zeitschiene"** (Entscheidung des Nutzers, 2026-08-04). Die vier
   dort gemeinsam festgelegten Punkte gelten unabhängig davon: Rückblick scharf statt laut, Übertrag
@@ -136,9 +144,57 @@ Für die wiederkehrenden Themen liegen Skills unter [.claude/skills/](.claude/sk
   (Entscheidung des Nutzers, 2026-08-04). Weitere Abhängigkeiten bleiben ausgeschlossen.
 - Abstände kommen aus `AnkerSpacing`, Schrift aus `AnkerType`, Icons aus `AnkerIcon`, Farben aus
   `AnkerColor`. Vor dem Abschluss einer Änderung `swift Scripts/design-guard.swift` laufen lassen.
+- **App-Icons nicht von Hand anfassen** — [Scripts/make-app-icons.swift](Scripts/make-app-icons.swift)
+  erzeugt sie aus [assets/icon/](assets/icon/). Die beiden Plattformen brauchen ausdrücklich
+  Verschiedenes: **macOS** maskiert nicht selbst, die Form muss mitgeliefert werden (Apples Raster:
+  Körper 824/1024 zentriert, Eckenradius 185,4, transparenter Rand). **iOS** maskiert selbst mit
+  demselben fortlaufend gerundeten Quadrat — dort muss das Bild randlos und **ohne** Alphakanal
+  sein, sonst gibt es eine doppelte Kante und der App Store lehnt die Einreichung ab.
+- Zwei Fallen, die dabei schon zugeschlagen haben: `NSImage.draw` in einen selbst gesetzten
+  `NSGraphicsContext` zeichnet in einem Prozess ohne `NSApplication` **nichts** (die Bitmap bleibt
+  genullt und fällt nur an gleichen Prüfsummen auf) — reines CoreGraphics benutzen. Und die
+  gerundete Ecke gehört über `RoundedRectangle(style: .continuous)` gezogen, nicht über
+  `CGPath(roundedRect:)`: Apples Ecke ist eine fortlaufende Kurve, ein Kreisbogen ist sichtbar
+  kantiger.
+- **Objekte sind rund, Struktur bleibt scharf.** Runde 3 hat den Nullradius nicht aufgeweicht,
+  sondern zwei Mengen getrennt. Rund ist, was man **anfasst oder was schwebt**: Knöpfe und Felder
+  (`AnkerRadius.control`), Karten (`.card`), das Häkchen (`.check`), Auswahlkacheln (`.tile`) —
+  immer `style: .continuous`, **nie** `.circular`. Scharf bleibt die Struktur: das 4×7-Raster, die
+  Fortschrittsbalken, alle Sektionskanten und das Rückblick-Plakat. Daten und Flächen sind keine
+  Objekte. Radius nur über eine **Rolle**, nie als Zahl — eine Rolle sagt, *warum* etwas rund ist.
+- **Vier Flächen-Idiome, keine handgebauten fünften.** Jede Fläche in einer View kommt aus genau
+  einem davon, und die Wahl beantwortet die Frage „was ist das":
+  `.ankerCard()` trägt Inhalt und schwebt (Elevation, kein Rahmen) · `.ankerCard(fill:elevated: false)`
+  ist eine getönte Hinweisfläche — rund, aber ohne Gewicht · `.ankerField()` ist ein Eingabefeld
+  (rund, flach, Haarlinie) · `.ankerControl()` ist ein Knopf, eine Auswahlkachel oder eine
+  Schrittschalter-Anzeige (rund, 2px-Kante) · `.ankerPanel()` bleibt der **scharfen** Struktur
+  vorbehalten. Das alte Muster `background(surface)` + `Rectangle().stroke(divider, rule)` +
+  `clipShape(Rectangle())` ist damit ersetzt; `clipShape(Rectangle())` ist eine eigene Schranke,
+  weil es auf einer scharfen Fläche wirkungslos und auf einer runden falsch ist.
+- **2px trennt Bereiche, 1px trennt Zeilen.** `AnkerRule(weight: .section)` gegen
+  `.row`/`AnkerBorder.hairline`. Eine 2px-Kante an jeder Listenzeile liest sich wie ein
+  Tabellengitter. Listen sitzen in `.ankerCard()` — Elevation **statt** Rahmen; das ist die einzige
+  Stelle, an der „nichts schwebt" bewusst zurückgenommen ist, und `.shadow(` bleibt außerhalb der
+  Tokendateien verboten. Segmentleisten (Ankerstreifen, Ansichtswechsel, Behalten/Streichen) werden
+  als **ein** gerundetes Objekt geklippt, die Trenner darin bleiben 2px.
+- **Die Rampe ist keine Textfarbe.** Schrift und Icons kommen aus `ink` / `inkSecond` / `inkTertiary`
+  bzw. `accentInk` — nur die tragen einen zugesicherten Kontrast. Eine Rampenstufe direkt als
+  `foregroundStyle` ist geraten: `neutral[500]` (`#9B9797`) stand an sechs Stellen und lag bei
+  2,4:1. Ebenso trägt `accentMark` **keine** Schrift — das ist die 3:1-Markenfarbe für Linien und
+  Icons; eine Fläche mit Text darauf ist `accentFill` oder eine tiefere Rampenstufe.
+- **Der Akzent kippt im Dunkelmodus.** `accentFill` geht hoch (sonst säuft die Fläche auf dunklem
+  Grund ab), und `onAccent` kippt mit auf Tinte. Fest auf Weiss wäre 1,9:1. Dasselbe gilt für
+  `goalTint`: die angebotenen Zielfarben sind Rampenstufen und spiegeln mit — sonst ist ein dunkles
+  Ziel als Balken auf dunklem Grund unsichtbar.
 - **Das Kästchen hakt ab, der Titel wird bearbeitet.** Diese Regel gilt auf jeder Fläche. Kein Klick
   auf eine Zeilenfläche darf einen Zustand ändern; Doppelklick auf den Titel öffnet ihn zum Tippen
   (`TaskTitleField`), das Blatt `TaskEditorSheet` bleibt für Woche, Tag und Anker.
+- **Das Onboarding darf niemals eine Falle sein.** `needsOnboarding` fragt den **ganzen** Bestand,
+  nie nur die laufende Woche, und `hasCompletedOnboarding` muss immer greifen — ein neu
+  installiertes Gerät hat sonst keinen Ausweg, während sein iCloud-Bestand noch unterwegs ist.
+  Beim Zusammenführen doppelter Wochen überlebt die **inhaltsreichere**, nicht die mit der
+  kleineren UUID. Beides ist mit Tests in
+  [AnchorTests/OnboardingSyncTests.swift](AnchorTests/OnboardingSyncTests.swift) festgehalten.
 - **Die Sidebar ist nur Zeit.** Kein Ansichtswechsel, keine Zielliste, kein zweiter Zeitnavigator
   darin — das war der Befund der zweiten Runde und ist keine Geschmacksfrage. Ein Anker gehört in
   den Streifen (`AnchorStripView`), ein Modus in `AnkerViewSwitcher`.

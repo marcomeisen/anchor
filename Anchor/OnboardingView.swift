@@ -13,8 +13,17 @@ import SwiftUI
 /// geöffnet. Der Schritt sagt das ausdrücklich, statt es zu verschweigen.
 struct OnboardingView: View {
     let weekIntervalTitle: String
+    /// Läuft der iCloud-Erstimport noch, könnte also Bestand nachliefern?
+    ///
+    /// Solange das gilt, wird **nicht** nach Ankern gefragt. Sonst legt ein neu installiertes
+    /// Gerät vier frische Anker an, während der eigene Bestand noch unterwegs ist — und danach
+    /// stehen acht in der Woche. Genau das war der gemeldete Fehler.
+    var isAwaitingFirstSync = false
     /// Bis zu vier Titel in der Reihenfolge, in der sie eingegeben wurden.
     var onCreateAnchors: ([String]) -> Void
+    /// Ohne Anker weiter. Muss es geben: ein Einrichtungsschritt, aus dem man nicht heraus
+    /// kommt, ist eine Falle — und wer schon Daten hat, will hier gar nichts eingeben.
+    var onSkip: () -> Void = {}
 
     private enum Step {
         case cloudSync
@@ -22,9 +31,12 @@ struct OnboardingView: View {
     }
 
     private static let anchorSlots = 4
+    /// Wie lange auf den iCloud-Erstimport gewartet wird, bevor der Ankerschritt trotzdem kommt.
+    private static let syncWaitLimit = 8.0
 
     @State private var step: Step = CloudSyncPreference.hasBeenChosen() ? .anchors : .cloudSync
     @State private var titles = Array(repeating: "", count: Self.anchorSlots)
+    @State private var isAwaitingFirstSyncOverridden = false
     @FocusState private var focusedSlot: Int?
 
     private var cleanTitles: [String] {
@@ -39,7 +51,11 @@ struct OnboardingView: View {
             case .cloudSync:
                 cloudSyncStep
             case .anchors:
-                anchorStep
+                if isAwaitingFirstSync && !isAwaitingFirstSyncOverridden {
+                    syncWaitStep
+                } else {
+                    anchorStep
+                }
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -95,6 +111,62 @@ struct OnboardingView: View {
         }
     }
 
+    // MARK: - Warten auf den Erstimport
+
+    /// Statt der Ankerfrage: ein ehrlicher Zwischenschritt.
+    ///
+    /// Der Ausweg daneben ist Absicht. Ein Konto ohne Netz oder mit abgeschaltetem iCloud würde
+    /// hier sonst dauerhaft hängen.
+    private var syncWaitStep: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            stepIndicator(activeIndex: 1)
+
+            Text(verbatim: "Schritt 2 von 2")
+                .ankerType(AnkerType.eyebrow)
+                .foregroundStyle(AnkerColor.inkSecond)
+                .padding(.top, AnkerSpacing.s5)
+                .padding(.bottom, AnkerSpacing.s3)
+
+            Text(verbatim: "iCloud holt deine Wochen")
+                .ankerType(AnkerType.title2)
+                .foregroundStyle(AnkerColor.ink)
+
+            Text(verbatim: "Auf diesem Gerät ist noch nichts gespeichert. Wenn du Daivento schon benutzt, kommen deine Anker und Aufgaben gleich von selbst — dann brauchst du hier nichts einzugeben.")
+                .ankerType(AnkerType.body)
+                .foregroundStyle(AnkerColor.inkSecond)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.top, AnkerSpacing.s3)
+
+            ProgressView()
+                .padding(.top, AnkerSpacing.s5)
+                // Frist statt Dauerspinner: bleibt die Sync-Phase hängen — kein Netz, ein Konto
+                // ohne iCloud-Freigabe — führt der Schritt von selbst weiter. Ohne das starrt
+                // ein wirklich neuer Nutzer auf einen Fortschrittsbalken, der nie endet.
+                .task {
+                    try? await Task.sleep(for: .seconds(Self.syncWaitLimit))
+                    isAwaitingFirstSyncOverridden = true
+                }
+
+            Spacer(minLength: AnkerSpacing.s5)
+
+            Button("Trotzdem jetzt einrichten") {
+                // Ausdrücklich: wer das drückt, hat auf diesem Gerät noch nie Daten gehabt oder
+                // will nicht warten. Der Bestand wird beim Anlegen erneut geprüft.
+                isAwaitingFirstSyncOverridden = true
+            }
+            .buttonStyle(AnkerButtonStyle.secondary)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .accessibilityIdentifier("onboardingSkipWait")
+
+            Button("Später einrichten", action: onSkip)
+                .buttonStyle(AnkerButtonStyle.quiet)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.top, AnkerSpacing.s2)
+                .padding(.bottom, AnkerSpacing.s5)
+                .accessibilityIdentifier("onboardingSkip")
+        }
+    }
+
     // MARK: - Schritt 2: die Anker
 
     private var anchorStep: some View {
@@ -121,7 +193,7 @@ struct OnboardingView: View {
 
             ForEach(0..<Self.anchorSlots, id: \.self) { slot in
                 anchorField(slot)
-                AnkerRule()
+                AnkerRule(weight: .row)
             }
 
             Spacer(minLength: AnkerSpacing.s5)
@@ -139,7 +211,13 @@ struct OnboardingView: View {
             .disabled(cleanTitles.isEmpty)
             .opacity(cleanTitles.isEmpty ? 0.45 : 1)
             .accessibilityIdentifier("onboardingCommit")
-            .padding(.bottom, AnkerSpacing.s5)
+
+            Button("Später einrichten", action: onSkip)
+                .buttonStyle(AnkerButtonStyle.quiet)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.top, AnkerSpacing.s2)
+                .padding(.bottom, AnkerSpacing.s5)
+                .accessibilityIdentifier("onboardingSkip")
         }
     }
 

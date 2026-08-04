@@ -78,13 +78,13 @@ final class CloudSyncStatusCenter: ObservableObject {
             case .starting, .ready, .disabled:
                 AnkerColor.inkSecond
             case .pendingExport:
-                AnkerColor.neutral[500]
+                AnkerColor.inkTertiary
             case .syncing:
                 AnkerColor.accentInk
             case .synced:
                 AnkerColor.ink
             case .issue:
-                AnkerColor.neutral[500]
+                AnkerColor.inkSecond
             }
         }
     }
@@ -419,7 +419,7 @@ struct CloudSyncStatusRow: View {
                 if let maintenanceSummary = status.maintenanceSummary {
                     Text(maintenanceSummary)
                         .ankerType(AnkerType.caption)
-                        .foregroundStyle(AnkerColor.neutral[500])
+                        .foregroundStyle(AnkerColor.inkTertiary)
                         .lineLimit(2)
                 }
             }
@@ -429,11 +429,7 @@ struct CloudSyncStatusRow: View {
         .padding(.horizontal, AnkerSpacing.s3)
         .padding(.vertical, AnkerSpacing.s2)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(AnkerColor.surface.opacity(0.72), in: Rectangle())
-        .overlay(
-            Rectangle()
-                .stroke(AnkerColor.divider, lineWidth: AnkerBorder.rule)
-        )
+        .ankerCard(fill: AnkerColor.surface.opacity(0.72), elevated: false)
         .help(status.maintenanceSummary.map { "\(status.tooltip)\n\nAutomatisch aufgeräumt: \($0)" } ?? status.tooltip)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("iCloud: \(status.phase.title), \(status.detail)")
@@ -490,26 +486,22 @@ private struct CloudSyncStatusDetail: View {
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(AnkerSpacing.s3)
-                .background(AnkerColor.surface)
-                .overlay(Rectangle().stroke(AnkerColor.divider, lineWidth: AnkerBorder.rule))
-                .clipShape(Rectangle())
+                .ankerCard(fill: AnkerColor.surface, elevated: false)
 
             VStack(spacing: 0) {
                 diagnosticRow("iCloud-Account", status.accountSummary)
-                Divider()
+                AnkerRule(color: AnkerColor.cardDivider, weight: .row)
                 diagnosticRow("Umgebung", CloudSyncDiagnostics.environmentName)
-                Divider()
+                AnkerRule(color: AnkerColor.cardDivider, weight: .row)
                 diagnosticRow("Container", CloudSyncDiagnostics.containerIdentifier)
-                Divider()
+                AnkerRule(color: AnkerColor.cardDivider, weight: .row)
                 diagnosticRow("App-Version", CloudSyncDiagnostics.appVersion)
                 if let maintenanceSummary = status.maintenanceSummary {
-                    Divider()
+                    AnkerRule(color: AnkerColor.cardDivider, weight: .row)
                     diagnosticRow("Aufgeräumt", maintenanceSummary)
                 }
             }
-            .background(AnkerColor.surface)
-            .overlay(Rectangle().stroke(AnkerColor.divider, lineWidth: AnkerBorder.rule))
-            .clipShape(Rectangle())
+            .ankerCard()
 
             Text("Geräte synchronisieren nur bei gleichem iCloud-Account und gleicher Umgebung. Development und Production sind getrennte Datenbestände.")
                 .ankerType(AnkerType.caption)

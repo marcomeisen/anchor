@@ -134,7 +134,7 @@ struct SettingsView: View {
                 ankerIcon: AnkerIcon.refresh
             )
             .ankerType(AnkerType.caption)
-            .foregroundStyle(AnkerColor.neutral[500])
+            .foregroundStyle(AnkerColor.inkSecond)
             .fixedSize(horizontal: false, vertical: true)
 
 #if os(macOS)
@@ -147,7 +147,7 @@ struct SettingsView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(AnkerSpacing.s3)
-        .background(AnkerColor.neutral[500].opacity(0.12), in: Rectangle())
+        .ankerCard(fill: AnkerColor.neutral[500].opacity(0.12), elevated: false)
     }
 
     // MARK: - Daten
@@ -197,9 +197,7 @@ struct SettingsView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(AnkerSpacing.s4)
-        .background(AnkerColor.surface)
-        .overlay(Rectangle().stroke(AnkerColor.divider, lineWidth: AnkerBorder.rule))
-        .clipShape(Rectangle())
+        .ankerCard()
     }
 }
 

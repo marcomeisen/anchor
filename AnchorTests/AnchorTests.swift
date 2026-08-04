@@ -677,23 +677,33 @@ final class AnchorTests: XCTestCase {
         let container = try makeContainer()
         let context = container.mainContext
 
-        // Ohne laufende Woche entscheidet allein das Flag.
+        // Ohne Bestand entscheidet allein das Flag.
         XCTAssertTrue(WeekPlanning.needsOnboarding(in: [], hasCompletedOnboarding: false))
         XCTAssertFalse(WeekPlanning.needsOnboarding(in: [], hasCompletedOnboarding: true))
 
         let week = WeekPlanning.ensureWeek(containing: Date(), weeks: [], modelContext: context)
         try context.save()
 
-        // Laufende Woche ohne echtes Ziel: Onboarding, auch wenn das Flag gesetzt ist. Sonst
-        // waere die App nach einer vollstaendigen Loeschung eine Sackgasse.
-        XCTAssertTrue(WeekPlanning.needsOnboarding(in: [week], hasCompletedOnboarding: true))
+        // **Geaenderter Vertrag (2026-08-04).** Vorher galt: laufende Woche ohne echtes Ziel
+        // heisst Onboarding, auch wenn das Flag gesetzt ist. Das war die Ursache eines
+        // Datenfehlers — auf einem neu installierten Geraet war der Schritt damit unentrinnbar,
+        // und die Woche ohne Anker ist am Montagmorgen der Normalfall.
+        //
+        // Die Sorge dahinter (nach einer vollstaendigen Loeschung haelt sich eine leere App fuer
+        // eingerichtet) traegt das Flag selbst: `DataPortability.deleteEverything` entfernt
+        // `hasCompletedOnboarding` und `onboardingVersion` mit.
+        XCTAssertFalse(WeekPlanning.needsOnboarding(in: [week], hasCompletedOnboarding: true))
+        // Ohne Flag fuehrt eine leere Woche weiterhin ins Onboarding.
+        XCTAssertTrue(WeekPlanning.needsOnboarding(in: [week], hasCompletedOnboarding: false))
 
         let placeholder = WeekPlanning.upsertOnboardingGoal(
             title: WeekPlanning.placeholderGoalTitle, in: week, modelContext: context
         )
         XCTAssertTrue(WeekPlanning.isPlaceholder(placeholder))
         XCTAssertFalse(WeekPlanning.isUserCreated(placeholder))
-        XCTAssertTrue(WeekPlanning.needsOnboarding(in: [week], hasCompletedOnboarding: true))
+        // Der Platzhalter ist kein Bestand — mit Flag kein Onboarding, ohne Flag schon.
+        XCTAssertFalse(WeekPlanning.needsOnboarding(in: [week], hasCompletedOnboarding: true))
+        XCTAssertTrue(WeekPlanning.needsOnboarding(in: [week], hasCompletedOnboarding: false))
 
         // Zweiter Durchlauf benennt den Platzhalter um statt ein zweites Ziel anzulegen —
         // sonst waere eines der vier Wochenziele unnoetig verbraucht.

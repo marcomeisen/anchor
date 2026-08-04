@@ -291,7 +291,7 @@ private final class AnchorStatusItemController: NSObject {
         super.init()
 
         if let button = statusItem.button {
-            if let image = NSImage(named: "FokusringBMenu") {
+            if let image = NSImage(named: "MenuBarTemplate") {
                 image.size = NSSize(width: 18, height: 18)
                 image.isTemplate = true
                 image.accessibilityDescription = "Daivento"

@@ -75,7 +75,7 @@ struct TodayView: View {
                             .listRowInsets(EdgeInsets(top: 0, leading: AnkerSpacing.screenPadding,
                                                       bottom: 0, trailing: AnkerSpacing.screenPadding))
                             .listRowBackground(AnkerColor.ground)
-                            .listRowSeparatorTint(AnkerColor.divider)
+                            .listRowSeparatorTint(AnkerColor.cardDivider)
                         }
                     }
                 } header: {
@@ -146,7 +146,7 @@ struct TodayView: View {
                     .ankerType(AnkerType.overline)
                     .foregroundStyle(AnkerColor.inkSecond)
                 Spacer(minLength: AnkerSpacing.s2)
-                Text(verbatim: "\(anchorsInMotion)/\(week.goalList.count) in Bewegung")
+                Text(verbatim: "\(anchorsInMotion)/\(GoalOrdering.anchors(in: week).count) in Bewegung")
                     .ankerType(AnkerType.overline)
                     .foregroundStyle(AnkerColor.ink)
             }
@@ -186,7 +186,7 @@ struct TodayView: View {
             .padding(.top, AnkerSpacing.s4)
             .padding(.bottom, AnkerSpacing.s2)
 
-            ForEach(Array(week.goalList.enumerated()), id: \.element.id) { index, goal in
+            ForEach(Array(GoalOrdering.anchors(in: week).enumerated()), id: \.element.id) { index, goal in
                 Button {
                     filteredAnchorID = filteredAnchorID == goal.id ? nil : goal.id
                 } label: {
@@ -201,7 +201,7 @@ struct TodayView: View {
                 }
                 .buttonStyle(.plain)
                 .accessibilityIdentifier("anchorRow.\(index + 1)")
-                AnkerRule()
+                AnkerRule(weight: .row)
             }
         }
         .padding(.horizontal, AnkerSpacing.screenPadding)
@@ -269,20 +269,21 @@ struct TodayView: View {
 
     private var focusTitle: String {
         day.focusNote?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty
-            ?? week.goalList.first?.title
+            ?? GoalOrdering.anchors(in: week).first?.title
             ?? "Kein Fokus gesetzt"
     }
 
     /// „In Bewegung" statt „erledigt": mitten in der Woche ist vollstaendig erledigt fast immer
     /// null und damit keine brauchbare Aussage.
     private var anchorsInMotion: Int {
-        week.goalList.filter { goal in goal.taskList.contains(where: \.isDone) }.count
+        GoalOrdering.anchors(in: week).filter { goal in goal.taskList.contains(where: \.isDone) }.count
     }
 
     private var listLabel: String {
         if let id = filteredAnchorID,
-           let index = week.goalList.firstIndex(where: { $0.id == id }) {
-            return "Anker \(index + 1)"
+           let goal = GoalOrdering.anchors(in: week).first(where: { $0.id == id }),
+           let number = GoalOrdering.anchorNumber(of: goal, in: week) {
+            return "Anker \(number)"
         }
         return "Heute · \(tasks.filter { !$0.isDone }.count) offen"
     }
@@ -389,8 +390,7 @@ private struct TaskBulkActionBar: View {
         }
         .padding(.horizontal, AnkerSpacing.s3)
         .padding(.vertical, AnkerSpacing.s3)
-        .ankerPanel()
-        
+        .ankerCard()
     }
 
     private func bulkButton(
@@ -445,8 +445,10 @@ struct TaskUndoToast: View {
                 thickness: AnkerBorder.rule
             )
         }
-        .ankerPanel()
-        
+        // Der Ablaufbalken sitzt buendig an der Unterkante. Ohne Beschnitt stuenden seine
+        // scharfen Enden ueber die runde Karte hinaus.
+        .clipShape(RoundedRectangle(cornerRadius: AnkerRadius.card, style: .continuous))
+        .ankerCard()
         .onAppear {
             progress = 1
             withAnimation(.linear(duration: 4)) {
