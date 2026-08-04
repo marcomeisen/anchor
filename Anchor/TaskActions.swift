@@ -11,6 +11,10 @@ struct TaskSnapshot: Identifiable {
     let priority: Priority
     let isDone: Bool
     let order: Int
+    /// Muss mit: sonst laesst ein Undo den Erledigungszeitpunkt stehen und die Statistik
+    /// zaehlt eine zurueckgenommene Erledigung weiter.
+    let completedAt: Date?
+    let carryOverCount: Int
     let dayID: UUID?
     let goalID: UUID?
 }
@@ -66,11 +70,25 @@ final class TaskUndoCoordinator: ObservableObject {
 }
 
 enum TaskActions {
-    static func toggleDone(_ task: AnkerTask, modelContext: ModelContext) {
-        let wasDone = task.isDone
-        task.isDone.toggle()
+    static func toggleDone(_ task: AnkerTask, now: Date = Date(), modelContext: ModelContext) {
+        setDone(task, !task.isDone, now: now, modelContext: modelContext)
+    }
 
-        if !wasDone, let day = task.day {
+    /// Setzt den Zustand ausdruecklich — und fuehrt dabei `completedAt`.
+    ///
+    /// Es gab zwei Stellen, die `task.isDone` direkt zugewiesen haben (Mehrfachauswahl und
+    /// Editorblatt). Die haetten den Zeitpunkt still ausgelassen und damit „staerkster
+    /// Wochentag" verfaelscht.
+    static func setDone(_ task: AnkerTask, _ isDone: Bool, now: Date = Date(), modelContext: ModelContext) {
+        guard task.isDone != isDone else { return }
+        task.isDone = isDone
+        task.completedAt = isDone ? now : nil
+        finishToggle(task, modelContext: modelContext)
+    }
+
+    /// Erledigtes wandert ans Ende des Tages — der Zustand ist zu dem Zeitpunkt schon gesetzt.
+    private static func finishToggle(_ task: AnkerTask, modelContext: ModelContext) {
+        if task.isDone, let day = task.day {
             task.order = (day.taskList.map(\.order).max() ?? task.order) + 1
             day.tasks = day.taskList.filter { $0.id != task.id } + [task]
             normalizeOrders(in: day)
@@ -112,6 +130,84 @@ enum TaskActions {
         return copy
     }
 
+    /// Legt eine Aufgabe an.
+    ///
+    /// Bisher erzeugten `NewTaskSheet`, `QuickCapturePopover` und `WeeklyReviewView` selbst
+    /// `AnkerTask(...)` — entgegen der Projektregel, dass Aufgaben nur ueber diese Schicht
+    /// entstehen. Damit lag die Reihenfolge-Vergabe dreimal im Code und die Blaetter mussten
+    /// selbst speichern.
+    @discardableResult
+    static func create(
+        title: String,
+        priority: Priority,
+        on day: Day,
+        linkedGoal: Goal?,
+        modelContext: ModelContext
+    ) -> AnkerTask? {
+        let cleanTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !cleanTitle.isEmpty else { return nil }
+
+        let task = AnkerTask(
+            title: cleanTitle,
+            priority: priority,
+            order: day.taskList.count,
+            day: day,
+            linkedGoal: linkedGoal
+        )
+        modelContext.insert(task)
+        day.appendTask(task)
+        normalizeOrders(in: day)
+        modelContext.saveChanges()
+        return task
+    }
+
+    /// Legt eine Aufgabe aus einer Erfassungszeile an und erzeugt dabei Zielwoche und Zieltag,
+    /// falls sie fehlen — ein Wochentagskuerzel kann in eine Woche zeigen, die es noch nicht gibt.
+    @discardableResult
+    static func create(
+        _ input: CaptureInput,
+        weekStart: Date,
+        fallbackDate: Date,
+        weeks: [Week],
+        modelContext: ModelContext
+    ) -> AnkerTask? {
+        guard !input.isEmpty else { return nil }
+
+        let target = CaptureSyntax.resolve(input, weekStart: weekStart, fallbackDate: fallbackDate)
+        let week = ensureWeek(containing: target.date, weeks: weeks, modelContext: modelContext)
+        let day = ensureDay(containing: target.date, in: week)
+        // Ueber `GoalOrdering`, nicht ueber `week.goalList`: die Beziehung kommt nach einem
+        // CloudKit-Sync ungeordnet zurueck, und ein ueberzaehliges fuenftes Ziel ist kein Anker.
+        // Sonst zeigt `#1` auf jedem Geraet auf ein anderes Ziel.
+        let goal = target.anchorNumber.flatMap { number -> Goal? in
+            let anchors = GoalOrdering.anchors(in: week)
+            guard anchors.indices.contains(number - 1) else { return nil }
+            return anchors[number - 1]
+        }
+
+        return create(
+            title: input.title,
+            priority: target.priority,
+            on: day,
+            linkedGoal: goal,
+            modelContext: modelContext
+        )
+    }
+
+    /// Benennt eine Aufgabe um. Gibt zurück, ob sich etwas geändert hat — der Aufrufer haengt
+    /// daran seinen Undo-Hinweis.
+    ///
+    /// Ein leerer Titel loescht die Aufgabe **nicht**: das waere eine unbeabsichtigte Loeschung
+    /// durch Wegwischen von Text. Er wird verworfen, der alte Titel bleibt stehen.
+    @discardableResult
+    static func rename(_ task: AnkerTask, to title: String, modelContext: ModelContext) -> Bool {
+        let clean = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !clean.isEmpty, clean != task.title else { return false }
+        task.title = clean
+        modelContext.saveChanges()
+        return true
+    }
+
     static func setPriority(_ task: AnkerTask, to priority: Priority, modelContext: ModelContext) {
         task.priority = priority
         modelContext.saveChanges()
@@ -129,6 +225,8 @@ enum TaskActions {
             priority: task.priority,
             isDone: task.isDone,
             order: task.order,
+            completedAt: task.completedAt,
+            carryOverCount: task.carryOverCount,
             dayID: task.day?.id,
             goalID: task.linkedGoal?.id
         )
@@ -164,6 +262,8 @@ enum TaskActions {
                 existingTask.priority = snapshot.priority
                 existingTask.isDone = snapshot.isDone
                 existingTask.order = snapshot.order
+                existingTask.completedAt = snapshot.completedAt
+                existingTask.carryOverCount = snapshot.carryOverCount
                 existingTask.linkedGoal = goal
 
                 if existingTask.day?.id != day.id {
@@ -181,6 +281,8 @@ enum TaskActions {
                     priority: snapshot.priority,
                     isDone: snapshot.isDone,
                     order: snapshot.order,
+                    completedAt: snapshot.completedAt,
+                    carryOverCount: snapshot.carryOverCount,
                     day: day,
                     linkedGoal: goal
                 )
@@ -253,6 +355,23 @@ enum TaskActions {
         day.tasks = orderedTasks
     }
 
+    /// Zaehlt ein Verschieben als Uebertragung?
+    ///
+    /// Nur wenn eine **offene** Aufgabe ueber eine Wochengrenze **nach vorn** wandert.
+    /// „Uebernommen" heisst unfertige Arbeit weitergeschoben — eine erledigte Aufgabe zu
+    /// verschieben oder etwas in die Vergangenheit zu planen ist keine Uebernahme.
+    ///
+    /// Vergleich ueber die ISO-Felder, nicht ueber `Date`: derselbe Montag ist in zwei
+    /// Zeitzonen ein anderer `Date`-Wert.
+    nonisolated static func isCarryOver(from source: Date?, to target: Date, isDone: Bool) -> Bool {
+        guard !isDone, let source else { return false }
+
+        let from = AnkerCalendar.weekInterval(containing: source)
+        let to = AnkerCalendar.weekInterval(containing: target)
+        guard (from.isoYear, from.isoWeek) != (to.isoYear, to.isoWeek) else { return false }
+        return (to.isoYear, to.isoWeek) > (from.isoYear, from.isoWeek)
+    }
+
     static func move(_ task: AnkerTask, to targetDate: Date, weeks: [Week], modelContext: ModelContext) {
         let targetWeek = ensureWeek(containing: targetDate, weeks: weeks, modelContext: modelContext)
         let targetDay = ensureDay(containing: targetDate, in: targetWeek)
@@ -260,6 +379,10 @@ enum TaskActions {
         if let currentDay = task.day, currentDay.id == targetDay.id {
             modelContext.saveChanges()
             return
+        }
+
+        if isCarryOver(from: task.day?.date, to: targetDate, isDone: task.isDone) {
+            task.carryOverCount += 1
         }
 
         if let oldDay = task.day {
@@ -276,6 +399,29 @@ enum TaskActions {
         targetDay.tasks = targetDay.taskList.filter { $0.id != task.id } + [task]
         normalizeOrders(in: targetDay)
         modelContext.saveChanges()
+    }
+
+    /// Setzt Tag **und** Anker in einem Schritt — der Drop in der Matrix.
+    ///
+    /// Reihenfolge ist wesentlich: `move` loest bei einem Wochenwechsel `linkedGoal`, weil ein
+    /// Ziel zu genau einer Woche gehoert. Der Anker wird deshalb **danach** gesetzt, sonst
+    /// gewaenne das Aufraeumen gegen die Absicht des Nutzers.
+    static func place(
+        _ task: AnkerTask,
+        on targetDate: Date,
+        goalID: UUID?,
+        weeks: [Week],
+        modelContext: ModelContext
+    ) {
+        move(task, to: targetDate, weeks: weeks, modelContext: modelContext)
+
+        let goal = goalID.flatMap { id in
+            task.day?.week?.goalList.first { $0.id == id }
+        }
+        if task.linkedGoal?.id != goal?.id {
+            task.linkedGoal = goal
+            modelContext.saveChanges()
+        }
     }
 
     static func move(_ task: AnkerTask, byDays offset: Int, weeks: [Week], modelContext: ModelContext) {

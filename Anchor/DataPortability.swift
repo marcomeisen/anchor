@@ -19,7 +19,7 @@ enum DataPortability {
     /// Tag sind ueber die Oberflaeche nicht erreichbar, gehoeren dem Nutzer aber trotzdem und
     /// muessen in einer Auskunft nach Art. 15 auftauchen.
     struct Snapshot: Codable, Sendable {
-        var formatVersion = 1
+        var formatVersion = 2
         var exportedAt: Date
         var application: String
         var weeks: [ExportedWeek]
@@ -43,6 +43,8 @@ enum DataPortability {
         var isoWeek: Int
         var monday: Date
         var sunday: Date
+        var reflection: String?
+        var reviewedAt: Date?
         var goals: [ExportedGoal]
         var days: [ExportedDay]
     }
@@ -51,6 +53,7 @@ enum DataPortability {
         var id: UUID
         var title: String
         var colorHex: String
+        var order: Int
         var weekID: UUID?
     }
 
@@ -70,6 +73,8 @@ enum DataPortability {
         var priority: String
         var isDone: Bool
         var order: Int
+        var completedAt: Date?
+        var carryOverCount: Int
         var dayID: UUID?
         var linkedGoalID: UUID?
     }
@@ -126,13 +131,16 @@ enum DataPortability {
             isoWeek: week.isoWeek,
             monday: week.monday,
             sunday: week.sunday,
-            goals: week.goalList.map(exported(goal:)),
+            reflection: week.reflection,
+            reviewedAt: week.reviewedAt,
+            // Sortiert exportieren: eine Auskunft muss zweimal gleich aussehen.
+            goals: GoalOrdering.sorted(week.goalList).map(exported(goal:)),
             days: week.dayList.sorted { $0.date < $1.date }.map(exported(day:))
         )
     }
 
     private static func exported(goal: Goal) -> ExportedGoal {
-        ExportedGoal(id: goal.id, title: goal.title, colorHex: goal.colorHex, weekID: goal.week?.id)
+        ExportedGoal(id: goal.id, title: goal.title, colorHex: goal.colorHex, order: goal.order, weekID: goal.week?.id)
     }
 
     private static func exported(day: Day) -> ExportedDay {
@@ -154,6 +162,8 @@ enum DataPortability {
             priority: task.priority.rawValue,
             isDone: task.isDone,
             order: task.order,
+            completedAt: task.completedAt,
+            carryOverCount: task.carryOverCount,
             dayID: task.day?.id,
             linkedGoalID: task.linkedGoal?.id
         )

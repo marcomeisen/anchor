@@ -25,13 +25,13 @@ enum AnkerSearch {
             }
         }
 
-        var symbolName: String {
+        var icon: AnkerIcon {
             switch self {
-            case .task: "checkmark.circle"
-            case .goal: "target"
-            case .note: "note.text"
-            case .focus: "sun.max"
-            case .timeBlock: "clock"
+            case .task: .checkCircle
+            case .goal: .goal
+            case .note: .note
+            case .focus: .today
+            case .timeBlock: .time
             }
         }
 
@@ -83,6 +83,21 @@ enum AnkerSearch {
                         isDone: goal.progress >= 1,
                         dayID: nil,
                         goalID: goal.id,
+                        date: week.monday
+                    )
+                )
+            }
+
+            if let reflection = week.reflection, matches(reflection, needle) {
+                results.append(
+                    Result(
+                        id: week.id,
+                        kind: .note,
+                        title: snippet(of: reflection, around: needle),
+                        context: "Rückblick · \(weekLabel)",
+                        isDone: false,
+                        dayID: nil,
+                        goalID: nil,
                         date: week.monday
                     )
                 )
@@ -219,7 +234,7 @@ struct SearchResultsList: View {
     var onSelect: (AnkerSearch.Result) -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: AnkerSpacing.s2) {
             if query.trimmingCharacters(in: .whitespacesAndNewlines).count < 2 {
                 hint("Mindestens zwei Zeichen eingeben.")
             } else if results.isEmpty {
@@ -227,10 +242,9 @@ struct SearchResultsList: View {
             } else {
                 // "Treffer" ist im Deutschen im Singular und Plural gleich — keine Pluralregel nötig.
                 Text("\(results.count) Treffer")
-                    .font(.system(size: 10.5, weight: .bold))
-                    .foregroundStyle(AnkerColor.muted)
-                    .textCase(.uppercase)
-                    .padding(.horizontal, 10)
+                    .ankerType(AnkerType.eyebrow)
+                    .foregroundStyle(AnkerColor.inkSecond)
+                    .padding(.horizontal, AnkerSpacing.s3)
 
                 ForEach(results) { result in
                     Button {
@@ -246,39 +260,38 @@ struct SearchResultsList: View {
 
     private func hint(_ text: String) -> some View {
         Text(text)
-            .font(.system(size: 11.5))
-            .foregroundStyle(AnkerColor.muted)
+            .ankerType(AnkerType.caption)
+            .foregroundStyle(AnkerColor.inkSecond)
             .fixedSize(horizontal: false, vertical: true)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 6)
+            .padding(.horizontal, AnkerSpacing.s3)
+            .padding(.vertical, AnkerSpacing.s2)
     }
 
     private func row(_ result: AnkerSearch.Result) -> some View {
-        HStack(alignment: .top, spacing: 8) {
-            Image(systemName: result.kind.symbolName)
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(AnkerColor.indigoText)
-                .frame(width: 16, height: 16)
-                .padding(.top, 1)
+        HStack(alignment: .top, spacing: AnkerSpacing.s2) {
+            Image(result.kind.icon)
+                .ankerIcon(AnkerIconSize.xs)
+                .foregroundStyle(AnkerColor.accentInk)
+                .padding(.top, 1)  // optische Ausrichtung, kein Raster. design-guard: erlaubt
 
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: AnkerSpacing.s1) {
                 Text(result.title)
-                    .font(.system(size: 12, weight: .semibold))
+                    .ankerType(AnkerType.caption)
                     .foregroundStyle(AnkerColor.ink)
-                    .strikethrough(result.isDone, color: AnkerColor.muted)
+                    .strikethrough(result.isDone, color: AnkerColor.inkSecond)
                     .lineLimit(2)
                     .multilineTextAlignment(.leading)
 
                 Text("\(result.kind.title) · \(result.context)")
-                    .font(.system(size: 10.5, weight: .medium))
-                    .foregroundStyle(AnkerColor.muted)
+                    .ankerType(AnkerType.caption)
+                    .foregroundStyle(AnkerColor.inkSecond)
                     .lineLimit(1)
             }
 
             Spacer(minLength: 0)
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 6)
+        .padding(.horizontal, AnkerSpacing.s3)
+        .padding(.vertical, AnkerSpacing.s2)
         .frame(maxWidth: .infinity, alignment: .leading)
         .contentShape(Rectangle())
         .accessibilityElement(children: .ignore)
@@ -304,10 +317,10 @@ struct SearchSheet: View {
                     onSelect(result)
                     dismiss()
                 }
-                .padding(.horizontal, 8)
-                .padding(.vertical, 12)
+                .padding(.horizontal, AnkerSpacing.s2)
+                .padding(.vertical, AnkerSpacing.s3)
             }
-            .background(AnkerColor.paper)
+            .background(AnkerColor.ground)
             .searchable(text: $query, prompt: "Ziele, Aufgaben, Notizen")
             .navigationTitle("Suchen")
             .toolbar {

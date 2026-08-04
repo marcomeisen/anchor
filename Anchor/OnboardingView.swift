@@ -1,173 +1,202 @@
 import SwiftData
 import SwiftUI
 
+/// Onboarding: setzen statt lesen.
+///
+/// Der Bestand erklärte das Konzept in vier Zeilen Prosa, bevor der Nutzer etwas gesehen hatte.
+/// Hier setzt er seine echten Anker — **das Konzept erklärt sich dadurch, dass die Liste bei
+/// vier aufhört**. Genau so begründet es der Entwurf.
+///
+/// Zwei Schritte, und die Reihenfolge ist Absicht: die Sync-Einstellung wirkt sich darauf aus,
+/// wohin die Daten gehen, und soll beantwortet sein, bevor die ersten entstehen. Wird der Sync
+/// hier abgeschaltet, greift das erst beim nächsten Start — dieser Prozess hat den Store schon
+/// geöffnet. Der Schritt sagt das ausdrücklich, statt es zu verschweigen.
 struct OnboardingView: View {
     let weekIntervalTitle: String
-    var onCreateGoal: (String) -> Void
+    /// Bis zu vier Titel in der Reihenfolge, in der sie eingegeben wurden.
+    var onCreateAnchors: ([String]) -> Void
 
-    /// Zwei Schritte: erst die Sync-Entscheidung, dann das erste Wochenziel.
-    ///
-    /// Die Reihenfolge ist Absicht. Die Sync-Einstellung wirkt sich darauf aus, wohin die
-    /// Daten gehen, und soll deshalb beantwortet sein, bevor die ersten entstehen. Wird der
-    /// Sync hier abgeschaltet, greift das erst beim naechsten Start — dieser Prozess hat den
-    /// Store bereits geoeffnet. Der Schritt sagt das ausdruecklich, statt es zu verschweigen.
     private enum Step {
         case cloudSync
-        case goal
+        case anchors
     }
 
-    @State private var step: Step = CloudSyncPreference.hasBeenChosen() ? .goal : .cloudSync
-    @State private var goalTitle = ""
+    private static let anchorSlots = 4
+
+    @State private var step: Step = CloudSyncPreference.hasBeenChosen() ? .anchors : .cloudSync
+    @State private var titles = Array(repeating: "", count: Self.anchorSlots)
+    @FocusState private var focusedSlot: Int?
+
+    private var cleanTitles: [String] {
+        titles
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+    }
 
     var body: some View {
         VStack(spacing: 0) {
-            Spacer()
-            RoundedRectangle(cornerRadius: 22)
-                .fill(AnkerColor.surfaceRaised)
-                .frame(width: 78, height: 78)
-                .overlay(DaiventoLogo().padding(8))
-                .shadow(color: AnkerColor.indigo.opacity(0.45), radius: 15, x: 0, y: 8)
-                .padding(.bottom, 26)
-
             switch step {
             case .cloudSync:
                 cloudSyncStep
-            case .goal:
-                goalStep
+            case .anchors:
+                anchorStep
             }
-
-            Spacer()
         }
-        .padding(.horizontal, 32)
-        .background(AnkerColor.paper)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .padding(.horizontal, AnkerSpacing.s5)
+        .background(AnkerColor.ground)
     }
 
     // MARK: - Schritt 1: iCloud
 
     private var cloudSyncStep: some View {
-        VStack(spacing: 0) {
-            Text("Auf allen Geräten?")
-                .font(.system(size: 21, weight: .bold))
-                .foregroundStyle(AnkerColor.ink)
-                .padding(.bottom, 10)
-
-            Text("Daivento kann deine Wochen, Ziele, Aufgaben und Notizen über deinen iCloud-Account zwischen iPhone, iPad und Mac gleich halten. Die Daten liegen in deiner privaten iCloud-Datenbank; niemand sonst hat Zugriff darauf.")
-                .font(.system(size: 13))
-                .foregroundStyle(AnkerColor.textBody)
-                .lineSpacing(4)
-                .multilineTextAlignment(.center)
-                .padding(.bottom, 20)
-
+        VStack(alignment: .leading, spacing: 0) {
             stepIndicator(activeIndex: 0)
-                .padding(.bottom, 22)
 
-            primaryButton("Mit iCloud synchronisieren") {
+            Text(verbatim: "Schritt 1 von 2")
+                .ankerType(AnkerType.eyebrow)
+                .foregroundStyle(AnkerColor.inkSecond)
+                .padding(.top, AnkerSpacing.s5)
+                .padding(.bottom, AnkerSpacing.s3)
+
+            Text(verbatim: "Auf allen Geräten?")
+                .ankerType(AnkerType.title2)
+                .foregroundStyle(AnkerColor.ink)
+
+            Text(verbatim: "Daivento kann deine Wochen, Ziele, Aufgaben und Notizen über deinen iCloud-Account zwischen iPhone, iPad und Mac gleich halten. Die Daten liegen in deiner privaten iCloud-Datenbank; niemand sonst hat Zugriff darauf.")
+                .ankerType(AnkerType.body)
+                .foregroundStyle(AnkerColor.inkSecond)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.top, AnkerSpacing.s3)
+
+            Spacer(minLength: AnkerSpacing.s5)
+
+            Button("Mit iCloud synchronisieren") {
                 CloudSyncPreference.set(true)
-                step = .goal
+                step = .anchors
             }
-            .padding(.bottom, 10)
+            .buttonStyle(AnkerButtonStyle.primaryBlock)
 
-            Button {
+            Button("Nur auf diesem Gerät") {
                 CloudSyncPreference.set(false)
-                step = .goal
-            } label: {
-                Text("Nur auf diesem Gerät")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(AnkerColor.indigoText)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 12)
-                    .background(AnkerColor.surfaceRaised, in: RoundedRectangle(cornerRadius: AnkerRadius.sheet))
-                    .overlay(RoundedRectangle(cornerRadius: AnkerRadius.sheet).stroke(AnkerColor.line))
+                step = .anchors
             }
-            .buttonStyle(.plain)
+            .buttonStyle(AnkerButtonStyle.secondary)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.top, AnkerSpacing.s2)
             .accessibilityLabel("Ohne iCloud, nur auf diesem Gerät speichern")
 
-            Text("Später jederzeit in den Einstellungen änderbar. Ein Wechsel greift beim nächsten Start.")
-                .font(.system(size: 11))
-                .foregroundStyle(AnkerColor.muted)
-                .multilineTextAlignment(.center)
+            Text(verbatim: "Später jederzeit in den Einstellungen änderbar. Ein Wechsel greift beim nächsten Start.")
+                .ankerType(AnkerType.caption)
+                .foregroundStyle(AnkerColor.inkTertiary)
                 .fixedSize(horizontal: false, vertical: true)
-                .padding(.top, 12)
+                .padding(.top, AnkerSpacing.s3)
+                .padding(.bottom, AnkerSpacing.s5)
         }
     }
 
-    // MARK: - Schritt 2: erstes Wochenziel
+    // MARK: - Schritt 2: die Anker
 
-    private var goalStep: some View {
-        VStack(spacing: 0) {
-            Text("Plane deine Woche")
-                .font(.system(size: 21, weight: .bold))
-                .foregroundStyle(AnkerColor.ink)
-                .padding(.bottom, 10)
-
-            Text(weekIntervalTitle)
-                .font(.system(size: 11.5, weight: .medium, design: .monospaced))
-                .foregroundStyle(AnkerColor.indigoText)
-                .padding(.bottom, 8)
-
-            Text("Setze dein erstes Wochenziel. Jede Tagesaufgabe, die du erledigst, bleibt sichtbar mit ihrem Ziel verbunden.")
-                .font(.system(size: 13))
-                .foregroundStyle(AnkerColor.textBody)
-                .lineSpacing(4)
-                .multilineTextAlignment(.center)
-                .padding(.bottom, 18)
-
-            TextField("Mein Wochenziel", text: $goalTitle)
-                .textFieldStyle(.plain)
-                .font(.system(size: 13.5, weight: .semibold))
-                .foregroundStyle(AnkerColor.ink)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 11)
-                .background(AnkerColor.surfaceRaised)
-                .overlay(RoundedRectangle(cornerRadius: 10).stroke(AnkerColor.line))
-                .clipShape(RoundedRectangle(cornerRadius: 10))
-                .padding(.bottom, 22)
-
+    private var anchorStep: some View {
+        VStack(alignment: .leading, spacing: 0) {
             stepIndicator(activeIndex: 1)
-                .padding(.bottom, 22)
 
-            primaryButton("Erstes Wochenziel setzen") {
-                onCreateGoal(cleanGoalTitle)
+            Text(verbatim: "Schritt 2 von 2 · \(weekIntervalTitle)")
+                .ankerType(AnkerType.eyebrow)
+                .foregroundStyle(AnkerColor.inkSecond)
+                .padding(.top, AnkerSpacing.s5)
+                .padding(.bottom, AnkerSpacing.s3)
+
+            Text(verbatim: "Was zählt diese Woche?")
+                .ankerType(AnkerType.title2)
+                .foregroundStyle(AnkerColor.ink)
+
+            Text(verbatim: "Bis zu vier. Mehr geht nicht — das ist der Punkt.")
+                .ankerType(AnkerType.body)
+                .foregroundStyle(AnkerColor.inkSecond)
+                .padding(.top, AnkerSpacing.s3)
+                .padding(.bottom, AnkerSpacing.s5)
+
+            AnkerRule(color: AnkerColor.ink)
+
+            ForEach(0..<Self.anchorSlots, id: \.self) { slot in
+                anchorField(slot)
+                AnkerRule()
             }
-            .disabled(cleanGoalTitle.isEmpty)
-            .opacity(cleanGoalTitle.isEmpty ? 0.58 : 1)
+
+            Spacer(minLength: AnkerSpacing.s5)
+
+            Text(verbatim: "Zwei reichen für den Start. Der Rest kommt, wenn du ihn brauchst.")
+                .ankerType(AnkerType.caption)
+                .foregroundStyle(AnkerColor.inkSecond)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.bottom, AnkerSpacing.s3)
+
+            Button(action: commit) {
+                Text(verbatim: "Weiter · Woche aufteilen")
+            }
+            .buttonStyle(AnkerButtonStyle.primaryBlock)
+            .disabled(cleanTitles.isEmpty)
+            .opacity(cleanTitles.isEmpty ? 0.45 : 1)
+            .accessibilityIdentifier("onboardingCommit")
+            .padding(.bottom, AnkerSpacing.s5)
+        }
+    }
+
+    private func anchorField(_ slot: Int) -> some View {
+        HStack(spacing: AnkerSpacing.s3) {
+            Text(verbatim: String(slot + 1))
+                .ankerType(AnkerType.numeric)
+                .foregroundStyle(isFilled(slot) ? AnkerColor.ink : AnkerColor.inkTertiary)
+                .frame(width: 20, alignment: .leading)
+
+            TextField(placeholder(slot), text: $titles[slot])
+                .textFieldStyle(.plain)
+                .ankerType(AnkerType.subheadline)
+                .foregroundStyle(AnkerColor.ink)
+                .focused($focusedSlot, equals: slot)
+                .onSubmit {
+                    // Enter springt in das naechste Feld — vier Anker in einem Fluss eingeben.
+                    focusedSlot = slot + 1 < Self.anchorSlots ? slot + 1 : nil
+                }
+                .accessibilityIdentifier("anchorField.\(slot + 1)")
+        }
+        .padding(.vertical, AnkerSpacing.s4)
+        .frame(minHeight: 52)
+    }
+
+    private func isFilled(_ slot: Int) -> Bool {
+        !titles[slot].trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    /// Die Platzhalter erzählen dasselbe wie die Prosa, die hier stand — nur beim Tun.
+    private func placeholder(_ slot: Int) -> String {
+        switch slot {
+        case 0: "Dein erster Anker"
+        case 1: "Zweiter Anker"
+        case 2: "Dritter Anker …"
+        default: "Optional"
         }
     }
 
     // MARK: - Bausteine
 
     private func stepIndicator(activeIndex: Int) -> some View {
-        HStack(spacing: 6) {
+        HStack(spacing: AnkerSpacing.s1) {
             ForEach(0..<2, id: \.self) { index in
-                if index == activeIndex {
-                    Capsule().fill(AnkerColor.indigo).frame(width: 16, height: 6)
-                } else {
-                    Circle().fill(AnkerColor.line).frame(width: 6, height: 6)
-                }
+                Rectangle()
+                    .fill(index == activeIndex ? AnkerColor.accentMark : AnkerColor.neutral[300])
+                    .frame(width: index == activeIndex ? 64 : 32, height: AnkerBorder.heavy)
             }
+            Spacer(minLength: 0)
         }
+        .padding(.top, AnkerSpacing.s6)
         .accessibilityLabel("Schritt \(activeIndex + 1) von 2")
     }
 
-    private func primaryButton(_ title: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Text(title)
-                .font(.system(size: 14, weight: .bold))
-                .foregroundStyle(.white)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 13)
-                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: AnkerRadius.sheet))
-                .background(
-                    LinearGradient(colors: [AnkerColor.indigoGradientSoft.opacity(0.95), AnkerColor.indigoText.opacity(0.95)], startPoint: .topLeading, endPoint: .bottomTrailing),
-                    in: RoundedRectangle(cornerRadius: AnkerRadius.sheet)
-                )
-                .overlay(RoundedRectangle(cornerRadius: AnkerRadius.sheet).stroke(.white.opacity(0.35), lineWidth: 1))
-                .shadow(color: AnkerColor.indigoText.opacity(0.35), radius: 18, x: 0, y: 8)
-        }
-        .buttonStyle(.plain)
-    }
-
-    private var cleanGoalTitle: String {
-        goalTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+    private func commit() {
+        let anchors = cleanTitles
+        guard !anchors.isEmpty else { return }
+        onCreateAnchors(anchors)
     }
 }

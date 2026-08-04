@@ -9,6 +9,19 @@
 	<!-- Deep Links: daivento://today, //week/2026-08-03, //day/2026-08-05,
 	     //goal/<UUID>, //year, //review. Ohne diese Registrierung liefert das
 	     System die URL nicht an die App aus. -->
+	<!-- Archivo (OFL-1.1) liegt unter Anchor/Fonts/. Achtung: die
+	     PBXFileSystemSynchronizedRootGroup legt Ressourcen flach in den
+	     Resources-Wurzelordner, deshalb der nackte Dateiname und "." als Pfad.
+	     UIAppFonts gilt auf iOS, ATSApplicationFontsPath auf macOS; jede
+	     Plattform ignoriert den Schluessel der anderen. Zusaetzlich registriert
+	     AnkerFont.bootstrap() zur Laufzeit, damit ein Fehlschlag sichtbar wird
+	     statt still zur Systemschrift zurueckzufallen. -->
+	<key>UIAppFonts</key>
+	<array>
+		<string>Archivo.ttf</string>
+	</array>
+	<key>ATSApplicationFontsPath</key>
+	<string>.</string>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>

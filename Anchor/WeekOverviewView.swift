@@ -19,36 +19,36 @@ struct WeekOverviewView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack(spacing: 8) {
+            HStack(spacing: AnkerSpacing.s2) {
                 ChipButton(title: "Heute", isPrimary: true, action: onCurrentWeek)
                 ChipButton(title: "« KW \(weekLabel(offset: -1))", action: onPreviousWeek)
                 ChipButton(title: "KW \(weekLabel(offset: 1)) »", action: onNextWeek)
                 Spacer()
                 Text("\(AnkerDateFormat.dayMonthYear(week.monday)) – \(AnkerDateFormat.dayMonthYear(week.sunday))")
-                    .font(.system(size: 11, weight: .regular, design: .monospaced))
-                    .foregroundStyle(AnkerColor.muted)
+                    .ankerType(AnkerType.numericSmall)
+                    .foregroundStyle(AnkerColor.inkSecond)
             }
-            .padding(.horizontal, 18)
-            .padding(.vertical, 11)
-            .background(.regularMaterial)
-            .overlay(alignment: .bottom) { Rectangle().fill(.white.opacity(0.22)).frame(height: 1) }
+            .padding(.horizontal, AnkerSpacing.s4)
+            .padding(.vertical, AnkerSpacing.s3)
+            .background(AnkerColor.surface)
+            .ankerEdge(.bottom)
 
-            HStack(spacing: 10) {
+            HStack(spacing: AnkerSpacing.s3) {
                 ForEach(week.goalList.prefix(4), id: \.id) { goal in
                     GoalPill(goal: goal)
                         .contextMenu {
                             Button(role: .destructive) {
                                 goalPendingDeletion = goal
                             } label: {
-                                Label("Wochenziel löschen", systemImage: "trash")
+                                Label("Wochenziel löschen", ankerIcon: AnkerIcon.delete)
                             }
                         }
                 }
             }
-            .padding(.horizontal, 18)
-            .padding(.vertical, 14)
-            .background(AnkerColor.paper)
-            .overlay(alignment: .bottom) { Rectangle().fill(AnkerColor.line).frame(height: 1) }
+            .padding(.horizontal, AnkerSpacing.s4)
+            .padding(.vertical, AnkerSpacing.s4)
+            .background(AnkerColor.ground)
+            .overlay(alignment: .bottom) { Rectangle().fill(AnkerColor.divider).frame(height: 1) }
 
             ScrollView {
                 VStack(spacing: 0) {
@@ -56,10 +56,10 @@ struct WeekOverviewView: View {
                         dayDropButton(day)
                     }
                 }
-                .padding(.horizontal, 18)
-                .padding(.vertical, 12)
+                .padding(.horizontal, AnkerSpacing.s4)
+                .padding(.vertical, AnkerSpacing.s3)
             }
-            .background(AnkerColor.paper)
+            .background(AnkerColor.ground)
 
 #if os(macOS)
             TaskShortcutHintBar()
@@ -114,33 +114,31 @@ private struct GoalPill: View {
     let goal: Goal
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: AnkerSpacing.s2) {
             HStack {
                 Text(goal.title)
-                    .font(.system(size: 12, weight: .bold))
+                    .ankerType(AnkerType.caption)
                     .foregroundStyle(AnkerColor.ink)
                     .lineLimit(1)
-                Spacer(minLength: 8)
-                ProgressRing(progress: goal.progress, color: Color(hex: goal.colorHex), lineWidth: 4)
-                    .frame(width: 22, height: 22)
-                    .accessibilityLabel("\(goal.title), \(Int(goal.progress * 100)) Prozent erreicht")
+                Spacer(minLength: AnkerSpacing.s2)
+                // Der Ring stand hier zusaetzlich zum Balken darunter — dieselbe Aussage zweimal.
+                Text(verbatim: "\(Int(goal.progress * 100))%")
+                    .ankerType(AnkerType.numericSmall)
+                    .foregroundStyle(AnkerColor.inkSecond)
             }
+            .accessibilityLabel("\(goal.title), \(Int(goal.progress * 100)) Prozent erreicht")
 
-            GeometryReader { proxy in
-                ZStack(alignment: .leading) {
-                    Capsule().fill(AnkerColor.lineSoft)
-                    Capsule()
-                        .fill(Color(hex: goal.colorHex))
-                        .frame(width: proxy.size.width * goal.progress)
-                }
-            }
-            .frame(height: 5)
+            AnkerProgressBar(
+                progress: goal.progress,
+                tint: AnkerColor.goalTint(goal.colorHex),
+                thickness: AnkerBorder.rule * 3
+            )
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 10)
-        .background(AnkerColor.card)
-        .overlay(RoundedRectangle(cornerRadius: 12).stroke(AnkerColor.line))
-        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .padding(.horizontal, AnkerSpacing.s3)
+        .padding(.vertical, AnkerSpacing.s3)
+        .background(AnkerColor.surface)
+        .overlay(Rectangle().stroke(AnkerColor.divider, lineWidth: AnkerBorder.rule))
+        .clipShape(Rectangle())
     }
 }
 
@@ -150,43 +148,43 @@ private struct WeekGridRow: View {
     let isDropTarget: Bool
 
     var body: some View {
-        HStack(alignment: .center, spacing: 12) {
-            VStack(alignment: .leading, spacing: 2) {
+        HStack(alignment: .center, spacing: AnkerSpacing.s3) {
+            VStack(alignment: .leading, spacing: AnkerSpacing.s1) {
                 Text(AnkerDateFormat.weekdayLong(day.date))
-                    .font(.system(size: 12.5, weight: .bold))
-                    .foregroundStyle(isSelected ? AnkerColor.indigoText : AnkerColor.ink)
+                    .ankerType(AnkerType.caption)
+                    .foregroundStyle(isSelected ? AnkerColor.accentInk : AnkerColor.ink)
                 Text(AnkerDateFormat.dayMonth(day.date))
-                    .font(.system(size: 10.5, weight: .regular, design: .monospaced))
-                    .foregroundStyle(AnkerColor.muted)
+                    .ankerType(AnkerType.numericSmall)
+                    .foregroundStyle(AnkerColor.inkSecond)
             }
             .frame(width: 96, alignment: .leading)
 
-            FlowLayout(spacing: 6) {
+            FlowLayout(spacing: AnkerSpacing.s2) {
                 ForEach(day.taskList.sorted { $0.order < $1.order }, id: \.id) { task in
                     MiniTask(task: task)
                 }
             }
         }
-        .padding(.vertical, 9)
+        .padding(.vertical, AnkerSpacing.s2)
         .padding(.horizontal, (isSelected || isDropTarget) ? 18 : 0)
         .background(rowBackground)
-        .clipShape(RoundedRectangle(cornerRadius: 8))
+        .clipShape(Rectangle())
         .overlay(
-            RoundedRectangle(cornerRadius: 8)
-                .stroke(isDropTarget ? AnkerColor.indigo : Color.clear, lineWidth: 1.5)
+            Rectangle()
+                .stroke(isDropTarget ? AnkerColor.accentFill : Color.clear, lineWidth: 1.5)
         )
-        .overlay(alignment: .bottom) { Rectangle().fill(AnkerColor.lineSoft).frame(height: 1) }
+        .overlay(alignment: .bottom) { Rectangle().fill(AnkerColor.divider).frame(height: 1) }
         .scaleEffect(isDropTarget ? 1.01 : 1)
         .animation(.easeOut(duration: 0.12), value: isDropTarget)
     }
 
     private var rowBackground: some ShapeStyle {
         if isDropTarget {
-            return AnyShapeStyle(AnkerColor.indigo.opacity(0.16))
+            return AnyShapeStyle(AnkerColor.accentFill.opacity(0.16))
         }
 
         if isSelected {
-            return AnyShapeStyle(AnkerColor.selectedRow)
+            return AnyShapeStyle(AnkerColor.highlight)
         }
 
         return AnyShapeStyle(Color.clear)
@@ -205,21 +203,21 @@ private struct MiniTask: View {
         Button {
             showingEditor = true
         } label: {
-            HStack(spacing: 5) {
-                Circle()
-                    .fill(task.isDone ? AnkerColor.success : task.linkedGoal.map { Color(hex: $0.colorHex) } ?? AnkerColor.muted)
+            HStack(spacing: AnkerSpacing.s1) {
+                Rectangle()
+                    .fill(task.isDone ? AnkerColor.ink : task.linkedGoal.map { AnkerColor.goalTint($0.colorHex) } ?? AnkerColor.inkSecond)
                     .frame(width: 6, height: 6)
                 Text(task.title)
-                    .font(.system(size: 10.5))
-                    .foregroundStyle(task.isDone ? AnkerColor.muted : AnkerColor.textTask)
-                    .strikethrough(task.isDone, color: AnkerColor.muted)
+                    .ankerType(AnkerType.caption)
+                    .foregroundStyle(task.isDone ? AnkerColor.inkSecond : AnkerColor.ink)
+                    .strikethrough(task.isDone, color: AnkerColor.inkSecond)
                     .lineLimit(1)
             }
-            .padding(.horizontal, 8)
-            .padding(.vertical, 4)
-            .background(AnkerColor.card)
-            .overlay(RoundedRectangle(cornerRadius: 6).stroke(AnkerColor.line))
-            .clipShape(RoundedRectangle(cornerRadius: 6))
+            .padding(.horizontal, AnkerSpacing.s2)
+            .padding(.vertical, AnkerSpacing.s1)
+            .background(AnkerColor.surface)
+            .overlay(Rectangle().stroke(AnkerColor.divider, lineWidth: AnkerBorder.rule))
+            .clipShape(Rectangle())
         }
         .buttonStyle(.plain)
         .contextMenu { taskMenuItems }
@@ -247,19 +245,19 @@ private struct MiniTask: View {
                 TaskActions.toggleDone(task, modelContext: modelContext)
             }
         } label: {
-            Label(task.isDone ? "Als offen markieren" : "Als erledigt markieren", systemImage: task.isDone ? "circle" : "checkmark.circle")
+            Label(task.isDone ? "Als offen markieren" : "Als erledigt markieren", ankerIcon: task.isDone ? .open : .checkCircle)
         }
 
         Button {
             showingEditor = true
         } label: {
-            Label("Bearbeiten", systemImage: "pencil")
+            Label("Bearbeiten", ankerIcon: AnkerIcon.edit)
         }
 
         Button {
             TaskActions.move(task, byDays: 7, weeks: weeks, modelContext: modelContext)
         } label: {
-            Label("Nächste Woche", systemImage: "calendar.badge.plus")
+            Label("Nächste Woche", ankerIcon: AnkerIcon.nextMonth)
         }
 
         Divider()
@@ -267,7 +265,7 @@ private struct MiniTask: View {
         Button(role: .destructive) {
             confirmingDelete = true
         } label: {
-            Label("Löschen", systemImage: "trash")
+            Label("Löschen", ankerIcon: AnkerIcon.delete)
         }
     }
 }
@@ -275,7 +273,7 @@ private struct MiniTask: View {
 #if os(macOS)
 private struct TaskShortcutHintBar: View {
     var body: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: AnkerSpacing.s3) {
             shortcut("⌘.", "Erledigt")
             divider
             shortcut("⌘⌫", "Löschen")
@@ -285,31 +283,31 @@ private struct TaskShortcutHintBar: View {
             shortcut("⌘D", "Duplizieren")
             Spacer(minLength: 0)
         }
-        .padding(.horizontal, 18)
-        .padding(.vertical, 9)
-        .background(.regularMaterial)
+        .padding(.horizontal, AnkerSpacing.s4)
+        .padding(.vertical, AnkerSpacing.s2)
+        .background(AnkerColor.surface)
         .overlay(alignment: .top) {
-            Rectangle().fill(AnkerColor.lineSoft).frame(height: 1)
+            Rectangle().fill(AnkerColor.divider).frame(height: 1)
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel("Tastaturkurzbefehle: Command Punkt erledigt, Command Rückschritt löschen, Command Shift M verschieben, Command D duplizieren")
     }
 
     private func shortcut(_ keys: String, _ label: String) -> some View {
-        HStack(spacing: 4) {
+        HStack(spacing: AnkerSpacing.s1) {
             Text(keys)
-                .font(.system(size: 10, weight: .semibold, design: .monospaced))
-                .foregroundStyle(AnkerColor.muted)
+                .ankerType(AnkerType.numericSmall)
+                .foregroundStyle(AnkerColor.inkSecond)
             Text(label)
-                .font(.system(size: 10.5, weight: .medium))
-                .foregroundStyle(AnkerColor.muted)
+                .ankerType(AnkerType.caption)
+                .foregroundStyle(AnkerColor.inkSecond)
         }
     }
 
     private var divider: some View {
         Text("·")
-            .font(.system(size: 10.5, weight: .bold))
-            .foregroundStyle(AnkerColor.muted.opacity(0.72))
+            .ankerType(AnkerType.caption)
+            .foregroundStyle(AnkerColor.inkSecond.opacity(0.72))
     }
 }
 #endif

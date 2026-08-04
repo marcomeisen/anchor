@@ -36,7 +36,7 @@ struct TaskEditorSheet: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
+                VStack(alignment: .leading, spacing: AnkerSpacing.s4) {
                     titleField
                     statusAndPriority
                     weekPicker
@@ -44,9 +44,9 @@ struct TaskEditorSheet: View {
                     goalPicker
                     destructiveActions
                 }
-                .padding(18)
+                .padding(AnkerSpacing.s4)
             }
-            .background(AnkerColor.paper)
+            .background(AnkerColor.ground)
             .navigationTitle("Aufgabe bearbeiten")
 #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
@@ -77,43 +77,43 @@ struct TaskEditorSheet: View {
     }
 
     private var titleField: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Aufgabe".uppercased())
-                .font(.system(size: 10.5, weight: .bold))
-                .foregroundStyle(AnkerColor.muted)
+        VStack(alignment: .leading, spacing: AnkerSpacing.s2) {
+            Text("Aufgabe")
+                .ankerType(AnkerType.eyebrow)
+                .foregroundStyle(AnkerColor.inkSecond)
 
             TextField("Was steht an?", text: $title)
                 .textFieldStyle(.plain)
-                .font(.system(size: 16, weight: .semibold))
+                .ankerType(AnkerType.subheadline)
                 .foregroundStyle(AnkerColor.ink)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 11)
-                .background(AnkerColor.card)
-                .overlay(RoundedRectangle(cornerRadius: 10).stroke(AnkerColor.line))
+                .padding(.horizontal, AnkerSpacing.s3)
+                .padding(.vertical, AnkerSpacing.s3)
+                .background(AnkerColor.surface)
+                .overlay(Rectangle().stroke(AnkerColor.divider, lineWidth: AnkerBorder.rule))
         }
     }
 
     private var statusAndPriority: some View {
-        HStack(alignment: .top, spacing: 14) {
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Status".uppercased())
-                    .font(.system(size: 10.5, weight: .bold))
-                    .foregroundStyle(AnkerColor.muted)
+        HStack(alignment: .top, spacing: AnkerSpacing.s4) {
+            VStack(alignment: .leading, spacing: AnkerSpacing.s2) {
+                Text("Status")
+                    .ankerType(AnkerType.eyebrow)
+                    .foregroundStyle(AnkerColor.inkSecond)
 
                 Toggle(isOn: $isDone) {
-                    Label(isDone ? "Erledigt" : "Offen", systemImage: isDone ? "checkmark.circle.fill" : "circle")
-                        .font(.system(size: 12.5, weight: .semibold))
+                    Label(isDone ? "Erledigt" : "Offen", ankerIcon: isDone ? .checkCircleLarge : .open)
+                        .ankerType(AnkerType.caption)
                 }
                 .toggleStyle(.switch)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
 
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Priorität".uppercased())
-                    .font(.system(size: 10.5, weight: .bold))
-                    .foregroundStyle(AnkerColor.muted)
+            VStack(alignment: .leading, spacing: AnkerSpacing.s2) {
+                Text("Priorität")
+                    .ankerType(AnkerType.eyebrow)
+                    .foregroundStyle(AnkerColor.inkSecond)
 
-                HStack(spacing: 6) {
+                HStack(spacing: AnkerSpacing.s2) {
                     ForEach(Priority.allCases, id: \.self) { item in
                         CaptureChip(title: item.label, isSelected: priority == item, selectedColor: PriorityTag(priority: item).color) {
                             priority = item
@@ -126,30 +126,30 @@ struct TaskEditorSheet: View {
     }
 
     private var weekPicker: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Woche".uppercased())
-                .font(.system(size: 10.5, weight: .bold))
-                .foregroundStyle(AnkerColor.muted)
+        VStack(alignment: .leading, spacing: AnkerSpacing.s2) {
+            Text("Woche")
+                .ankerType(AnkerType.eyebrow)
+                .foregroundStyle(AnkerColor.inkSecond)
 
-            HStack(spacing: 8) {
-                iconButton(systemName: "chevron.left", label: "Vorherige Woche") {
+            HStack(spacing: AnkerSpacing.s2) {
+                iconButton(ankerIcon: .chevronLeft, label: "Vorherige Woche") {
                     moveSelectedWeek(by: -1)
                 }
 
-                VStack(spacing: 2) {
+                VStack(spacing: AnkerSpacing.s1) {
                     Text("\(AnkerDateFormat.calendarWeek(selectedWeekInterval.isoWeek))")
-                        .font(.system(size: 13, weight: .bold))
+                        .ankerType(AnkerType.metaStrong)
                         .foregroundStyle(AnkerColor.ink)
                     Text("\(AnkerDateFormat.dayMonth(selectedWeekInterval.monday)) - \(AnkerDateFormat.dayMonth(selectedWeekInterval.sunday))")
-                        .font(.system(size: 10.5, weight: .medium, design: .monospaced))
-                        .foregroundStyle(AnkerColor.muted)
+                        .ankerType(AnkerType.numericSmall)
+                        .foregroundStyle(AnkerColor.inkSecond)
                 }
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, 9)
-                .background(AnkerColor.card, in: RoundedRectangle(cornerRadius: 10))
-                .overlay(RoundedRectangle(cornerRadius: 10).stroke(AnkerColor.line))
+                .padding(.vertical, AnkerSpacing.s2)
+                .background(AnkerColor.surface, in: Rectangle())
+                .overlay(Rectangle().stroke(AnkerColor.divider, lineWidth: AnkerBorder.rule))
 
-                iconButton(systemName: "chevron.right", label: "Nächste Woche") {
+                iconButton(ankerIcon: .chevronRight, label: "Nächste Woche") {
                     moveSelectedWeek(by: 1)
                 }
             }
@@ -157,27 +157,27 @@ struct TaskEditorSheet: View {
     }
 
     private var dayPicker: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Tag".uppercased())
-                .font(.system(size: 10.5, weight: .bold))
-                .foregroundStyle(AnkerColor.muted)
+        VStack(alignment: .leading, spacing: AnkerSpacing.s2) {
+            Text("Tag")
+                .ankerType(AnkerType.eyebrow)
+                .foregroundStyle(AnkerColor.inkSecond)
 
-            HStack(spacing: 6) {
+            HStack(spacing: AnkerSpacing.s2) {
                 ForEach(AnkerCalendar.daysInWeek(starting: selectedWeekStart), id: \.self) { date in
                     Button {
                         selectedDate = date
                     } label: {
-                        VStack(spacing: 3) {
+                        VStack(spacing: AnkerSpacing.s1) {
                             Text(AnkerDateFormat.weekdayShort(date))
-                                .font(.system(size: 9.5, weight: .bold))
+                                .ankerType(AnkerType.caption)
                             Text(AnkerDateFormat.dayNumber(date))
-                                .font(.system(size: 12.5, weight: .bold, design: .monospaced))
+                                .ankerType(AnkerType.numericSmall)
                         }
                         .foregroundStyle(AnkerCalendar.isSameDay(date, selectedDate) ? .white : AnkerColor.ink)
                         .frame(maxWidth: .infinity, minHeight: 44)
-                        .background(AnkerCalendar.isSameDay(date, selectedDate) ? AnkerColor.indigo : AnkerColor.card)
-                        .overlay(RoundedRectangle(cornerRadius: 9).stroke(AnkerCalendar.isSameDay(date, selectedDate) ? Color.clear : AnkerColor.line))
-                        .clipShape(RoundedRectangle(cornerRadius: 9))
+                        .background(AnkerCalendar.isSameDay(date, selectedDate) ? AnkerColor.accentFill : AnkerColor.surface)
+                        .overlay(Rectangle().stroke(AnkerCalendar.isSameDay(date, selectedDate) ? Color.clear : AnkerColor.divider))
+                        .clipShape(Rectangle())
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel(AnkerDateFormat.weekdayLongWithDayMonth(date))
@@ -187,26 +187,26 @@ struct TaskEditorSheet: View {
     }
 
     private var goalPicker: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Wochenziel".uppercased())
-                .font(.system(size: 10.5, weight: .bold))
-                .foregroundStyle(AnkerColor.muted)
+        VStack(alignment: .leading, spacing: AnkerSpacing.s2) {
+            Text("Wochenziel")
+                .ankerType(AnkerType.eyebrow)
+                .foregroundStyle(AnkerColor.inkSecond)
 
-            FlowLayout(spacing: 6) {
+            FlowLayout(spacing: AnkerSpacing.s2) {
                 ForEach(selectedWeekGoals.prefix(4), id: \.id) { goal in
                     CaptureChip(title: goal.title, isSelected: selectedGoalID == goal.id, selectedColor: Color(hex: goal.colorHex)) {
                         selectedGoalID = goal.id
                     }
                 }
-                CaptureChip(title: "Kein Ziel", isSelected: selectedGoalID == nil, selectedColor: AnkerColor.indigoBadge) {
+                CaptureChip(title: "Kein Ziel", isSelected: selectedGoalID == nil, selectedColor: AnkerColor.accentFill) {
                     selectedGoalID = nil
                 }
             }
 
             if selectedWeek == nil {
                 Text("Die Woche wird beim Sichern angelegt. Ziele kannst du anschließend zuordnen.")
-                    .font(.system(size: 11.5))
-                    .foregroundStyle(AnkerColor.muted)
+                    .ankerType(AnkerType.caption)
+                    .foregroundStyle(AnkerColor.inkSecond)
             }
         }
     }
@@ -215,23 +215,22 @@ struct TaskEditorSheet: View {
         Button(role: .destructive) {
             confirmsDelete = true
         } label: {
-            Label("Aufgabe löschen", systemImage: "trash")
-                .font(.system(size: 12.5, weight: .semibold))
+            Label("Aufgabe löschen", ankerIcon: AnkerIcon.delete)
+                .ankerType(AnkerType.caption)
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, 10)
+                .padding(.vertical, AnkerSpacing.s3)
         }
         .buttonStyle(.borderless)
-        .foregroundStyle(AnkerColor.destructive)
-        .padding(.top, 6)
+        .foregroundStyle(AnkerColor.accentMark)
+        .padding(.top, AnkerSpacing.s2)
     }
 
-    private func iconButton(systemName: String, label: String, action: @escaping () -> Void) -> some View {
+    private func iconButton(ankerIcon: AnkerIcon, label: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            Image(systemName: systemName)
-                .font(.system(size: 12, weight: .bold))
+            Image(ankerIcon).ankerIcon(AnkerIconSize.s)
                 .frame(width: 36, height: 36)
-                .background(AnkerColor.card, in: RoundedRectangle(cornerRadius: 9))
-                .overlay(RoundedRectangle(cornerRadius: 9).stroke(AnkerColor.line))
+                .background(AnkerColor.surface, in: Rectangle())
+                .overlay(Rectangle().stroke(AnkerColor.divider, lineWidth: AnkerBorder.rule))
         }
         .buttonStyle(.plain)
         .accessibilityLabel(label)
@@ -265,7 +264,7 @@ struct TaskEditorSheet: View {
 
         task.title = cleanTitle
         task.priority = priority
-        task.isDone = isDone
+        TaskActions.setDone(task, isDone, modelContext: modelContext)
         task.linkedGoal = task.day?.week?.goalList.first { $0.id == selectedGoalID }
         modelContext.saveChanges()
     }
@@ -294,66 +293,66 @@ struct TaskMoveSheet: View {
 
     var body: some View {
         NavigationStack {
-            VStack(alignment: .leading, spacing: 16) {
-                VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: AnkerSpacing.s4) {
+                VStack(alignment: .leading, spacing: AnkerSpacing.s1) {
                     Text(cleanTasks.count == 1 ? "Aufgabe verschieben" : "\(cleanTasks.count) Aufgaben verschieben")
-                        .font(.system(size: 17, weight: .bold))
+                        .ankerType(AnkerType.taskTitle)
                         .foregroundStyle(AnkerColor.ink)
                     Text("Wähle Woche und Zieltag.")
-                        .font(.system(size: 12))
-                        .foregroundStyle(AnkerColor.muted)
+                        .ankerType(AnkerType.caption)
+                        .foregroundStyle(AnkerColor.inkSecond)
                 }
 
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Woche".uppercased())
-                        .font(.system(size: 10.5, weight: .bold))
-                        .foregroundStyle(AnkerColor.muted)
+                VStack(alignment: .leading, spacing: AnkerSpacing.s2) {
+                    Text("Woche")
+                        .ankerType(AnkerType.eyebrow)
+                        .foregroundStyle(AnkerColor.inkSecond)
 
-                    HStack(spacing: 8) {
-                        moveButton(systemName: "chevron.left", label: "Vorherige Woche") {
+                    HStack(spacing: AnkerSpacing.s2) {
+                        moveButton(ankerIcon: .chevronLeft, label: "Vorherige Woche") {
                             moveSelectedWeek(by: -1)
                         }
 
-                        VStack(spacing: 2) {
+                        VStack(spacing: AnkerSpacing.s1) {
                             Text("\(AnkerDateFormat.calendarWeek(selectedWeekInterval.isoWeek))")
-                                .font(.system(size: 13, weight: .bold))
+                                .ankerType(AnkerType.metaStrong)
                                 .foregroundStyle(AnkerColor.ink)
                             Text("\(AnkerDateFormat.dayMonth(selectedWeekInterval.monday)) - \(AnkerDateFormat.dayMonth(selectedWeekInterval.sunday))")
-                                .font(.system(size: 10.5, weight: .medium, design: .monospaced))
-                                .foregroundStyle(AnkerColor.muted)
+                                .ankerType(AnkerType.numericSmall)
+                                .foregroundStyle(AnkerColor.inkSecond)
                         }
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 10)
-                        .background(AnkerColor.card, in: RoundedRectangle(cornerRadius: 10))
-                        .overlay(RoundedRectangle(cornerRadius: 10).stroke(AnkerColor.line))
+                        .padding(.vertical, AnkerSpacing.s3)
+                        .background(AnkerColor.surface, in: Rectangle())
+                        .overlay(Rectangle().stroke(AnkerColor.divider, lineWidth: AnkerBorder.rule))
 
-                        moveButton(systemName: "chevron.right", label: "Nächste Woche") {
+                        moveButton(ankerIcon: .chevronRight, label: "Nächste Woche") {
                             moveSelectedWeek(by: 1)
                         }
                     }
                 }
 
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Tag".uppercased())
-                        .font(.system(size: 10.5, weight: .bold))
-                        .foregroundStyle(AnkerColor.muted)
+                VStack(alignment: .leading, spacing: AnkerSpacing.s2) {
+                    Text("Tag")
+                        .ankerType(AnkerType.eyebrow)
+                        .foregroundStyle(AnkerColor.inkSecond)
 
-                    HStack(spacing: 6) {
+                    HStack(spacing: AnkerSpacing.s2) {
                         ForEach(AnkerCalendar.daysInWeek(starting: selectedWeekStart), id: \.self) { date in
                             Button {
                                 selectedDate = date
                             } label: {
-                                VStack(spacing: 3) {
+                                VStack(spacing: AnkerSpacing.s1) {
                                     Text(AnkerDateFormat.weekdayShort(date))
-                                        .font(.system(size: 9.5, weight: .bold))
+                                        .ankerType(AnkerType.caption)
                                     Text(AnkerDateFormat.dayNumber(date))
-                                        .font(.system(size: 12.5, weight: .bold, design: .monospaced))
+                                        .ankerType(AnkerType.numericSmall)
                                 }
                                 .foregroundStyle(AnkerCalendar.isSameDay(date, selectedDate) ? .white : AnkerColor.ink)
                                 .frame(maxWidth: .infinity, minHeight: 46)
-                                .background(AnkerCalendar.isSameDay(date, selectedDate) ? AnkerColor.indigo : AnkerColor.card)
-                                .overlay(RoundedRectangle(cornerRadius: 9).stroke(AnkerCalendar.isSameDay(date, selectedDate) ? Color.clear : AnkerColor.line))
-                                .clipShape(RoundedRectangle(cornerRadius: 9))
+                                .background(AnkerCalendar.isSameDay(date, selectedDate) ? AnkerColor.accentFill : AnkerColor.surface)
+                                .overlay(Rectangle().stroke(AnkerCalendar.isSameDay(date, selectedDate) ? Color.clear : AnkerColor.divider))
+                                .clipShape(Rectangle())
                             }
                             .buttonStyle(.plain)
                         }
@@ -362,8 +361,8 @@ struct TaskMoveSheet: View {
 
                 Spacer(minLength: 0)
             }
-            .padding(18)
-            .background(AnkerColor.paper)
+            .padding(AnkerSpacing.s4)
+            .background(AnkerColor.ground)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Abbrechen") { dismiss() }
@@ -403,13 +402,12 @@ struct TaskMoveSheet: View {
         selectedDate = newSelectedDate
     }
 
-    private func moveButton(systemName: String, label: String, action: @escaping () -> Void) -> some View {
+    private func moveButton(ankerIcon: AnkerIcon, label: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            Image(systemName: systemName)
-                .font(.system(size: 12, weight: .bold))
+            Image(ankerIcon).ankerIcon(AnkerIconSize.s)
                 .frame(width: 38, height: 38)
-                .background(AnkerColor.card, in: RoundedRectangle(cornerRadius: 9))
-                .overlay(RoundedRectangle(cornerRadius: 9).stroke(AnkerColor.line))
+                .background(AnkerColor.surface, in: Rectangle())
+                .overlay(Rectangle().stroke(AnkerColor.divider, lineWidth: AnkerBorder.rule))
         }
         .buttonStyle(.plain)
         .accessibilityLabel(label)

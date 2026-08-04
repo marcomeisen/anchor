@@ -47,8 +47,8 @@ struct AnkerRootView: View {
     var body: some View {
         Group {
             if needsOnboarding {
-                OnboardingView(weekIntervalTitle: currentWeekTitle) { title in
-                    completeOnboarding(with: title)
+                OnboardingView(weekIntervalTitle: currentWeekTitle) { titles in
+                    completeOnboarding(with: titles)
                 }
             } else if let selectedWeek, let selectedDay {
 #if os(macOS)
@@ -127,8 +127,8 @@ struct AnkerRootView: View {
                 topLevelContent(week: week, day: day)
 
                 GlassTabBar(selection: topLevelSelection)
-                    .padding(.horizontal, 16)
-                    .padding(.bottom, 10)
+                    .padding(.horizontal, AnkerSpacing.s4)
+                    .padding(.bottom, AnkerSpacing.s3)
             }
             .navigationDestination(for: AppDestination.self) { destination in
                 detailContent(for: destination, week: week, day: day)
@@ -142,7 +142,7 @@ struct AnkerRootView: View {
             }
 #if os(iOS)
             .toolbarBackground(.visible, for: .navigationBar)
-            .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
+            .toolbarBackground(AnkerColor.surface, for: .navigationBar)
 #endif
         }
     }
@@ -154,8 +154,8 @@ struct AnkerRootView: View {
                 weeks: weeks,
                 selection: destinationSelection,
                 selectedDay: day,
-                onPreviousMonth: { move { $0.moveMonth(by: -1) } },
-                onNextMonth: { move { $0.moveMonth(by: 1) } },
+                onPreviousWeek: { move { $0.moveWeek(by: -1) } },
+                onNextWeek: { move { $0.moveWeek(by: 1) } },
                 onCurrentWeek: { move { $0.moveToToday() } },
                 onSelectWeek: { monday in move { $0.moveToWeek(startingAt: monday) } },
                 onSelectDay: { day in move { $0.openDay(on: day.date) } },
@@ -163,7 +163,25 @@ struct AnkerRootView: View {
                 onSelectSearchResult: { open($0) }
             )
         } detail: {
-            Group {
+            VStack(spacing: 0) {
+                AnkerContentHeader(
+                    week: week,
+                    selectedDay: day,
+                    selection: destinationSelection,
+                    onSelectToday: { move { $0.moveToToday() } }
+                )
+
+                // Der Ankerstreifen steht über Woche und Ankerdetail — dort ist er im
+                // Zeitkontext. Über Heute, Jahr, Rückblick und Archiv nicht: die beantworten
+                // andere Fragen, und ein immer sichtbarer Streifen wäre dort Dekoration.
+                if showsAnchorStrip {
+                    AnchorStripView(
+                        week: week,
+                        selectedGoalID: selectedGoalID,
+                        onSelect: { navigation.select(.goal($0)) }
+                    )
+                }
+
                 if navigation.destination.isTopLevel {
                     topLevelContent(week: week, day: day)
                 } else {
@@ -175,9 +193,23 @@ struct AnkerRootView: View {
             }
 #if os(macOS)
             .toolbarBackground(.visible, for: .windowToolbar)
-            .toolbarBackground(.regularMaterial, for: .windowToolbar)
+            .toolbarBackground(AnkerColor.surface, for: .windowToolbar)
 #endif
         }
+    }
+
+    /// Woche und Ankerdetail gehören zusammen: im Entwurf bleibt der Streifen stehen, wenn ein
+    /// Anker geöffnet wird.
+    private var showsAnchorStrip: Bool {
+        switch navigation.destination {
+        case .week, .goal: true
+        case .today, .year, .review, .archive, .day: false
+        }
+    }
+
+    private var selectedGoalID: UUID? {
+        if case .goal(let id) = navigation.destination { return id }
+        return nil
     }
 
     @ViewBuilder
@@ -188,9 +220,18 @@ struct AnkerRootView: View {
         case .week:
             weekOverview(week: week, day: day)
         case .year:
-            YearOverviewView(week: week, weeks: weeks)
+            YearOverviewView(week: week, weeks: weeks) { isoWeek in
+                guard let target = weeks.first(where: { $0.isoYear == week.isoYear && $0.isoWeek == isoWeek }) else { return }
+                move { $0.moveToWeek(startingAt: target.monday) }
+                navigation.select(.week)
+            }
         case .review:
             WeeklyReviewView(week: week)
+        case .archive:
+            ArchiveView(weeks: weeks) { monday in
+                move { $0.moveToWeek(startingAt: monday) }
+                navigation.select(.week)
+            }
         case .day, .goal:
             // Kann nicht auftreten: `topLevel` nimmt nur oberste Ebenen an.
             todayView(day: day, week: week)
@@ -209,7 +250,7 @@ struct AnkerRootView: View {
                 // Etwa nach einem Sync, der das Ziel auf einem anderen Geraet entfernt hat.
                 weekOverview(week: week, day: day)
             }
-        case .today, .week, .year, .review:
+        case .today, .week, .year, .review, .archive:
             topLevelContent(week: week, day: day)
         }
     }
@@ -258,15 +299,35 @@ struct AnkerRootView: View {
         )
     }
 
+    /// Woche: die Matrix, wo Platz fuer sieben Spalten ist — sonst die Tagesliste.
+    ///
+    /// Dieselbe Bedingung wie bei `splitContent`, also kommt kein neuer Zustand hinzu.
+    @ViewBuilder
     private func weekOverview(week: Week, day: Day) -> some View {
-        WeekOverviewView(
+#if os(macOS)
+        anchorMatrix(week: week, day: day)
+#else
+        if horizontalClass == .regular {
+            anchorMatrix(week: week, day: day)
+        } else {
+            WeekOverviewView(
+                week: week,
+                selectedDay: day,
+                onCurrentWeek: { move { $0.moveToToday() } },
+                onPreviousWeek: { move { $0.moveWeek(by: -1) } },
+                onNextWeek: { move { $0.moveWeek(by: 1) } },
+                onSelectDay: { day in move { $0.openDay(on: day.date) } },
+                onFocusDay: { day in move { $0.focus(on: day.date) } }
+            )
+        }
+#endif
+    }
+
+    private func anchorMatrix(week: Week, day: Day) -> some View {
+        AnkerMatrixView(
             week: week,
             selectedDay: day,
-            onCurrentWeek: { move { $0.moveToToday() } },
-            onPreviousWeek: { move { $0.moveWeek(by: -1) } },
-            onNextWeek: { move { $0.moveWeek(by: 1) } },
-            onSelectDay: { day in move { $0.openDay(on: day.date) } },
-            onFocusDay: { day in move { $0.focus(on: day.date) } }
+            onSelectGoal: { goal in navigation.select(.goal(goal.id)) }
         )
     }
 
@@ -300,7 +361,7 @@ struct AnkerRootView: View {
             Button {
                 showingSearch = true
             } label: {
-                Image(systemName: "magnifyingglass")
+                Image(.search)
             }
             .help("Ziele, Aufgaben und Notizen durchsuchen")
             .accessibilityLabel("Suchen")
@@ -314,7 +375,7 @@ struct AnkerRootView: View {
             Button {
                 showingNewGoal = true
             } label: {
-                Image(systemName: "target")
+                Image(.goal)
             }
             .help(hasMaximumGoals ? "Maximal 4 Wochenziele pro Woche" : "Neues Wochenziel erstellen")
             .accessibilityLabel("Neues Wochenziel erstellen")
@@ -323,7 +384,7 @@ struct AnkerRootView: View {
             Button {
                 showingNewTask = true
             } label: {
-                Image(systemName: "plus")
+                Image(.add)
             }
             .help("Neue Aufgabe erstellen")
             .accessibilityLabel("Neue Aufgabe erstellen")
@@ -354,14 +415,15 @@ struct AnkerRootView: View {
         move { $0.open(result, dayDate: dayDate) }
     }
 
-    private func completeOnboarding(with title: String) {
+    private func completeOnboarding(with titles: [String]) {
         let week = ensureCurrentWeek()
-        let goal = WeekPlanning.upsertOnboardingGoal(title: title, in: week, modelContext: modelContext)
+        let anchors = WeekPlanning.createOnboardingAnchors(titles, in: week, modelContext: modelContext)
         hasCompletedOnboarding = true
         onboardingVersion = requiredOnboardingVersion
         navigation.moveToWeek(startingAt: week.monday)
         navigation.focus(on: Date())
-        navigation.select(.goal(goal.id))
+        // Mit mehreren Ankern ist die Woche der sinnvolle Einstieg, nicht ein einzelnes Ziel.
+        navigation.select(anchors.count == 1 ? .goal(anchors[0].id) : .week)
         modelContext.saveChanges()
     }
 

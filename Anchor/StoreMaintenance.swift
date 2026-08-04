@@ -28,14 +28,8 @@ enum StoreMaintenance {
     /// Bewusst ueber die ISO-Felder statt ueber `monday`: `AnkerCalendar` rechnet mit
     /// `TimeZone.current`, dieselbe Woche bekommt auf Geraeten in verschiedenen Zeitzonen
     /// also unterschiedliche `Date`-Werte und ein Vergleich darauf wuerde Duplikate uebersehen.
-    struct WeekKey: Hashable, Comparable {
-        let isoYear: Int
-        let isoWeek: Int
-
-        static func < (lhs: WeekKey, rhs: WeekKey) -> Bool {
-            (lhs.isoYear, lhs.isoWeek) < (rhs.isoYear, rhs.isoWeek)
-        }
-    }
+    /// Liegt jetzt bei `AnkerCalendar`, weil die Statistik denselben Schluessel braucht.
+    typealias WeekKey = AnkerCalendar.WeekKey
 
     static func weekKey(_ week: Week) -> WeekKey {
         WeekKey(isoYear: week.isoYear, isoWeek: week.isoWeek)
@@ -68,12 +62,14 @@ enum StoreMaintenance {
     struct MergeReport: Sendable, Equatable {
         var removedWeeks = 0
         var removedDays = 0
+        /// Wochen, deren Ankerreihenfolge korrigiert wurde. Altbestand hat durchweg `order == 0`.
+        var reorderedGoalWeeks: [String] = []
         /// Betroffene Kalenderwochen als `2026-KW31`, damit im Log nachvollziehbar ist,
         /// wo eingegriffen wurde.
         var affectedWeeks: [String] = []
 
         var removedTotal: Int { removedWeeks + removedDays }
-        var isEmpty: Bool { removedTotal == 0 }
+        var isEmpty: Bool { removedTotal == 0 && reorderedGoalWeeks.isEmpty }
 
         var summary: String {
             guard !isEmpty else { return "Keine Duplikate" }
@@ -81,7 +77,14 @@ enum StoreMaintenance {
             var parts: [String] = []
             if removedWeeks > 0 { parts.append("\(removedWeeks) doppelte Wochen") }
             if removedDays > 0 { parts.append("\(removedDays) doppelte Tage") }
-            return "\(parts.joined(separator: ", ")) zusammengeführt"
+            if !parts.isEmpty {
+                var text = "\(parts.joined(separator: ", ")) zusammengeführt"
+                if !reorderedGoalWeeks.isEmpty {
+                    text += ", Ankerreihenfolge in \(reorderedGoalWeeks.count) Wochen korrigiert"
+                }
+                return text
+            }
+            return "Ankerreihenfolge in \(reorderedGoalWeeks.count) Wochen korrigiert"
         }
     }
 
@@ -122,6 +125,11 @@ enum StoreMaintenance {
         }
 
         let survivingWeeks = weeks.filter { !$0.isDeleted }
+        for week in survivingWeeks where GoalOrdering.normalize(week) {
+            let label = "\(week.isoYear)-KW\(String(format: "%02d", week.isoWeek))"
+            report.reorderedGoalWeeks.append(label)
+        }
+
         for week in survivingWeeks {
             let removedDays = mergeDuplicateDays(in: week, modelContext: modelContext)
             guard removedDays > 0 else { continue }
@@ -167,6 +175,16 @@ enum StoreMaintenance {
             }
         }
         duplicate.goals = []
+        // Anders als Tage wurden Ziele bisher nur angehaengt und nie nachsortiert — damit war
+        // die Ankernummer nach jedem Zusammenfuehren eine andere.
+        survivor.goals = GoalOrdering.sorted(survivor.goalList.filter { !$0.isDeleted })
+        GoalOrdering.normalize(survivor)
+
+        // Beide Rueckblicke behalten, wie bei den Tagesnotizen: Datenverlust beim Aufraeumen
+        // waere schlimmer als eine doppelte Zeile.
+        survivor.reflection = mergedNotes(survivor.reflection, duplicate.reflection)
+        // Der fruehere Abschluss gilt — die Woche *wurde* an dem Tag geschlossen.
+        survivor.reviewedAt = [survivor.reviewedAt, duplicate.reviewedAt].compactMap { $0 }.min()
 
         for day in duplicate.dayList {
             day.week = survivor

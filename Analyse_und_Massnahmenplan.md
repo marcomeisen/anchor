@@ -4,7 +4,13 @@
 **Umfang:** Security, DSGVO, Architektur, Code
 
 > **Umsetzungsstand 2026-08-04:** Behoben sind G1, G2, G3, A1, S2, A2, A3, A4, A7, A8, C2, C3,
-> C4, C5, C6 sowie C1 soweit ohne Übersetzung möglich. Details je Befund unten unter *Behoben*.
+> C4, C5, C6, N1, N2 sowie C1 soweit ohne Übersetzung möglich. Details je Befund unten unter
+> *Behoben*.
+>
+> Der Neuentwurf *Modernist* (siehe [changelog.md](changelog.md)) hat C2 und N1 nachträglich
+> verschärft und dann erledigt: die Tokenschicht ist nicht mehr nur Farbe, sondern auch Schrift,
+> Abstand und Icon, und sie wird durch 15 Grep-Schranken in
+> [Scripts/design-guard.swift](Scripts/design-guard.swift) gehalten statt durch Disziplin.
 >
 > Bewusst offen: **A5** (Paket `AnkerKit`) — Entscheidung vom 2026-08-04, siehe dort. **A6**
 > (Widgets, Watch, EventKit) ist ausgeklammert. **S1** und **S4** sind nicht angefasst.
@@ -47,7 +53,7 @@ Wo eine Bewertung von diesen Punkten abhängt, ist das ausdrücklich vermerkt.
 | A4 | Architektur | Navigation ohne `NavigationPath` | Mittel | **behoben** |
 | A5 | Architektur | Kein Modul-Schnitt, Widgets/Watch nicht anbindbar | Mittel | bewusst offen |
 | A6 | Architektur | Spec-Features fehlen (Widgets, Watch, EventKit) | Mittel | ausgeklammert |
-| C2 | Code | 19 hartkodierte Hex-Farben außerhalb `Theme.swift` | Mittel | **behoben** |
+| C2 | Code | 19 hartkodierte Hex-Farben außerhalb `Theme.swift`; keine Tokens für Schrift, Abstand, Icon | Mittel | **behoben** |
 | C3 | Code | UI-Tests sind leere Template-Rümpfe | Mittel | **behoben** |
 | S3 | Security | `print` mit Fehlerobjekt im Release-Pfad | Niedrig | offen |
 | S4 | Security | `privacy: .public` auf freien Fehlertexten | Niedrig | offen |
@@ -422,6 +428,13 @@ Kontraststrategie des Designsystems.
 `indigoGradientLight/Soft/Deep`, `selectedRow`, `bannerIndigo/Brass/Success`,
 `textBody/Chip/Task`. Außerhalb von `Theme.swift` gibt es keinen Hex-Wert mehr.
 
+**Nachtrag zum Neuentwurf (2026-08-04).** Der Befund war zu eng gefasst: nicht nur Farben liefen am
+Token-System vorbei, sondern auch 191 rohe `.font(.system(size:))`, 218 rohe Abstandszahlen und 74
+SF-Symbol-Namen — es gab für Schrift, Abstand und Icon gar keine Tokenschicht, an der etwas hätte
+vorbeilaufen können. Alle drei gibt es jetzt (`AnkerType`, `AnkerSpacing`, `AnkerIcon`), und
+`Scripts/design-guard.swift` prüft sie. Dabei kam ein Fehler heraus, den der Befund nicht sah:
+`NSColor(calibratedRed:)` statt `srgbRed:` verschob **jede** Farbe der App gegenüber ihrem Hexwert.
+
 Ein Wert ist dabei bewusst *geändert* und nicht nur umbenannt: `#E0392E` (Papierkorb im
 Hover-Reveal, Mehrfachauswahl-Löschen) steht in keinem Referenzdokument. Das Designsystem definiert
 genau ein Rot — `--prio-a:#D93327`, ausdrücklich kontrastkorrigiert. Der Ausreißer ist darauf
@@ -597,8 +610,18 @@ Das betrifft direkt das [Interaktionskonzept](Daivento_Task_Interaktionskonzept.
 Kerninteraktion auf dem iPhone vorsieht. Behebung heißt entweder auf `List` umstellen (greift ins
 Layout ein) oder die Gesten selbst implementieren.
 
+**Behoben (2026-08-04)** im Rahmen des Neuentwurfs. Die iPhone-Aufgabenlisten sind echte `List`s mit
+`.listStyle(.plain)` — der Eingriff ins Layout war ohnehin fällig, weil der neue Entwurf die
+Kartenoptik durch Zeilen mit 1px-Trennlinie ersetzt. Swipe, Kontextmenü, Mehrfachauswahl und Undo
+sind damit vollständig, ohne eigene Gestenimplementierung.
+
 ### N2 — Tippfehler in einem sichtbaren Text · Niedrig
 
 „Wochenziele kannst du danach direkt **fuer** diese Woche erstellen" in
 [TaskCaptureSheets.swift](Anchor/TaskCaptureSheets.swift). Nicht korrigiert, weil eine Änderung den
 Schlüssel im String Catalog mitzieht.
+
+**Behoben (2026-08-04).** Es waren drei Stellen, nicht eine: dazu „Das Datenmodell konnte nicht
+fuer CloudKit aufgebaut werden" und „Store nicht fuer CloudKit konfiguriert" — beides sichtbare
+Fehlermeldungen. Der String Catalog ist mitgezogen; Deutsch ist die Quellsprache, es gab keine
+Übersetzung zu retten.

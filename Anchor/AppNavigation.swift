@@ -9,6 +9,8 @@ enum AppDestination: Hashable, Codable {
     /// iCloud-Import die Navigation nicht ins Leere laufen laesst.
     case day
     case review
+    /// Abgeschlossene Wochen. Ein eigener Ort statt eines permanenten Baums in der Sidebar.
+    case archive
     case goal(UUID)
 
     /// Ziele, die als Tab bzw. als oberste Sidebar-Ebene erreichbar sind.
@@ -17,7 +19,7 @@ enum AppDestination: Hashable, Codable {
     /// iPhone auf den Navigationsstapel gelegt, damit die Zurueck-Gestik funktioniert.
     var isTopLevel: Bool {
         switch self {
-        case .today, .week, .year, .review: true
+        case .today, .week, .year, .review, .archive: true
         case .day, .goal: false
         }
     }
@@ -161,7 +163,8 @@ struct AnkerNavigationState: Codable, Equatable {
     static let urlScheme = "daivento"
 
     /// `daivento://today`, `daivento://week`, `daivento://year`, `daivento://review`,
-    /// `daivento://day/2026-08-05`, `daivento://week/2026-08-03`, `daivento://goal/<UUID>`.
+    /// `daivento://archive`, `daivento://day/2026-08-05`, `daivento://week/2026-08-03`,
+    /// `daivento://goal/<UUID>`.
     ///
     /// Gibt zurueck, ob die URL verstanden wurde — eine unbekannte URL darf den Zustand nicht
     /// anfassen, sonst landet der Nutzer nach einem Tippfehler im Link irgendwo.
@@ -178,6 +181,8 @@ struct AnkerNavigationState: Codable, Equatable {
             select(.year)
         case "review":
             select(.review)
+        case "archive":
+            select(.archive)
         case "week":
             if let date = Self.date(from: argument) {
                 moveToWeek(startingAt: date)

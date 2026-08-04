@@ -362,7 +362,9 @@ final class AnchorTests: XCTestCase {
 
         let snapshot = try decodedExport(from: context)
 
-        XCTAssertEqual(snapshot.formatVersion, 1)
+        // Version 2: der Export traegt jetzt Ankerordnung, Erledigungszeitpunkt,
+        // Uebertragungszaehler, Rueckblicktext und Abschlusszeitpunkt mit.
+        XCTAssertEqual(snapshot.formatVersion, 2)
         XCTAssertEqual(snapshot.weeks.count, 1)
 
         let exportedWeek = try XCTUnwrap(snapshot.weeks.first)
@@ -375,6 +377,14 @@ final class AnchorTests: XCTestCase {
         let storedTasks = try context.fetch(FetchDescriptor<AnkerTask>())
         let exportedTasks = exportedWeek.days.flatMap(\.tasks)
         XCTAssertEqual(Set(exportedTasks.map(\.id)), Set(storedTasks.map(\.id)))
+
+        // Die neuen Felder sind Nutzerdaten und muessen in der Auskunft auftauchen (Art. 15).
+        XCTAssertEqual(exportedWeek.reflection, week.reflection)
+        XCTAssertEqual(exportedWeek.reviewedAt, week.reviewedAt)
+        XCTAssertEqual(exportedWeek.goals.map(\.order), Array(0..<exportedWeek.goals.count),
+                       "Ziele muessen sortiert und lueckenlos numeriert exportiert werden")
+        XCTAssertTrue(exportedTasks.contains { $0.completedAt != nil }, "Erledigungszeitpunkt fehlt")
+        XCTAssertTrue(exportedTasks.contains { $0.carryOverCount > 0 }, "Uebertragungszaehler fehlt")
 
         let linkedTask = try XCTUnwrap(exportedTasks.first { $0.linkedGoalID != nil })
         let storedLinked = try XCTUnwrap(storedTasks.first { $0.id == linkedTask.id })

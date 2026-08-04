@@ -23,7 +23,7 @@ enum CloudSyncConfiguration {
         var errorDescription: String? {
             switch self {
             case .managedObjectModelUnavailable:
-                "Das Datenmodell konnte nicht fuer CloudKit aufgebaut werden."
+                "Das Datenmodell konnte nicht für CloudKit aufgebaut werden."
             case .cloudKitStoreUnavailable:
                 "Der iCloud-Container konnte nicht geoeffnet werden."
             }
@@ -179,6 +179,9 @@ struct AnkerStore {
         // Vor allem anderen: setzt die gespeicherten Einstellungen zurueck.
         UITestMode.prepare()
 #endif
+
+        // Vor der ersten View, damit keine Fassung in der Systemschrift aufblitzt.
+        AnkerFont.bootstrap()
 
         // Vor dem Container, sonst entstehen die CloudKit-Beobachter erst, wenn eine View den
         // Status anfasst — `setup` und der erste Import sind dann schon durchgelaufen.

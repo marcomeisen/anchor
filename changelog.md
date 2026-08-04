@@ -2,6 +2,84 @@
 
 ## 2026-08-04
 
+### Aufgaben bearbeiten — eine Regel statt drei Sonderfaelle
+
+- **Das Kaestchen hakt ab, der Titel wird bearbeitet.** In der Matrix hakte vorher ein Klick auf die ganze Chipflaeche ab: jeder Versuch, eine Aufgabe anzusehen, aenderte ihren Zustand, und der Titel war per Klick gar nicht erreichbar. Der Chip hat jetzt ein eigenes 14pt-Kaestchen (statt 22pt — in einer schmalen Spalte bliebe sonst kein Platz fuer den Titel).
+- **Titel an der Stelle bearbeiten** (`TaskTitleField`): Doppelklick oeffnet das Feld, Enter sichert, Escape verwirft, Fokusverlust sichert. Ein leerer Titel wird verworfen statt die Aufgabe zu loeschen — Text wegzuwischen darf keine Loeschung sein. Das passt zum Entwurf besser als ein Blatt: Modernist arbeitet mit Flaechen und Kanten, nicht mit Dialogen.
+- **Das Blatt „Aufgabe bearbeiten" war in der Tagesliste toter Code.** `TaskCard` hielt den Zustand und das fertig verdrahtete Sheet, aber nichts setzte es je — im Kontextmenue fehlte der Eintrag. Damit war der Titel auf *Heute* und im *Tagesdetail* ueberhaupt nicht aenderbar. Jetzt stehen dort „Titel aendern" und „Bearbeiten …" (⌘E) im Menue, plus dieselben Vorlese-Aktionen.
+- **Das Ankerdetail hatte gar kein Menue** — nur ein Kaestchen. Es benutzt jetzt dieselbe Aufgabenzeile wie die Tagesliste, mit dem **Tag** in der Metazeile statt dem Anker: dort haben alle Aufgaben denselben Anker, der Tag ist die Information. Damit gibt es dort auch Prioritaet, Verschieben, Duplizieren, Loeschen und den Undo-Hinweis.
+- Umbenennen laeuft ueber `TaskActions.rename` und ist ruecknehmbar — `TaskSnapshot` fuehrte den Titel schon.
+- Ein Fehler, der beim Bauen auffiel: bekam das Feld nie den Tastaturfokus, feuerte `onChange` nicht und das Feld blieb offen stehen. Der Fokus wird jetzt nach einem Durchlauf gesetzt und der Abschluss erst nach dem ersten Fokus ausgeloest.
+- Drei Unit-Tests fuer das Umbenennen (Trimmen, Nulloperation, leerer Titel, Undo) und ein UI-Test, der beide Haelften der Regel festhaelt: Doppelklick bearbeitet **ohne** abzuhaken, das Kaestchen hakt ab. 122 Tests gruen, beide Plattformen, alle 15 Schranken.
+
+### Entwurfsrunde 2 — die Sidebar kann nur eine Sache sein
+
+Grundlage ist `Daivento Mac Sidebar.dc.html`. Die Datei legte **zwei** unvereinbare Sidebars vor;
+umgesetzt ist **2a „Zeitschiene"** (Entscheidung des Nutzers). Die vier gemeinsam festgelegten
+Punkte gelten unabhaengig von dieser Wahl und sind alle umgesetzt.
+
+- **Die Sidebar beantwortet nur noch „wann".** Vorher machte sie vier Dinge gleichzeitig — Ansichtswechsel, Zeitnavigation, Zielliste, App-Utility — und drei davon beantworteten dieselbe Frage. Uebrig bleibt eine Schiene aus Wochenzeilen.
+- Pro Woche **sieben Quadrate** statt einer aufklappbaren Tagesliste: gefuellt = erledigt, Rahmen in Tinte = offen, rot = heute, Rahmen in der Trennlinienfarbe = nichts geplant. Die vierte Stufe ist die eigentliche Aussage — nichts geplant ist nicht dasselbe wie nichts geschafft. Vergangene Wochen bleiben damit lesbar, ohne Platz zu kosten.
+- **Ein** Zeitnavigator: Stepper plus „Heute". Weg sind der Kalenderknopf und die Monatspfeile in der Sidebar sowie das Wochentrio im Matrixkopf — drei Bedienelemente fuer dieselbe Frage.
+- **Der Ansichtswechsel Heute/Woche/Jahr** ist ein Modus des Inhalts und sitzt in `AnkerContentHeader`, zusammen mit Woche und gewaehltem Tag. Bewusst eine Zeile im Inhalt und kein `ToolbarItem`: eine eigene Segmentleiste erscheint auf macOS in der Fensterleiste eines `NavigationSplitView` nicht verlaesslich — im Zugriffsbaum fehlte sie ganz.
+- **Die Anker verlassen die Navigation** und stehen als Streifen ueber dem Inhalt (`AnchorStripView`), mit Nummer, Balken und Stand. In der Sidebar waren sie ein Link-Label; hier sind sie ein Zustand: „steht still", „noch nicht begonnen", „3 Tage aktiv".
+- Das weiche Limit ist **sichtbar**: der fuenfte Anker steht blasser und sagt „ueber Empfehlung". `AnkerStatistics.allAnchors` liefert alle, `week()` weiter nur die vier — die Kennzahlen der Woche duerfen sich nicht verschieben, wenn zwei Geraete offline fuenf erzeugt haben.
+- **Rueckblick scharf, nicht laut.** Erreichbar ist er immer, aber bis Sonntag bleibt die Zeile grau und ohne Zaehler („ab So"). Ab Sonntag wird sie rot und nennt den Uebertrag („3 offen"). Kein Modal.
+- **Uebertrag pro Aufgabe** statt alles-oder-nichts: behalten, streichen oder an einen Anker der Folgewoche neu verankern. Der Abschlussknopf nennt das Ergebnis („Schliessen · 3 uebertragen, 1 streichen"); nachgefragt wird nur, wenn wirklich geloescht wird — ein Uebertrag ist umkehrbar, eine gestrichene Aufgabe nicht. Eine uebertragene Aufgabe behaelt ihren Wochentag: was fuer Freitag gedacht war, bleibt eine Freitagssache.
+- **Archiv als Ort** (`daivento://archive`): abgeschlossene Wochen mit Ankern und Aufgaben, neueste zuerst. Als archiviert gilt eine Woche, die geschlossen **oder** vergangen ist — wer den Rueckblick ueberspringt, darf nicht den Zugang zu seinen eigenen Daten verlieren. Die Suche greift ausdruecklich mit ins Archiv; der Platzhalter sagt das.
+- Marker und Bedienelemente bleiben Quadrate: das neue Archiv-Icon hat sein `rx="1"` verloren, es waere die einzige gerundete Ecke der App gewesen.
+- 15 neue Unit-Tests fuer die vier Festlegungen — Tagesquadrate, Sieben-Felder-Raster auch bei fehlenden Tagen, Rueckblickreife vor und ab Sonntag, Entscheidung pro Aufgabe inklusive Neuverankerung, Archivzugehoerigkeit, Ueberschuss im Streifen, Stillstand erst nach zwei Tagen. Zusammen 113 Unit-Tests und 5 UI-Tests gruen, beide Plattformen bauen, alle 15 Schranken halten.
+- Stringkatalog auf 119 Eintraege nachgezogen.
+
+### Neuentwurf „Modernist"
+
+- Die Oberflaeche folgt einem neuen Entwurf: **das Datenmodell ist die Oberflaeche**. Statt eines Kalenderabbilds zeigt die App 4 Anker mal 7 Tage als ein Raster. Flach statt Liquid Glass — Radius 0 an 118 Stellen, keine Verlaeufe, keine Materialien, keine Schatten, 2px-Regeln als einzige Kante.
+- Neue Anker-Matrix auf Mac und iPad (`AnkerMatrixView`): Zeile = Anker, Spalte = Tag, plus eine Eingangskorb-Zeile „Ohne Anker". Eine Aufgabe an eine Zelle zu ziehen setzt Wochenziel **und** Tag in einer Bewegung.
+- Erfassungszeile: tippen, Enter, fertig. `!a`/`!b`/`!c` fuer die Prioritaet, `#1`–`#4` fuer den Anker, `mo`–`so` fuer den Wochentag, in beliebiger Reihenfolge. Die Hinweiszeile zeigt den **aufgeloesten** Stand vor dem Anlegen — deshalb ist die Doppelbedeutung von „so" tragbar. Wochentagskuerzel greifen nur an Wortgrenzen, „Somit" und „Modul" bleiben Titel.
+- Jahresuebersicht ist ein Band aus 52 Balken (einer pro ISO-Woche) statt zwoelf Monatskacheln. Die Luecken sind die Aussage: eine Woche ohne Datensatz ist eine Woche ohne Plan.
+- Ankerdetail zeigt einen Tempo-Satz statt einer Prozentzahl — „Bei diesem Tempo schaffst du 6 von 7". Der Prozentwert bleibt als Balken und als Vorlesetext.
+- Wochenrueckblick ist ein rotes Vollflaechen-Plakat: eine grosse Zahl, die Serie, der nicht gehaltene Anker mit **benanntem** Uebertrag, eine Frage. Die Antwort liegt jetzt in `Week.reflection` und ueberlebt den Bildschirmwechsel; vorher war sie `@State` und beim Verlassen weg. Neu „Woche schliessen", mit der Wahl, offene Aufgaben zu uebertragen oder nicht.
+- Onboarding setzt bis zu vier Anker in einer numerierten Liste, statt das Konzept in vier Zeilen Prosa zu erklaeren. Dass die Liste bei vier aufhoert, erklaert es selbst. Die iCloud-Frage bleibt der erste Schritt.
+- Der Ring ist ueberall weg (`ProgressRing` geloescht), ebenso `GlassTabBar` und `GlassFAB` — die Erfassungszeile ersetzt den FAB. Marker und Bedienelemente sind Quadrate; rund ist nur noch der Ring des Ankersymbols.
+
+### Fundament
+
+- **Archivo** als Variable Font gebuendelt (OFL-1.1), Gewichte 500–900 ueber die `wght`-Achse gepinnt. Statische Schnitte gibt es bei Google Fonts nicht. Ziffern laufen ueber ein Schriftmerkmal gleich breit — `monospacedDigit()` wirkt auf eigene Schriften nicht.
+- **42 Lucide-Icons** als Vektor-Imagesets (ISC) ersetzen 74 SF-Symbol-Stellen.
+- Neue Tokenschicht: `AnkerType` (20 Typo-Tokens) ersetzt 191 nackte `.font(.system(size:))`. `AnkerSpacing` ersetzt 218 rohe Abstandszahlen. `AnkerIcon`, `AnkerRule`, `AnkerProgressBar`, `AnkerButtonStyle`, `AnkerToggleStyle` dazu.
+- **`Scripts/design-guard.swift`**: 15 Grep-Schranken gegen den Rueckfall — Radius, Kapsel, Material, Verlauf, Schatten, Weichzeichnung, rohe Schriftgroesse, Laufweite, Grossschreibung, SF-Symbole, Weiss/Schwarz, Ring, Rohhex, Kreis, roher Abstand. Ein begruendeter Ausnahmemarker ist moeglich, verlangt aber den Grund im Klartext daneben.
+- Der Akzent ist dreigeteilt, weil eine Farbe nicht in allen drei Rollen 4,5:1 erreicht: `accentMark` fuer Marke und Marker (braucht 3:1), `accentFill` als Flaeche unter weisser Schrift (4,74:1), `accentInk` als Schrift auf Grund (6,41:1 hell, 5,56:1 dunkel). Neun Theme-Tests rechnen die Kontraste in beiden Farbmodi nach.
+- Die Mikro-Beschriftung des Entwurfs (`#9b9797`, 2,59:1) waere unlesbar und nutzt `inkSecond`; die Hierarchie kommt aus Groesse, Gewicht und Laufweite. Bewusste Abweichung, im Test festgehalten.
+- `AccentColor.colorset` war **leer** — die App hatte gar keine definierte Akzentfarbe und benutzte das OS-Blau.
+
+### Modell und Kennzahlen
+
+- `Goal.order` gibt der Ankernummer 1–4 einen stabilen Halt. Vorher war sie die Position in `week.goalList`, und die kommt nach einem CloudKit-Sync ungeordnet zurueck: die Nummern wechselten nach jeder Synchronisierung. `StoreMaintenance` sortiert Ziele beim Zusammenfuehren jetzt nach, wie es das fuer Tage schon tat.
+- `AnkerTask.completedAt` haelt fest, **wann** etwas fertig wurde — Voraussetzung fuer stuerkster Tag und Tempo. `carryOverCount` zaehlt Uebertragungen ueber die Wochengrenze, aber nur fuer offene Aufgaben: Erledigtes verschieben ist keine Uebertragung.
+- `Week.reviewedAt` als optionales Datum statt `Bool`: nil/nicht-nil konvergiert beim Sync ohne Konflikt.
+- Neu `AnkerStatistics` mit allen Aussagen der App. „Gehalten" heisst: jeder benutzerangelegte Anker hat mindestens eine erledigte Aufgabe — mitten in der Woche waere „vollstaendig erledigt" fast immer 0 und damit unbrauchbar. Eine Woche ohne Datensatz unterbricht die Serie nicht.
+- Die 4-Anker-Grenze war **pro Geraet** geprueft: zwei Geraete offline konnten fuenf Ziele erzeugen, und `prefix(4)` versteckte auf jedem Geraet ein anderes. Die Matrix zeigt die vier nach `(order, id)` und **benennt** einen Ueberschuss sichtbar.
+
+### Fehler, die dabei aufgefallen sind
+
+- `NSColor(calibratedRed:)` statt `srgbRed:`: **jede** Farbe der App war gegenueber ihrem Hexwert verschoben. `#DD2B0F` erreichte 4,09:1 statt 4,74:1. Gefunden durch die neuen Kontrasttests.
+- Die Wischgesten waren toter Code: `swipeActions` wirkt nur in einer `List`, und die App hatte keine einzige. Die iPhone-Listen sind jetzt echte `List`s — damit funktioniert das Interaktionskonzept erstmals.
+- Der Tagesheader der Matrix stand **ausserhalb** der Scrollansicht. Er zog die Ansicht auf seine eigene Breite und schob die Erfassungszeile aus dem Fenster: der Knopf „Sichern" war auf schmalen Fenstern nicht erreichbar. Beim Querscrollen liefen ausserdem Header und Spalten auseinander.
+- Zeilen in der Seitenleiste hatten keine Trefferflaeche ueber die ganze Breite — ein Klick in die Zeilenmitte ging ins Leere. Dasselbe galt fuer das Erledigt-Kaestchen.
+- `#1` in der Erfassungszeile griff auf `week.goalList` zu, also ungeordnet und ohne Ankerfilter: auf jedem Geraet haette es auf ein anderes Ziel zeigen koennen.
+- `GoalDetailView` beobachtete seine Woche nicht (`let` statt `@Bindable`): ein Haken blieb im Kennzahlenblock ohne sichtbare Wirkung, bis die Ansicht neu aufgebaut wurde.
+- `WeeklyReviewView` behauptete `max(reachedGoals, 3)` erreichte Ziele — bei weniger als drei eine Falschaussage.
+- Zwei Stellen schrieben `isDone` direkt statt ueber `TaskActions` und haetten damit `completedAt` stillschweigend uebersprungen; drei Ansichten legten `AnkerTask` von Hand an.
+
+### Tests und Doku
+
+- 98 Unit-Tests (vorher 34) und 5 UI-Tests laufen, beide Plattformen bauen, alle 15 Schranken halten. Neu: Erfassungssyntax (16 Faelle), Kennzahlen und Ankerordnung, Matrixaufbau, Schrift- und Farbtokens.
+- Die UI-Tests pruefen jetzt den Verankerungsfluss und die Erfassungszeile. Sie ersetzen einen Test, der an „Mein Wochenziel", „Erstes Wochenziel setzen" und „0 Prozent" hing — alle drei gibt es nicht mehr.
+- Drei sichtbare Texte schrieben „fuer" statt „für", darunter zwei Fehlermeldungen (N2 im Analysebericht war als eine Stelle notiert).
+- Stringkatalog von 141 auf 104 Eintraege bereinigt; `CLAUDE.md` auf den neuen Stand gebracht. Der Neuentwurf ist die verbindliche visuelle Referenz, `Anker_Design_System_v2.html` nur noch Historie.
+- Archivo und Lucide sind gebuendelt. Die Regel „keine Custom-Fonts, keine Drittanbieter-Dependencies" ist damit ausdruecklich aufgehoben; weitere Abhaengigkeiten bleiben ausgeschlossen. Kein Tracking, keine Netzwerkaufrufe ausser CloudKit.
+- **Offen und nicht aus dem Repo machbar:** das CloudKit-Schema muss in der CloudKit-Konsole von Development nach Production deployt werden. Bis dahin gilt: laeuft in Xcode, tot in TestFlight.
+
 - `AnkerRootView` entflochten: Navigation und Deep Links liegen jetzt in `AnkerNavigationState`, das Aufloesen von Wochen und Tagen sowie der Onboarding-Zustand in `WeekPlanning` — beides ohne View-Bezug und direkt testbar. Die acht Navigationsmethoden bestanden aus derselben Dreierfolge und sind zu einer zusammengefasst.
 - Navigationszustand ueberlebt den Neustart (`@SceneStorage`): die App startet wieder in der Woche und auf dem Tag, an denen zuletzt gearbeitet wurde.
 - Deep Links ergaenzt: `daivento://today`, `//week/2026-08-03`, `//day/2026-08-05`, `//goal/<UUID>`, `//year`, `//review`. Datumsangaben in ISO, damit ein Link unabhaengig von der Regionseinstellung des Empfaengers funktioniert; eine unverstaendliche URL laesst den Zustand unangetastet.

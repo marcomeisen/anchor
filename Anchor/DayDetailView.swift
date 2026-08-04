@@ -67,19 +67,19 @@ struct DayDetailView: View {
                     notesSection
                 }
                 .padding(.horizontal, AnkerSpacing.screenPadding)
-                .padding(.bottom, 96)
+                .padding(.bottom, AnkerSpacing.bottomBarClearance)
             }
-            .background(AnkerColor.paper)
+            .background(AnkerColor.ground)
 
-            VStack(spacing: 10) {
+            VStack(spacing: AnkerSpacing.s3) {
                 if let notice = undo.notice {
                     TaskUndoToast(notice: notice) {
                         undo.undo(weeks: weeks, modelContext: modelContext)
                     }
                 }
             }
-            .padding(.horizontal, 18)
-            .padding(.bottom, 18)
+            .padding(.horizontal, AnkerSpacing.s4)
+            .padding(.bottom, AnkerSpacing.s4)
         }
         .navigationTitle(navigationTitle)
 #if os(iOS)
@@ -103,49 +103,51 @@ struct DayDetailView: View {
     // MARK: - Kopf
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(alignment: .top, spacing: 10) {
-                VStack(alignment: .leading, spacing: 2) {
+        VStack(alignment: .leading, spacing: AnkerSpacing.s3) {
+            HStack(alignment: .top, spacing: AnkerSpacing.s3) {
+                VStack(alignment: .leading, spacing: AnkerSpacing.s1) {
                     Text(headerMeta)
-                        .font(.system(size: 11.5, weight: .medium, design: .monospaced))
-                        .foregroundStyle(AnkerColor.muted)
-                        .tracking(0.35)
+                        .ankerType(AnkerType.numericSmall)
+                        .foregroundStyle(AnkerColor.inkSecond)
 
                     Text(AnkerDateFormat.weekdayLong(day.date))
-                        .font(.system(size: 22, weight: .bold))
+                        .ankerType(AnkerType.headline)
                         .foregroundStyle(AnkerColor.ink)
                 }
 
-                Spacer(minLength: 8)
+                Spacer(minLength: AnkerSpacing.s2)
 
-                ProgressRing(progress: progress, color: AnkerColor.indigo, lineWidth: 5)
-                    .frame(width: 38, height: 38)
+                Text(verbatim: "\(Int(progress * 100))%")
+                    .ankerType(AnkerType.statValue)
+                    .foregroundStyle(AnkerColor.ink)
                     .accessibilityLabel("\(Int(progress * 100)) Prozent des Tages erledigt")
             }
 
+            AnkerProgressBar(progress: progress, thickness: AnkerBorder.rule * 3)
+                .padding(.top, AnkerSpacing.s2)
+
             if let onClose {
                 Button(action: onClose) {
-                    Label("Zur Wochenübersicht", systemImage: "chevron.left")
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(AnkerColor.indigoText)
+                    Label("Zur Wochenübersicht", ankerIcon: AnkerIcon.chevronLeft)
+                        .ankerType(AnkerType.caption)
+                        .foregroundStyle(AnkerColor.accentInk)
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("Zurück zur Wochenübersicht")
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 20))
-        .overlay(RoundedRectangle(cornerRadius: 20).stroke(.white.opacity(0.28), lineWidth: 1))
-        .shadow(color: .black.opacity(0.08), radius: 18, x: 0, y: 8)
+        .padding(.horizontal, AnkerSpacing.s4)
+        .padding(.vertical, AnkerSpacing.s3)
+        .ankerPanel()
+        
         .overlay {
             if isDropTargeted {
-                RoundedRectangle(cornerRadius: 20)
-                    .stroke(AnkerColor.indigo, lineWidth: 2)
+                Rectangle()
+                    .stroke(AnkerColor.accentFill, lineWidth: 2)
             }
         }
-        .padding(.top, 12)
+        .padding(.top, AnkerSpacing.s3)
     }
 
     private var headerMeta: String {
@@ -156,29 +158,29 @@ struct DayDetailView: View {
     // MARK: - Kennzahlen
 
     private var statsRow: some View {
-        HStack(spacing: 8) {
-            statTile(value: openCount, label: "Offen", tint: AnkerColor.indigoText)
-            statTile(value: doneCount, label: "Erledigt", tint: AnkerColor.successIcon)
-            statTile(value: day.timeBlockList.count, label: "Zeitblöcke", tint: AnkerColor.brass)
+        HStack(spacing: AnkerSpacing.s2) {
+            statTile(value: openCount, label: "Offen", tint: AnkerColor.accentInk)
+            statTile(value: doneCount, label: "Erledigt", tint: AnkerColor.ink)
+            statTile(value: day.timeBlockList.count, label: "Zeitblöcke", tint: AnkerColor.neutral[500])
         }
-        .padding(.top, 14)
+        .padding(.top, AnkerSpacing.s4)
     }
 
     private func statTile(value: Int, label: String, tint: Color) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
+        VStack(alignment: .leading, spacing: AnkerSpacing.s1) {
             Text(verbatim: String(value))
-                .font(.system(size: 19, weight: .bold, design: .monospaced))
+                .ankerType(AnkerType.headline)
                 .foregroundStyle(tint)
             Text(label)
-                .font(.system(size: 10.5, weight: .semibold))
-                .foregroundStyle(AnkerColor.muted)
+                .ankerType(AnkerType.caption)
+                .foregroundStyle(AnkerColor.inkSecond)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, 12)
-        .padding(.vertical, 10)
-        .background(AnkerColor.card)
-        .overlay(RoundedRectangle(cornerRadius: AnkerRadius.card).stroke(AnkerColor.line, lineWidth: 1))
-        .clipShape(RoundedRectangle(cornerRadius: AnkerRadius.card))
+        .padding(.horizontal, AnkerSpacing.s3)
+        .padding(.vertical, AnkerSpacing.s3)
+        .background(AnkerColor.surface)
+        .overlay(Rectangle().stroke(AnkerColor.divider, lineWidth: AnkerBorder.rule))
+        .clipShape(Rectangle())
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(value) \(label)")
     }
@@ -192,13 +194,13 @@ struct DayDetailView: View {
             TextField("Worauf kommt es heute an?", text: $focusDraft, axis: .vertical)
                 .textFieldStyle(.plain)
                 .lineLimit(1...3)
-                .font(.system(size: 13, weight: .semibold))
+                .ankerType(AnkerType.meta)
                 .foregroundStyle(AnkerColor.ink)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 11)
-                .background(AnkerColor.card)
-                .overlay(RoundedRectangle(cornerRadius: AnkerRadius.card).stroke(AnkerColor.line, lineWidth: 1))
-                .clipShape(RoundedRectangle(cornerRadius: AnkerRadius.card))
+                .padding(.horizontal, AnkerSpacing.s3)
+                .padding(.vertical, AnkerSpacing.s3)
+                .background(AnkerColor.surface)
+                .overlay(Rectangle().stroke(AnkerColor.divider, lineWidth: AnkerBorder.rule))
+                .clipShape(Rectangle())
                 .onChange(of: focusDraft) { _, _ in scheduleCommit() }
                 .accessibilityLabel("Fokus des Tages")
         }
@@ -212,7 +214,7 @@ struct DayDetailView: View {
             VStack(alignment: .leading, spacing: 0) {
                 SectionLabel(title: "Verankerte Wochenziele")
 
-                VStack(spacing: 8) {
+                VStack(spacing: AnkerSpacing.s2) {
                     ForEach(linkedGoals, id: \.id) { goal in
                         goalRow(goal)
                     }
@@ -228,31 +230,32 @@ struct DayDetailView: View {
         return Button {
             onSelectGoal(goal)
         } label: {
-            HStack(spacing: 10) {
-                Circle()
-                    .fill(Color(hex: goal.colorHex))
+            HStack(spacing: AnkerSpacing.s3) {
+                Rectangle()
+                    .fill(AnkerColor.goalTint(goal.colorHex))
                     .frame(width: 8, height: 8)
 
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: AnkerSpacing.s1) {
                     Text(goal.title)
-                        .font(.system(size: 12.5, weight: .semibold))
+                        .ankerType(AnkerType.caption)
                         .foregroundStyle(AnkerColor.ink)
                         .lineLimit(1)
                     Text("\(dayDone) von \(dayTasks.count) an diesem Tag")
-                        .font(.system(size: 10.5, weight: .medium))
-                        .foregroundStyle(AnkerColor.muted)
+                        .ankerType(AnkerType.caption)
+                        .foregroundStyle(AnkerColor.inkSecond)
                 }
 
-                Spacer(minLength: 8)
+                Spacer(minLength: AnkerSpacing.s2)
 
-                ProgressRing(progress: goal.progress, color: Color(hex: goal.colorHex), lineWidth: 4)
-                    .frame(width: 22, height: 22)
+                Text(verbatim: "\(Int(goal.progress * 100))%")
+                    .ankerType(AnkerType.numericSmall)
+                    .foregroundStyle(AnkerColor.inkSecond)
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 10)
-            .background(AnkerColor.card)
-            .overlay(RoundedRectangle(cornerRadius: AnkerRadius.card).stroke(AnkerColor.line, lineWidth: 1))
-            .clipShape(RoundedRectangle(cornerRadius: AnkerRadius.card))
+            .padding(.horizontal, AnkerSpacing.s3)
+            .padding(.vertical, AnkerSpacing.s3)
+            .background(AnkerColor.surface)
+            .overlay(Rectangle().stroke(AnkerColor.divider, lineWidth: AnkerBorder.rule))
+            .clipShape(Rectangle())
         }
         .buttonStyle(.plain)
         .help("Ziel öffnen: \(goal.title)")
@@ -283,16 +286,16 @@ struct DayDetailView: View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(alignment: .bottom) {
                 SectionLabel(title: "Aufgaben")
-                Spacer(minLength: 8)
+                Spacer(minLength: AnkerSpacing.s2)
                 Button(action: onAddTask) {
-                    Label("Neu", systemImage: "plus")
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(AnkerColor.indigoText)
+                    Label("Neu", ankerIcon: AnkerIcon.add)
+                        .ankerType(AnkerType.caption)
+                        .foregroundStyle(AnkerColor.accentInk)
                 }
                 .buttonStyle(.plain)
                 .help("Neue Aufgabe für diesen Tag")
                 .accessibilityLabel("Neue Aufgabe für diesen Tag erstellen")
-                .padding(.bottom, 8)
+                .padding(.bottom, AnkerSpacing.s2)
             }
 
             if tasks.isEmpty {
@@ -302,12 +305,12 @@ struct DayDetailView: View {
                     let priorityTasks = tasks.filter { $0.priority == priority }
                     if !priorityTasks.isEmpty {
                         Text("Prio \(priority.label)")
-                            .font(.system(size: 10.5, weight: .bold))
-                            .foregroundStyle(AnkerColor.muted)
-                            .padding(.top, 10)
-                            .padding(.bottom, 6)
+                            .ankerType(AnkerType.caption)
+                            .foregroundStyle(AnkerColor.inkSecond)
+                            .padding(.top, AnkerSpacing.s3)
+                            .padding(.bottom, AnkerSpacing.s2)
 
-                        VStack(spacing: 8) {
+                        VStack(spacing: AnkerSpacing.s2) {
                             ForEach(priorityTasks, id: \.id) { task in
                                 TaskCard(task: task, onUndoableAction: undo.present)
                             }
@@ -326,14 +329,14 @@ struct DayDetailView: View {
 
             TextEditor(text: $notesDraft)
                 .scrollContentBackground(.hidden)
-                .font(.system(size: 12.5))
+                .ankerType(AnkerType.body)
                 .foregroundStyle(AnkerColor.ink)
                 .frame(minHeight: 96)
-                .padding(.horizontal, 8)
-                .padding(.vertical, 8)
-                .background(AnkerColor.card)
-                .overlay(RoundedRectangle(cornerRadius: AnkerRadius.card).stroke(AnkerColor.line, lineWidth: 1))
-                .clipShape(RoundedRectangle(cornerRadius: AnkerRadius.card))
+                .padding(.horizontal, AnkerSpacing.s2)
+                .padding(.vertical, AnkerSpacing.s2)
+                .background(AnkerColor.surface)
+                .overlay(Rectangle().stroke(AnkerColor.divider, lineWidth: AnkerBorder.rule))
+                .clipShape(Rectangle())
                 .onChange(of: notesDraft) { _, _ in scheduleCommit() }
                 .accessibilityLabel("Notizen zum Tag")
         }
@@ -341,14 +344,14 @@ struct DayDetailView: View {
 
     private func emptyHint(_ text: String) -> some View {
         Text(text)
-            .font(.system(size: 11.5, weight: .medium))
-            .foregroundStyle(AnkerColor.muted)
+            .ankerType(AnkerType.caption)
+            .foregroundStyle(AnkerColor.inkSecond)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, 12)
-            .padding(.vertical, 14)
-            .background(AnkerColor.card.opacity(0.6))
-            .overlay(RoundedRectangle(cornerRadius: AnkerRadius.card).stroke(AnkerColor.lineSoft, lineWidth: 1))
-            .clipShape(RoundedRectangle(cornerRadius: AnkerRadius.card))
+            .padding(.horizontal, AnkerSpacing.s3)
+            .padding(.vertical, AnkerSpacing.s4)
+            .background(AnkerColor.surface.opacity(0.6))
+            .overlay(Rectangle().stroke(AnkerColor.divider, lineWidth: AnkerBorder.rule))
+            .clipShape(Rectangle())
     }
 
     // MARK: - Aktionen
@@ -428,37 +431,78 @@ private struct DayTimeBlockRow: View {
     }
 
     var body: some View {
-        HStack(spacing: 10) {
-            VStack(alignment: .leading, spacing: 1) {
+        HStack(spacing: AnkerSpacing.s3) {
+            VStack(alignment: .leading, spacing: AnkerSpacing.s1) {
                 Text(AnkerDateFormat.timeOfDay(block.startTime))
-                    .font(.system(size: 11, weight: .semibold, design: .monospaced))
+                    .ankerType(AnkerType.numericSmall)
                     .foregroundStyle(AnkerColor.ink)
                 Text(AnkerDateFormat.timeOfDay(block.endTime))
-                    .font(.system(size: 10, weight: .regular, design: .monospaced))
-                    .foregroundStyle(AnkerColor.muted)
+                    .ankerType(AnkerType.numericSmall)
+                    .foregroundStyle(AnkerColor.inkSecond)
             }
             .frame(width: 44, alignment: .leading)
 
             HStack {
                 Text(block.title)
-                    .font(.system(size: 12.5, weight: .medium))
+                    .ankerType(AnkerType.caption)
                     .foregroundStyle(AnkerColor.ink)
                     .lineLimit(1)
-                Spacer(minLength: 8)
+                Spacer(minLength: AnkerSpacing.s2)
                 if isAnchored {
-                    Image(systemName: "calendar")
-                        .font(.system(size: 10, weight: .bold))
-                        .foregroundStyle(AnkerColor.indigoText)
+                    Image(.week)
+                        .ankerType(AnkerType.caption)
+                        .foregroundStyle(AnkerColor.accentInk)
                         .accessibilityLabel("Aus dem Kalender übernommen")
                 }
             }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 8)
-            .background(AnkerColor.card)
-            .overlay(RoundedRectangle(cornerRadius: 9).stroke(AnkerColor.line, lineWidth: 1))
-            .clipShape(RoundedRectangle(cornerRadius: 9))
+            .padding(.horizontal, AnkerSpacing.s3)
+            .padding(.vertical, AnkerSpacing.s2)
+            .background(AnkerColor.surface)
+            .overlay(Rectangle().stroke(AnkerColor.divider, lineWidth: AnkerBorder.rule))
+            .clipShape(Rectangle())
         }
-        .padding(.vertical, 6)
+        .padding(.vertical, AnkerSpacing.s2)
         .accessibilityElement(children: .combine)
+    }
+}
+
+private struct TimeBlockRow: View {
+    let block: TimeBlock
+    let isAnchored: Bool
+
+    var body: some View {
+        HStack(spacing: AnkerSpacing.s3) {
+            Text(AnkerDateFormat.timeOfDay(block.startTime))
+                .ankerType(AnkerType.numericSmall)
+                .foregroundStyle(AnkerColor.inkSecond)
+                .frame(width: 38, alignment: .leading)
+
+            HStack {
+                Text(block.title)
+                    .ankerType(AnkerType.caption)
+                    .foregroundStyle(AnkerColor.ink)
+                    .lineLimit(1)
+                Spacer(minLength: AnkerSpacing.s2)
+                if isAnchored {
+                    Rectangle()
+                        .fill(AnkerColor.accentMark)
+                        .frame(width: 7, height: 7)
+                }
+            }
+            .padding(.horizontal, AnkerSpacing.s3)
+            .padding(.vertical, AnkerSpacing.s2)
+            .background(AnkerColor.surface)
+            .overlay(
+                Rectangle()
+                    .stroke(AnkerColor.divider, lineWidth: AnkerBorder.rule)
+            )
+            .clipShape(Rectangle())
+        }
+        .padding(.vertical, AnkerSpacing.s2)
+        .overlay(alignment: .bottom) {
+            Rectangle()
+                .fill(AnkerColor.divider)
+                .frame(height: 1)
+        }
     }
 }

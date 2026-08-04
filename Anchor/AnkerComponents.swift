@@ -15,6 +15,8 @@ struct AnchorGlyph: View {
             let center = CGPoint(x: proxy.size.width / 2, y: proxy.size.height / 2)
 
             ZStack {
+                // Das Rechteckgebot gilt fuer Flaechen und Bedienelemente. Das Ankersymbol ist
+                // eine Zeichnung — sein Ring ist rund. design-guard: erlaubt
                 Circle()
                     .stroke(stroke, lineWidth: lineWidth)
                     .frame(width: side * 0.24, height: side * 0.24)
@@ -57,13 +59,13 @@ struct DaiventoLogo: View {
 }
 
 struct AnchorBadge: View {
-    var color: Color = AnkerColor.indigo
+    var color: Color = AnkerColor.accentFill
 
     var body: some View {
-        RoundedRectangle(cornerRadius: 8)
+        Rectangle()
             .fill(color.opacity(0.12))
             .frame(width: 26, height: 26)
-            .overlay(DaiventoLogo().padding(3))
+            .overlay(DaiventoLogo().padding(AnkerSpacing.s1))
     }
 }
 
@@ -71,72 +73,57 @@ struct SectionLabel: View {
     let title: String
 
     var body: some View {
-        Text(title.uppercased())
-            .font(.system(size: 11, weight: .bold))
-            .foregroundStyle(AnkerColor.muted)
-            .textCase(.uppercase)
-            .tracking(0.55)
+        Text(title)
+            .ankerType(AnkerType.overline)
+            .foregroundStyle(AnkerColor.inkSecond)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.top, 14)
-            .padding(.bottom, 8)
-    }
-}
-
-struct ProgressRing: View {
-    let progress: Double
-    var color: Color = AnkerColor.indigo
-    var lineWidth: CGFloat = 4
-
-    var body: some View {
-        ZStack {
-            Circle()
-                .stroke(AnkerColor.line, lineWidth: lineWidth)
-            Circle()
-                .trim(from: 0, to: min(max(progress, 0), 1))
-                .stroke(color, style: StrokeStyle(lineWidth: lineWidth, lineCap: .round))
-                .rotationEffect(.degrees(-90))
-        }
-        .accessibilityLabel(Text("\(Int(progress * 100)) Prozent erreicht"))
+            .padding(.top, AnkerSpacing.s4)
+            .padding(.bottom, AnkerSpacing.s2)
     }
 }
 
 struct GoalBanner: View {
+    /// `.poster` ist die **eine** Flaeche der App, auf der der Akzent voll laeuft. Ueberall
+    /// sonst ist Rot ein Signal und keine Farbe — das Systemblatt laesst genau eine Ausnahme zu.
+    enum Emphasis { case plain, poster }
+
     let label: String
     let title: String
-    var badgeColor: Color = AnkerColor.indigo
-    var background: LinearGradient = LinearGradient(
-        colors: [
-            AnkerColor.bannerIndigo,
-            AnkerColor.bannerBrass
-        ],
-        startPoint: .topLeading,
-        endPoint: .bottomTrailing
-    )
+    var emphasis: Emphasis = .plain
 
     var body: some View {
-        HStack(spacing: 10) {
-            AnchorBadge(color: badgeColor)
-            VStack(alignment: .leading, spacing: 1) {
-                Text(label.uppercased())
-                    .font(.system(size: 9.5, weight: .bold))
-                    .foregroundStyle(AnkerColor.indigoText)
-                    .tracking(0.57)
+        HStack(spacing: AnkerSpacing.s3) {
+            VStack(alignment: .leading, spacing: AnkerSpacing.s1) {
+                Text(label)
+                    .ankerType(AnkerType.eyebrow)
+                    .foregroundStyle(labelColor)
                 Text(title)
-                    .font(.system(size: 12.5, weight: .semibold))
-                    .foregroundStyle(AnkerColor.ink)
+                    .ankerType(emphasis == .poster ? AnkerType.title3 : AnkerType.subheadline)
+                    .foregroundStyle(titleColor)
                     .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
             }
             Spacer(minLength: 0)
         }
-        .padding(.vertical, 11)
-        .padding(.horizontal, 13)
-        .background(background)
-        .overlay(
-            RoundedRectangle(cornerRadius: AnkerRadius.pill)
-                .stroke(AnkerColor.line, lineWidth: 1)
-        )
-        .clipShape(RoundedRectangle(cornerRadius: AnkerRadius.pill))
+        .padding(.vertical, AnkerSpacing.s4)
+        .padding(.horizontal, AnkerSpacing.s4)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(emphasis == .poster ? AnkerColor.accentMark : AnkerColor.surface)
+        .ankerEdge(.top, color: edgeColor)
+        .ankerEdge(.bottom, color: edgeColor)
         .accessibilityElement(children: .combine)
+    }
+
+    private var labelColor: Color {
+        emphasis == .poster ? AnkerColor.accent[300] : AnkerColor.inkSecond
+    }
+
+    private var titleColor: Color {
+        emphasis == .poster ? AnkerColor.onAccent : AnkerColor.ink
+    }
+
+    private var edgeColor: Color {
+        emphasis == .poster ? AnkerColor.onAccent : AnkerColor.divider
     }
 }
 
@@ -145,43 +132,136 @@ struct PriorityTag: View {
 
     var color: Color {
         switch priority {
-        case .a: AnkerColor.prioA
-        case .b: AnkerColor.indigoBadge
-        case .c: AnkerColor.prioC
+        case .a: AnkerColor.accentMark
+        case .b: AnkerColor.accentFill
+        case .c: AnkerColor.neutral[500]
         }
     }
 
     var body: some View {
         Text(priority.label)
-            .font(.system(size: 9, weight: .heavy))
-            .foregroundStyle(.white)
-            .tracking(0.27)
-            .padding(.horizontal, 5)
-            .padding(.vertical, 2)
-            .background(color, in: RoundedRectangle(cornerRadius: 5))
+            .ankerType(AnkerType.microLabel)
+            .foregroundStyle(AnkerColor.onAccent)
+            .padding(.horizontal, AnkerSpacing.s1)
+            .padding(.vertical, AnkerSpacing.s1)
+            .background(color, in: Rectangle())
             .accessibilityLabel("Priorität \(priority.label)")
     }
 }
 
 struct TaskCheckmark: View {
     let isDone: Bool
+    /// Die Tagesliste hat Platz fuer 22pt, der Matrixchip in einer 108pt-Spalte nicht.
+    var size: CGFloat = 22
 
     var body: some View {
-        RoundedRectangle(cornerRadius: 5)
-            .fill(isDone ? AnkerColor.success : Color.clear)
+        Rectangle()
+            .fill(isDone ? AnkerColor.ink : Color.clear)
             .overlay(
-                RoundedRectangle(cornerRadius: 5)
-                    .stroke(isDone ? AnkerColor.success : AnkerColor.line, lineWidth: 1.6)
+                // Auch offen eine 2px-Kante in Tinte, nicht in der Trennlinienfarbe: das
+                // Kaestchen ist ein Bedienelement und muss als solches lesbar sein.
+                Rectangle()
+                    .stroke(AnkerColor.ink, lineWidth: AnkerBorder.rule)
             )
             .overlay {
                 if isDone {
-                    Image(systemName: "checkmark")
-                        .font(.system(size: 10, weight: .bold))
-                        .foregroundStyle(.white)
+                    Image(.check)
+                        .ankerIcon(size * 0.6)
+                        .foregroundStyle(AnkerColor.onAccent)
                 }
             }
-            .frame(width: 17, height: 17)
+            .frame(width: size, height: size)
+            .contentShape(Rectangle())
             .accessibilityLabel(isDone ? "Erledigt" : "Offen")
+    }
+}
+
+/// Der Titel einer Aufgabe — an der Stelle bearbeitbar, an der er steht.
+///
+/// Der Entwurf arbeitet mit Flaechen und Kanten, nicht mit Dialogen: ein Blatt mit sechs Feldern
+/// aufzurufen, um ein Wort zu tippen, sind drei Handgriffe zu viel. Doppelklick oeffnet das Feld,
+/// Enter sichert, Escape verwirft. Das ganze Blatt bleibt fuer die Faelle, in denen sich Woche,
+/// Tag und Anker mitaendern sollen.
+///
+/// Ein leerer Titel wird verworfen statt die Aufgabe zu loeschen — Text wegzuwischen darf keine
+/// Loeschung sein.
+struct TaskTitleField: View {
+    @Environment(\.modelContext) private var modelContext
+
+    let task: AnkerTask
+    let style: AnkerTextStyle
+    var lineLimit: Int = 2
+    @Binding var isEditing: Bool
+    var onRenamed: ((TaskSnapshot) -> Void)?
+
+    @State private var draft = ""
+    /// Ob der Fokus ueberhaupt schon einmal angekommen ist.
+    ///
+    /// Ohne das feuerte `onChange` nie, wenn das Feld den Fokus nie bekam — und das Feld blieb
+    /// offen stehen, auch wenn der Nutzer woanders hin klickte.
+    @State private var didFocus = false
+    @FocusState private var isFocused: Bool
+
+    var body: some View {
+        if isEditing {
+            field
+        } else {
+            Text(verbatim: task.title)
+                .ankerType(style)
+                .foregroundStyle(task.isDone ? AnkerColor.inkSecond : AnkerColor.ink)
+                .strikethrough(task.isDone, color: AnkerColor.inkSecond)
+                .lineLimit(lineLimit)
+                .multilineTextAlignment(.leading)
+        }
+    }
+
+    private var field: some View {
+        TextField("Titel", text: $draft)
+            .textFieldStyle(.plain)
+            .ankerType(style)
+            .foregroundStyle(AnkerColor.ink)
+            .lineLimit(1)
+            .focused($isFocused)
+            .onSubmit(commit)
+            // Die 2px-Kante im Akzent ist dieselbe, mit der das System ueberall den Fokus
+            // auszeichnet — kein eigenes Idiom fuer diesen Fall.
+            .padding(.horizontal, AnkerSpacing.s1)
+            .background(AnkerColor.ground, in: Rectangle())
+            .overlay(Rectangle().stroke(AnkerColor.accentMark, lineWidth: AnkerBorder.focus))
+            .task {
+                draft = task.title
+                // Ein `@FocusState` unmittelbar beim Erscheinen zu setzen greift nicht
+                // verlaesslich: das Feld ist noch nicht im Fokussystem angemeldet. Ein Durchlauf
+                // Wartezeit genuegt.
+                await Task.yield()
+                isFocused = true
+            }
+            // Fokus zu verlieren heisst sichern, nicht verwerfen: wer woanders hin klickt, hat
+            // seine Aenderung gemeint.
+            .onChange(of: isFocused) { _, hasFocus in
+                if hasFocus {
+                    didFocus = true
+                } else if didFocus {
+                    commit()
+                }
+            }
+#if os(macOS)
+            .onExitCommand { isEditing = false }
+#endif
+            // SwiftUI meldet bei einem `TextField` den **Inhalt** als Beschriftung und
+            // ueberschreibt damit `accessibilityLabel`. Die Kennung ist deshalb der einzige
+            // stabile Zugriff — der UI-Test haengt daran.
+            .accessibilityIdentifier("taskTitleField")
+            .accessibilityLabel("Titel der Aufgabe")
+    }
+
+    private func commit() {
+        guard isEditing else { return }
+        let snapshot = TaskActions.snapshot(task)
+        isEditing = false
+        if TaskActions.rename(task, to: draft, modelContext: modelContext) {
+            onRenamed?(snapshot)
+        }
     }
 }
 
@@ -190,8 +270,15 @@ struct TaskCard: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Query(sort: \Week.monday) private var weeks: [Week]
 
+    /// Was in der Metazeile steht.
+    ///
+    /// In der Tagesliste ist der **Anker** die Aussage — die Zuordnung ist der Kern der App. Im
+    /// Ankerdetail haben alle Aufgaben denselben Anker; dort ist der **Tag** die Information.
+    enum MetaLine { case anchor, day }
+
     let task: AnkerTask
     var showPriority = true
+    var metaLine: MetaLine = .anchor
     var onToggle: (() -> Void)?
     var isSelectionMode = false
     var isSelected = false
@@ -200,6 +287,7 @@ struct TaskCard: View {
     var onUndoableAction: ((TaskUndoNotice) -> Void)?
 
     @State private var showingEditor = false
+    @State private var isEditingTitle = false
     @State private var showingMoveSheet = false
     @State private var confirmingDelete = false
     @State private var isHovering = false
@@ -209,8 +297,26 @@ struct TaskCard: View {
         task.day != nil
     }
 
+    /// „Anker 2 · Security-Review" oder „Ohne Anker".
+    private var anchorLabel: String {
+        guard let goal = task.linkedGoal else { return "Ohne Anker" }
+        guard let week = goal.week,
+              let index = week.goalList.firstIndex(where: { $0.id == goal.id }) else {
+            return goal.title
+        }
+        return "Anker \(index + 1) · \(goal.title)"
+    }
+
+    private var priorityColor: Color {
+        switch task.priority {
+        case .a: AnkerColor.accentInk
+        case .b: AnkerColor.inkSecond
+        case .c: AnkerColor.inkTertiary
+        }
+    }
+
     var body: some View {
-        HStack(alignment: .top, spacing: 9) {
+        HStack(alignment: .top, spacing: AnkerSpacing.s2) {
             if isSelectionMode {
                 Button {
                     onSelectionToggle?()
@@ -218,15 +324,10 @@ struct TaskCard: View {
                     SelectionCheckmark(isSelected: isSelected)
                 }
                 .buttonStyle(.plain)
-                .padding(.top, 1)
+                .padding(.top, 1)  // optische Ausrichtung, kein Raster. design-guard: erlaubt
                 .onLongPressGesture {
                     onStartSelection?()
                 }
-            }
-
-            if showPriority {
-                PriorityTag(priority: task.priority)
-                    .padding(.top, 1)
             }
 
             if !isSelectionMode {
@@ -236,52 +337,51 @@ struct TaskCard: View {
                     TaskCheckmark(isDone: task.isDone)
                 }
                 .buttonStyle(.plain)
-                .padding(.top, 1)
+                .padding(.top, 1)  // optische Ausrichtung, kein Raster. design-guard: erlaubt
             }
 
-            VStack(alignment: .leading, spacing: 4) {
-                Text(task.title)
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(AnkerColor.ink)
-                    .strikethrough(task.isDone, color: AnkerColor.muted)
-                    .lineLimit(3)
-
-                if let goal = task.linkedGoal {
-                    HStack(spacing: 4) {
-                        DaiventoLogo()
-                            .frame(width: 10, height: 10)
-                        Text(goal.title)
-                            .lineLimit(1)
+            VStack(alignment: .leading, spacing: AnkerSpacing.s1 + 1) {
+                TaskTitleField(
+                    task: task,
+                    style: AnkerType.taskTitle,
+                    isEditing: $isEditingTitle,
+                    onRenamed: { snapshot in
+                        notifyUndo(message: "Titel geändert", snapshots: [snapshot])
                     }
-                    .font(.system(size: 10, weight: .semibold))
-                    .foregroundStyle(AnkerColor.indigoText)
-                    .accessibilityLabel("Zugeordnet zu \(goal.title)")
-                }
+                )
+
+                // Der Anker steht als Text da, nicht als Farbpunkt oder Logo: die Zuordnung
+                // ist die Kernaussage der App und soll lesbar sein.
+                Text(verbatim: metaText)
+                    .ankerType(AnkerType.microLabel)
+                    .foregroundStyle(metaColor)
+                    .lineLimit(1)
             }
-            Spacer(minLength: 0)
+            // Doppelklick auf die Zeile bearbeitet den Titel an der Stelle. Bewusst nicht der
+            // einfache Klick: der zieht in der Mehrfachauswahl und darf nicht zweierlei tun.
+            .onTapGesture(count: 2) {
+                guard isActionable && !isSelectionMode else { return }
+                isEditingTitle = true
+            }
+            Spacer(minLength: AnkerSpacing.s2)
+
+            // Prio-Gruppen entfallen; der Buchstabe steht rechts an der Zeile.
+            if showPriority {
+                Text(verbatim: task.priority.label)
+                    .ankerType(AnkerType.microLabel)
+                    .foregroundStyle(priorityColor)
+                    .padding(.top, AnkerSpacing.s1)
+            }
 
             if isActionable && !isSelectionMode {
 #if os(macOS)
                 hoverActions
-#else
-                taskMenu
 #endif
             }
         }
-        .padding(.horizontal, 11)
-        .padding(.vertical, 10)
-        .background(AnkerColor.card)
-        .overlay(
-            RoundedRectangle(cornerRadius: AnkerRadius.card)
-                .stroke(AnkerColor.line, lineWidth: 1)
-        )
-        .clipShape(RoundedRectangle(cornerRadius: AnkerRadius.card))
-        .overlay {
-            if isHovering && isActionable {
-                RoundedRectangle(cornerRadius: AnkerRadius.card)
-                    .stroke(AnkerColor.indigo.opacity(0.34), lineWidth: 1.5)
-            }
-        }
+        .padding(.vertical, AnkerSpacing.s3)
+        .frame(minHeight: 46)
+        .contentShape(Rectangle())
         .platformTaskContextMenu {
             if isActionable && !isSelectionMode {
                 taskMenuItems
@@ -298,9 +398,9 @@ struct TaskCard: View {
                 Button {
                     performToggleDone()
                 } label: {
-                    Label(task.isDone ? "Offen" : "Erledigt", systemImage: task.isDone ? "arrow.uturn.backward" : "checkmark")
+                    Label(task.isDone ? "Offen" : "Erledigt", ankerIcon: task.isDone ? .undo : .check)
                 }
-                .tint(AnkerColor.success)
+                .tint(AnkerColor.ink)
             }
         }
         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
@@ -308,20 +408,26 @@ struct TaskCard: View {
                 Button(role: .destructive) {
                     performDelete()
                 } label: {
-                    Label("Aufgabe löschen", systemImage: "trash")
+                    Label("Aufgabe löschen", ankerIcon: AnkerIcon.delete)
                 }
 
                 Button {
                     iOSImpact(.medium)
                     showingMoveSheet = true
                 } label: {
-                    Label("Verschieben", systemImage: "calendar")
+                    Label("Verschieben", ankerIcon: AnkerIcon.week)
                 }
-                .tint(AnkerColor.indigo)
+                .tint(AnkerColor.accentInk)
             }
         }
         .accessibilityAction(named: task.isDone ? "Als offen markieren" : "Als erledigt markieren") {
             performToggleDone()
+        }
+        .accessibilityAction(named: "Titel ändern") {
+            isEditingTitle = true
+        }
+        .accessibilityAction(named: "Aufgabe bearbeiten") {
+            showingEditor = true
         }
         .accessibilityAction(named: "Aufgabe verschieben") {
             showingMoveSheet = true
@@ -373,21 +479,21 @@ struct TaskCard: View {
     }
 
     private var hoverActions: some View {
-        HStack(spacing: 6) {
+        HStack(spacing: AnkerSpacing.s2) {
             hoverAction(
-                systemName: task.isDone ? "circle" : "checkmark",
-                tint: AnkerColor.success,
+                ankerIcon: task.isDone ? .open : .check,
+                tint: AnkerColor.ink,
                 help: task.isDone ? "Als offen markieren (⌘.)" : "Als erledigt markieren (⌘.)"
             ) {
                 performToggleDone()
             }
 
-            hoverAction(systemName: "calendar", tint: AnkerColor.indigo, help: "In die nächste Woche verschieben (⌘⇧M)") {
+            hoverAction(ankerIcon: .week, tint: AnkerColor.accentFill, help: "In die nächste Woche verschieben (⌘⇧M)") {
                 performMoveByDays(7)
             }
             .keyboardShortcut("m", modifiers: [.command, .shift])
 
-            hoverAction(systemName: "trash", tint: AnkerColor.destructive, help: "Aufgabe löschen (⌘⌫)", isDestructive: true) {
+            hoverAction(ankerIcon: .delete, tint: AnkerColor.accentMark, help: "Aufgabe löschen (⌘⌫)", isDestructive: true) {
                 confirmingDelete = true
             }
         }
@@ -398,18 +504,18 @@ struct TaskCard: View {
     }
 
     private func hoverAction(
-        systemName: String,
+        ankerIcon: AnkerIcon,
         tint: Color,
         help: String,
         isDestructive: Bool = false,
         action: @escaping () -> Void
     ) -> some View {
         Button(action: action) {
-            Image(systemName: systemName)
-                .font(.system(size: 12, weight: .bold))
+            Image(ankerIcon)
+                .ankerIcon(AnkerIconSize.xs)
                 .foregroundStyle(tint)
                 .frame(width: 26, height: 26)
-                .background((isDestructive ? tint.opacity(0.10) : AnkerColor.lineSoft), in: RoundedRectangle(cornerRadius: 7))
+                .background((isDestructive ? tint.opacity(0.10) : AnkerColor.divider), in: Rectangle())
         }
         .buttonStyle(.plain)
         .help(help)
@@ -420,12 +526,12 @@ struct TaskCard: View {
         Menu {
             taskMenuItems
         } label: {
-            Image(systemName: "ellipsis")
-                .font(.system(size: 12, weight: .bold))
-                .foregroundStyle(AnkerColor.muted)
+            Image(.more)
+                .ankerType(AnkerType.caption)
+                .foregroundStyle(AnkerColor.inkSecond)
                 .frame(width: 26, height: 26)
-                .background(AnkerColor.surfaceRaised, in: RoundedRectangle(cornerRadius: 7))
-                .overlay(RoundedRectangle(cornerRadius: 7).stroke(AnkerColor.line))
+                .background(AnkerColor.surface, in: Rectangle())
+                .overlay(Rectangle().stroke(AnkerColor.divider, lineWidth: AnkerBorder.rule))
         }
         .buttonStyle(.plain)
         .accessibilityLabel("Aufgabenaktionen")
@@ -436,9 +542,22 @@ struct TaskCard: View {
         Button {
             performToggleDone()
         } label: {
-            Label(task.isDone ? "Als offen markieren" : "Als erledigt markieren", systemImage: task.isDone ? "circle" : "checkmark.circle")
+            Label(task.isDone ? "Als offen markieren" : "Als erledigt markieren", ankerIcon: task.isDone ? .open : .checkCircle)
         }
         .keyboardShortcut(".", modifiers: .command)
+
+        Button {
+            isEditingTitle = true
+        } label: {
+            Label("Titel ändern", ankerIcon: AnkerIcon.edit)
+        }
+
+        Button {
+            showingEditor = true
+        } label: {
+            Label("Bearbeiten …", ankerIcon: AnkerIcon.edit)
+        }
+        .keyboardShortcut("e", modifiers: .command)
 
         Menu {
             Button {
@@ -446,13 +565,13 @@ struct TaskCard: View {
                 TaskActions.move(task, to: Date(), weeks: weeks, modelContext: modelContext)
                 notifyUndo(message: "Aufgabe verschoben", snapshots: [snapshot])
             } label: {
-                Label("Heute", systemImage: "calendar")
+                Label("Heute", ankerIcon: AnkerIcon.week)
             }
 
             Button {
                 performMoveByDays(1)
             } label: {
-                Label("Morgen", systemImage: "sunrise")
+                Label("Morgen", ankerIcon: AnkerIcon.tomorrow)
             }
 
             Menu {
@@ -460,17 +579,17 @@ struct TaskCard: View {
                     Button {
                         performMove(to: date)
                     } label: {
-                        Label(AnkerDateFormat.weekdayLongWithDayMonth(date), systemImage: "calendar")
+                        Label(verbatim: AnkerDateFormat.weekdayLongWithDayMonth(date), ankerIcon: AnkerIcon.week)
                     }
                 }
             } label: {
-                Label("Diese Woche", systemImage: "calendar")
+                Label("Diese Woche", ankerIcon: AnkerIcon.week)
             }
 
             Button {
                 performMoveByDays(7)
             } label: {
-                Label("Nächste Woche", systemImage: "calendar.badge.plus")
+                Label("Nächste Woche", ankerIcon: AnkerIcon.nextMonth)
             }
             .keyboardShortcut("m", modifiers: [.command, .shift])
 
@@ -478,12 +597,12 @@ struct TaskCard: View {
             Button {
                 showingMoveSheet = true
             } label: {
-                Label("Datum wählen ...", systemImage: "calendar.badge.clock")
+                Label("Datum wählen ...", ankerIcon: AnkerIcon.pickDate)
             }
             .keyboardShortcut("m", modifiers: [.command, .shift])
 #endif
         } label: {
-            Label("Verschieben", systemImage: "arrow.right.square")
+            Label("Verschieben", ankerIcon: AnkerIcon.move)
         }
 
         Menu {
@@ -495,7 +614,7 @@ struct TaskCard: View {
                         iOSImpact(.light)
                         notifyUndo(message: "Ziel verknüpft", snapshots: [snapshot])
                     } label: {
-                        Label(goal.title, systemImage: task.linkedGoal?.id == goal.id ? "checkmark" : "target")
+                        Label(verbatim: goal.title, ankerIcon: task.linkedGoal?.id == goal.id ? .check : .goal)
                     }
                 }
                 Divider()
@@ -507,10 +626,10 @@ struct TaskCard: View {
                 iOSImpact(.light)
                 notifyUndo(message: "Ziel gelöst", snapshots: [snapshot])
             } label: {
-                Label("Kein Ziel", systemImage: task.linkedGoal == nil ? "checkmark" : "xmark.circle")
+                Label("Kein Ziel", ankerIcon: task.linkedGoal == nil ? .check : .clear)
             }
         } label: {
-            Label("Mit Ziel verknüpfen", systemImage: "target")
+            Label("Mit Ziel verknüpfen", ankerIcon: AnkerIcon.goal)
         }
 
         Menu {
@@ -521,12 +640,12 @@ struct TaskCard: View {
                     iOSImpact(.light)
                     notifyUndo(message: "Priorität geändert", snapshots: [snapshot])
                 } label: {
-                    Label("Priorität \(priority.label)", systemImage: task.priority == priority ? "checkmark" : "flag")
+                    Label("Priorität \(priority.label)", ankerIcon: task.priority == priority ? .check : .priority)
                 }
                 .keyboardShortcut(priority.shortcutKey, modifiers: .command)
             }
         } label: {
-            Label("Priorität", systemImage: "flag")
+            Label("Priorität", ankerIcon: AnkerIcon.priority)
         }
 
         Button {
@@ -539,7 +658,7 @@ struct TaskCard: View {
                 ))
             }
         } label: {
-            Label("Duplizieren", systemImage: "doc.on.doc")
+            Label("Duplizieren", ankerIcon: AnkerIcon.duplicate)
         }
         .keyboardShortcut("d", modifiers: .command)
 
@@ -548,9 +667,29 @@ struct TaskCard: View {
         Button(role: .destructive) {
             performDelete()
         } label: {
-            Label("Aufgabe löschen", systemImage: "trash")
+            Label("Aufgabe löschen", ankerIcon: AnkerIcon.delete)
         }
         .keyboardShortcut(.delete, modifiers: .command)
+    }
+
+    private var metaText: String {
+        switch metaLine {
+        case .anchor:
+            return anchorLabel
+        case .day:
+            guard let date = task.day?.date else { return "Ohne Tag" }
+            return AnkerCalendar.isSameDay(date, Date()) ? "Heute" : AnkerDateFormat.weekdayLongWithDayMonth(date)
+        }
+    }
+
+    private var metaColor: Color {
+        switch metaLine {
+        case .anchor:
+            return task.linkedGoal == nil ? AnkerColor.inkTertiary : AnkerColor.inkSecond
+        case .day:
+            let isToday = task.day.map { AnkerCalendar.isSameDay($0.date, Date()) } ?? false
+            return isToday ? AnkerColor.accentInk : AnkerColor.inkSecond
+        }
     }
 
     private var currentWeekDates: [Date] {
@@ -691,6 +830,32 @@ enum TaskDropHandling {
         return snapshot
     }
 
+    /// Ziel eines Matrix-Drops. `goalID == nil` ist der Eingangskorb.
+    struct MatrixTarget: Equatable, Hashable {
+        let date: Date
+        let goalID: UUID?
+    }
+
+    /// Wie `moveTask`, aber zweidimensional. Dieselben drei Schritte, deshalb hier und nicht
+    /// als zweite Umsetzung daneben: das Drag-Nutzlast bleibt die nackte UUID, also landet
+    /// **jeder** bestehende Drag (Sidebar, Tagesliste) ohne Aenderung auch in der Matrix.
+    @MainActor
+    @discardableResult
+    static func placeTask(
+        id: UUID,
+        on target: MatrixTarget,
+        weeks: [Week],
+        modelContext: ModelContext
+    ) -> TaskSnapshot? {
+        defer { TaskDragEvents.end(taskID: id) }
+
+        guard let task = task(with: id, in: weeks) else { return nil }
+
+        let snapshot = TaskActions.snapshot(task)
+        TaskActions.place(task, on: target.date, goalID: target.goalID, weeks: weeks, modelContext: modelContext)
+        return snapshot
+    }
+
     @MainActor
     private static func task(with id: UUID, in weeks: [Week]) -> AnkerTask? {
         weeks
@@ -705,33 +870,33 @@ private struct TaskContextPreviewCard: View {
     let task: AnkerTask
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 8) {
+        VStack(alignment: .leading, spacing: AnkerSpacing.s2) {
+            HStack(spacing: AnkerSpacing.s2) {
                 PriorityTag(priority: task.priority)
                 TaskCheckmark(isDone: task.isDone)
                 Spacer(minLength: 0)
             }
 
             Text(task.title)
-                .font(.system(size: 15, weight: .bold))
+                .ankerType(AnkerType.bodyStrong)
                 .foregroundStyle(AnkerColor.ink)
                 .lineLimit(3)
 
             if let goal = task.linkedGoal {
-                HStack(spacing: 5) {
-                    Image(systemName: "target")
-                        .font(.system(size: 11, weight: .bold))
+                HStack(spacing: AnkerSpacing.s1) {
+                    Image(.goal)
+                        .ankerType(AnkerType.caption)
                     Text(goal.title)
                         .lineLimit(1)
                 }
-                .font(.system(size: 11.5, weight: .semibold))
-                .foregroundStyle(AnkerColor.indigoText)
+                .ankerType(AnkerType.caption)
+                .foregroundStyle(AnkerColor.accentInk)
             }
         }
-        .padding(14)
+        .padding(AnkerSpacing.s4)
         .frame(width: 260, alignment: .leading)
-        .background(AnkerColor.card)
-        .clipShape(RoundedRectangle(cornerRadius: 14))
+        .background(AnkerColor.surface)
+        .clipShape(Rectangle())
     }
 }
 
@@ -739,21 +904,20 @@ private struct TaskDragPreviewCard: View {
     let task: AnkerTask
 
     var body: some View {
-        HStack(spacing: 9) {
+        HStack(spacing: AnkerSpacing.s2) {
             PriorityTag(priority: task.priority)
             TaskCheckmark(isDone: task.isDone)
             Text(task.title)
-                .font(.system(size: 12.5, weight: .bold))
+                .ankerType(AnkerType.caption)
                 .foregroundStyle(AnkerColor.ink)
                 .lineLimit(2)
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 11)
+        .padding(.horizontal, AnkerSpacing.s3)
+        .padding(.vertical, AnkerSpacing.s3)
         .frame(width: 230, alignment: .leading)
-        .background(AnkerColor.card)
-        .overlay(RoundedRectangle(cornerRadius: 10).stroke(AnkerColor.line))
-        .clipShape(RoundedRectangle(cornerRadius: 10))
-        .shadow(color: .black.opacity(0.22), radius: 18, x: 0, y: 10)
+        .background(AnkerColor.surface)
+        .overlay(Rectangle().stroke(AnkerColor.divider, lineWidth: AnkerBorder.rule))
+        .clipShape(Rectangle())
     }
 }
 
@@ -761,22 +925,28 @@ private struct SelectionCheckmark: View {
     let isSelected: Bool
 
     var body: some View {
-        Circle()
-            .fill(isSelected ? AnkerColor.indigo : Color.clear)
-            .overlay(Circle().stroke(isSelected ? AnkerColor.indigo : AnkerColor.line, lineWidth: 1.6))
+        Rectangle()
+            .fill(isSelected ? AnkerColor.accentFill : Color.clear)
+            .overlay(
+                Rectangle().stroke(isSelected ? AnkerColor.accentFill : AnkerColor.dividerStrong,
+                                   lineWidth: AnkerBorder.rule)
+            )
             .overlay {
                 if isSelected {
-                    Image(systemName: "checkmark")
-                        .font(.system(size: 10, weight: .bold))
-                        .foregroundStyle(.white)
+                    Image(.check)
+                        .ankerIcon(AnkerIconSize.xs)
+                        .foregroundStyle(AnkerColor.onAccent)
                 }
             }
             .frame(width: 20, height: 20)
+            .contentShape(Rectangle())
             .accessibilityLabel(isSelected ? "Ausgewählt" : "Nicht ausgewählt")
     }
 }
 
-private extension View {
+/// Nicht `private`: `AnkerMatrixView` braucht denselben Drag-Helfer, und eine zweite
+/// Umsetzung daneben waere genau die Doppelung, die `TaskDropHandling` vermeidet.
+extension View {
     @ViewBuilder
     func platformTaskContextMenu<MenuItems: View, Preview: View>(
         @ViewBuilder menuItems: @escaping () -> MenuItems,
@@ -831,41 +1001,41 @@ struct WeekDot: View {
     }
 
     var body: some View {
-        VStack(spacing: 6) {
+        VStack(spacing: AnkerSpacing.s2) {
             Text(weekday)
-                .font(.system(size: 9.5, weight: .semibold))
-                .foregroundStyle(AnkerColor.muted)
+                .ankerType(AnkerType.caption)
+                .foregroundStyle(AnkerColor.inkSecond)
 
             ZStack(alignment: .bottom) {
                 Text(AnkerDateFormat.dayNumber(date))
-                    .font(.system(size: 11, weight: .semibold))
+                    .ankerType(AnkerType.caption)
                     .foregroundStyle(AnkerColor.ink)
                     .frame(width: 28, height: 28)
-                    .background(
-                        isActive
-                            ? AnyShapeStyle(LinearGradient(colors: [AnkerColor.indigoGradientLight, AnkerColor.indigo], startPoint: .topLeading, endPoint: .bottomTrailing))
-                            : AnyShapeStyle(AnkerColor.surfaceRaised),
-                        in: Circle()
+                    .background(isActive ? AnkerColor.accentFill : AnkerColor.surface)
+                    .overlay(
+                        Rectangle().stroke(
+                            isActive ? Color.clear : AnkerColor.divider,
+                            lineWidth: AnkerBorder.rule
+                        )
                     )
-                    .overlay(Circle().stroke(isActive ? Color.clear : AnkerColor.line, lineWidth: 1))
                     .overlay {
                         if isDropTarget {
-                            Circle()
-                                .stroke(AnkerColor.indigo, lineWidth: 2)
+                            Rectangle()
+                                .stroke(AnkerColor.accentMark, lineWidth: AnkerBorder.rule)
                                 .padding(-3)
                         } else if isActive {
-                            Circle()
-                                .stroke(AnkerColor.card, lineWidth: 2)
+                            Rectangle()
+                                .stroke(AnkerColor.surface, lineWidth: AnkerBorder.rule)
                                 .padding(-2)
-                            Circle()
-                                .stroke(AnkerColor.month[0], lineWidth: 1.5)
-                                .padding(-3.5)
+                            Rectangle()
+                                .stroke(AnkerColor.accentMark, lineWidth: AnkerBorder.rule)
+                                .padding(-4)
                         }
                     }
 
                 if hasGoal {
-                    Circle()
-                        .fill(AnkerColor.brass)
+                    Rectangle()
+                        .fill(AnkerColor.neutral[500])
                         .frame(width: 4, height: 4)
                         .offset(y: 2)
                 }
@@ -878,6 +1048,53 @@ struct WeekDot: View {
     }
 }
 
+/// Ein Anker als Zeile: Nummer, Titel, Fortschrittsbalken, Bruch.
+///
+/// Der Entwurf zeigt diese Zeile auf Heute (filterbar), im Rueckblick und in der Ankerspalte
+/// der Matrix. Ein Baustein statt drei Kopien.
+struct AnchorRow: View {
+    let number: Int
+    let title: String
+    let doneCount: Int
+    let totalCount: Int
+    var tint: Color = AnkerColor.ink
+    var isActive = false
+
+    private var progress: Double {
+        totalCount == 0 ? 0 : Double(doneCount) / Double(totalCount)
+    }
+
+    private var fraction: String {
+        totalCount == 0 ? "—" : "\(doneCount)/\(totalCount)"
+    }
+
+    var body: some View {
+        HStack(alignment: .top, spacing: AnkerSpacing.s3) {
+            Text(verbatim: String(number))
+                .ankerType(AnkerType.numeric)
+                .foregroundStyle(isActive ? AnkerColor.accentInk : AnkerColor.ink)
+                .frame(width: 20, alignment: .leading)
+
+            VStack(alignment: .leading, spacing: AnkerSpacing.s2) {
+                Text(verbatim: title)
+                    .ankerType(isActive ? AnkerType.subheadline : AnkerType.bodyStrong)
+                    .foregroundStyle(AnkerColor.ink)
+                    .lineLimit(1)
+                AnkerProgressBar(progress: progress, tint: tint, thickness: AnkerBorder.rule * 2)
+            }
+
+            Text(verbatim: fraction)
+                .ankerType(AnkerType.numericSmall)
+                .foregroundStyle(AnkerColor.inkSecond)
+        }
+        .padding(.vertical, AnkerSpacing.s2 + 1)
+        .frame(minHeight: 44)
+        .contentShape(Rectangle())
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Anker \(number), \(title), \(doneCount) von \(totalCount) erledigt")
+    }
+}
+
 struct ChipButton: View {
     let title: String
     var isPrimary = false
@@ -886,13 +1103,12 @@ struct ChipButton: View {
     var body: some View {
         Button(action: action) {
             Text(title)
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(isPrimary ? AnkerColor.indigoText : AnkerColor.muted)
-                .padding(.horizontal, 11)
-                .padding(.vertical, 6)
-                .background(.thinMaterial, in: Capsule())
-                .overlay(Capsule().stroke(.white.opacity(0.28), lineWidth: 1))
-                .shadow(color: .black.opacity(0.08), radius: 7, x: 0, y: 2)
+                .ankerType(AnkerType.caption)
+                .foregroundStyle(isPrimary ? AnkerColor.onAccent : AnkerColor.inkSecond)
+                .padding(.horizontal, AnkerSpacing.s3)
+                .padding(.vertical, AnkerSpacing.s2)
+                .background(isPrimary ? AnkerColor.accentFill : AnkerColor.surface)
+                .overlay(Rectangle().stroke(AnkerColor.divider, lineWidth: AnkerBorder.rule))
         }
         .buttonStyle(.plain)
     }
@@ -903,32 +1119,29 @@ struct GlassTabBar: View {
 
     var body: some View {
         HStack(spacing: 0) {
-            tab(.today, title: "Heute", systemImage: "sun.max")
-            tab(.week, title: "Woche", systemImage: "calendar")
-            tab(.year, title: "Jahr", systemImage: "square.grid.2x2")
-            tab(.review, title: "Mehr", systemImage: "ellipsis.circle")
+            tab(.today, title: "Heute", ankerIcon: AnkerIcon.today)
+            tab(.week, title: "Woche", ankerIcon: AnkerIcon.week)
+            tab(.year, title: "Jahr", ankerIcon: AnkerIcon.year)
+            tab(.review, title: "Mehr", ankerIcon: AnkerIcon.more)
         }
-        .padding(4)
-        .background(AnkerColor.card.opacity(0.96), in: RoundedRectangle(cornerRadius: 8))
-        .overlay(RoundedRectangle(cornerRadius: 8).stroke(AnkerColor.line, lineWidth: 1))
-        .shadow(color: .black.opacity(0.10), radius: 12, x: 0, y: 6)
+        .padding(AnkerSpacing.s1)
+        .background(AnkerColor.surface.opacity(0.96), in: Rectangle())
+        .overlay(Rectangle().stroke(AnkerColor.divider, lineWidth: AnkerBorder.rule))
         .accessibilityElement(children: .contain)
     }
 
-    private func tab(_ destination: AppDestination, title: String, systemImage: String) -> some View {
+    private func tab(_ destination: AppDestination, title: String, ankerIcon: AnkerIcon) -> some View {
         Button {
             selection = destination
         } label: {
-            VStack(spacing: 3) {
-                Image(systemName: systemImage)
-                    .font(.system(size: 14, weight: .semibold))
-                    .frame(width: 22, height: 20)
+            VStack(spacing: AnkerSpacing.s1) {
+                Image(ankerIcon).ankerIcon(AnkerIconSize.m)
                 Text(title)
-                    .font(.system(size: 9, weight: .semibold))
+                    .ankerType(AnkerType.microLabel)
             }
-            .foregroundStyle(isSelected(destination) ? AnkerColor.indigo : AnkerColor.muted)
+            .foregroundStyle(isSelected(destination) ? AnkerColor.accentFill : AnkerColor.inkSecond)
             .frame(maxWidth: .infinity, minHeight: 44)
-            .background(isSelected(destination) ? AnkerColor.indigo.opacity(0.10) : Color.clear, in: RoundedRectangle(cornerRadius: 6))
+            .background(isSelected(destination) ? AnkerColor.accentFill.opacity(0.10) : Color.clear, in: Rectangle())
         }
         .buttonStyle(.plain)
         .accessibilityLabel(title)
@@ -944,35 +1157,25 @@ struct GlassTabBar: View {
     }
 }
 
-struct GlassFAB: View {
+/// Volle Breite, Beschriftung buendig links. Ersetzt den schwebenden Rundknopf: der war
+/// Glas, Verlauf, Lichtreflex, weisse Kante und Schatten in einem — fuenf Verstoesse in einer
+/// Ansicht. Ab Stufe 2 uebernimmt die Erfassungszeile diese Stelle.
+struct AnkerPrimaryActionBar: View {
+    var title: LocalizedStringKey = "Neue Aufgabe"
+    var icon: AnkerIcon = .add
     let action: () -> Void
 
     var body: some View {
         Button(action: action) {
-            Image(systemName: "plus")
-                .font(.system(size: 20, weight: .bold))
-                .foregroundStyle(.white)
-                .frame(width: 52, height: 52)
-                .background(.ultraThinMaterial, in: Circle())
-                .background(
-                    LinearGradient(
-                        colors: [AnkerColor.indigoGradientSoft.opacity(0.92), AnkerColor.indigoText.opacity(0.92)],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    ),
-                    in: Circle()
-                )
-                .overlay(alignment: .topLeading) {
-                    Circle()
-                        .fill(.white.opacity(0.46))
-                        .frame(width: 16, height: 16)
-                        .blur(radius: 6)
-                        .offset(x: 8, y: 7)
-                }
-                .overlay(Circle().stroke(.white.opacity(0.35), lineWidth: 1))
-                .shadow(color: AnkerColor.indigoText.opacity(0.5), radius: 18, x: 0, y: 10)
+            AnkerLabel(title, icon: icon, size: AnkerIconSize.m, style: AnkerType.label)
+                .foregroundStyle(AnkerColor.onAccent)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, AnkerSpacing.s4)
+                .frame(height: 48)
+                .background(AnkerColor.accentFill)
+                .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("Neue Aufgabe")
+        .accessibilityLabel(title)
     }
 }

@@ -48,6 +48,29 @@ enum AnkerCalendar {
     static func isSameDay(_ lhs: Date, _ rhs: Date, calendar: Calendar = iso) -> Bool {
         calendar.isDate(lhs, inSameDayAs: rhs)
     }
+
+    /// 52 oder 53. Der 28. Dezember liegt nach ISO immer in der letzten Woche des Jahres.
+    static func weeksInISOYear(_ isoYear: Int) -> Int {
+        weekInterval(containing: date(year: isoYear, month: 12, day: 28)).isoWeek
+    }
+
+    /// Stabiler Wochenschluessel.
+    ///
+    /// Ueber die ISO-Felder statt ueber `monday`: `AnkerCalendar` rechnet mit `TimeZone.current`,
+    /// dieselbe Woche hat auf Geraeten in verschiedenen Zeitzonen unterschiedliche `Date`-Werte.
+    struct WeekKey: Hashable, Comparable {
+        let isoYear: Int
+        let isoWeek: Int
+
+        static func < (lhs: WeekKey, rhs: WeekKey) -> Bool {
+            (lhs.isoYear, lhs.isoWeek) < (rhs.isoYear, rhs.isoWeek)
+        }
+    }
+
+    static func weekKey(containing date: Date) -> WeekKey {
+        let interval = weekInterval(containing: date)
+        return WeekKey(isoYear: interval.isoYear, isoWeek: interval.isoWeek)
+    }
 }
 
 /// Alle Datums- und Zeitformate der Oberflaeche an einer Stelle.
@@ -132,5 +155,13 @@ enum AnkerDateFormat {
     /// `03.08. - 09.08.2026`
     static func weekSpan(monday: Date, sunday: Date) -> String {
         "\(dayMonth(monday)) - \(dayMonthYear(sunday))"
+    }
+}
+
+extension String {
+    /// Leerer Text ist keine Angabe. Spart an einem Dutzend Stellen ein
+    /// `trimmingCharacters(...).isEmpty ? nil : text`.
+    var nilIfEmpty: String? {
+        isEmpty ? nil : self
     }
 }

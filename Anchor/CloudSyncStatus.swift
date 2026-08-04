@@ -58,33 +58,33 @@ final class CloudSyncStatusCenter: ObservableObject {
             }
         }
 
-        var symbolName: String {
+        var icon: AnkerIcon {
             switch self {
             case .starting, .ready:
-                "icloud"
+                .cloud
             case .pendingExport:
-                "icloud.and.arrow.up"
+                .cloudUploading
             case .syncing:
-                "arrow.triangle.2.circlepath"
+                .refresh
             case .synced:
-                "icloud.fill"
+                .cloudSynced
             case .issue, .disabled:
-                "icloud.slash"
+                .cloudOff
             }
         }
 
         var tint: Color {
             switch self {
             case .starting, .ready, .disabled:
-                AnkerColor.muted
+                AnkerColor.inkSecond
             case .pendingExport:
-                AnkerColor.brass
+                AnkerColor.neutral[500]
             case .syncing:
-                AnkerColor.indigoText
+                AnkerColor.accentInk
             case .synced:
-                AnkerColor.success
+                AnkerColor.ink
             case .issue:
-                AnkerColor.brass
+                AnkerColor.neutral[500]
             }
         }
     }
@@ -400,39 +400,39 @@ struct CloudSyncStatusRow: View {
     @ObservedObject var status: CloudSyncStatusCenter
 
     var body: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: AnkerSpacing.s2) {
             CloudSyncStatusIcon(phase: status.phase)
 
-            VStack(alignment: .leading, spacing: 1) {
+            VStack(alignment: .leading, spacing: AnkerSpacing.s1) {
                 Text(status.phase.title)
-                    .font(.system(size: 11.5, weight: .semibold))
+                    .ankerType(AnkerType.caption)
                     .foregroundStyle(AnkerColor.ink)
                     .lineLimit(1)
 
                 Text(status.detail)
-                    .font(.system(size: 10.5, weight: .medium))
-                    .foregroundStyle(AnkerColor.muted)
+                    .ankerType(AnkerType.caption)
+                    .foregroundStyle(AnkerColor.inkSecond)
                     .lineLimit(1)
 
                 // Nur sichtbar, wenn tatsaechlich aufgeraeumt wurde — im Normalfall
                 // bleibt die Zeile weg und der Fuss so kompakt wie bisher.
                 if let maintenanceSummary = status.maintenanceSummary {
                     Text(maintenanceSummary)
-                        .font(.system(size: 10, weight: .medium))
-                        .foregroundStyle(AnkerColor.brass)
+                        .ankerType(AnkerType.caption)
+                        .foregroundStyle(AnkerColor.neutral[500])
                         .lineLimit(2)
                 }
             }
 
             Spacer(minLength: 0)
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 8)
+        .padding(.horizontal, AnkerSpacing.s3)
+        .padding(.vertical, AnkerSpacing.s2)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(AnkerColor.card.opacity(0.72), in: RoundedRectangle(cornerRadius: 8))
+        .background(AnkerColor.surface.opacity(0.72), in: Rectangle())
         .overlay(
-            RoundedRectangle(cornerRadius: 8)
-                .stroke(AnkerColor.line)
+            Rectangle()
+                .stroke(AnkerColor.divider, lineWidth: AnkerBorder.rule)
         )
         .help(status.maintenanceSummary.map { "\(status.tooltip)\n\nAutomatisch aufgeräumt: \($0)" } ?? status.tooltip)
         .accessibilityElement(children: .ignore)
@@ -468,31 +468,31 @@ private struct CloudSyncStatusDetail: View {
     @ObservedObject var status: CloudSyncStatusCenter
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack(spacing: 10) {
+        VStack(alignment: .leading, spacing: AnkerSpacing.s4) {
+            HStack(spacing: AnkerSpacing.s3) {
                 CloudSyncStatusIcon(phase: status.phase)
 
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: AnkerSpacing.s1) {
                     Text(status.phase.title)
-                        .font(.system(size: 15, weight: .bold))
+                        .ankerType(AnkerType.bodyStrong)
                         .foregroundStyle(AnkerColor.ink)
                     Text(status.detail)
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(AnkerColor.muted)
+                        .ankerType(AnkerType.caption)
+                        .foregroundStyle(AnkerColor.inkSecond)
                 }
 
                 Spacer(minLength: 0)
             }
 
             Text(status.tooltip)
-                .font(.system(size: 12.5))
+                .ankerType(AnkerType.body)
                 .foregroundStyle(AnkerColor.ink)
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(12)
-                .background(AnkerColor.card)
-                .overlay(RoundedRectangle(cornerRadius: AnkerRadius.card).stroke(AnkerColor.line, lineWidth: 1))
-                .clipShape(RoundedRectangle(cornerRadius: AnkerRadius.card))
+                .padding(AnkerSpacing.s3)
+                .background(AnkerColor.surface)
+                .overlay(Rectangle().stroke(AnkerColor.divider, lineWidth: AnkerBorder.rule))
+                .clipShape(Rectangle())
 
             VStack(spacing: 0) {
                 diagnosticRow("iCloud-Account", status.accountSummary)
@@ -507,47 +507,47 @@ private struct CloudSyncStatusDetail: View {
                     diagnosticRow("Aufgeräumt", maintenanceSummary)
                 }
             }
-            .background(AnkerColor.card)
-            .overlay(RoundedRectangle(cornerRadius: AnkerRadius.card).stroke(AnkerColor.line, lineWidth: 1))
-            .clipShape(RoundedRectangle(cornerRadius: AnkerRadius.card))
+            .background(AnkerColor.surface)
+            .overlay(Rectangle().stroke(AnkerColor.divider, lineWidth: AnkerBorder.rule))
+            .clipShape(Rectangle())
 
             Text("Geräte synchronisieren nur bei gleichem iCloud-Account und gleicher Umgebung. Development und Production sind getrennte Datenbestände.")
-                .font(.system(size: 11.5))
-                .foregroundStyle(AnkerColor.muted)
+                .ankerType(AnkerType.caption)
+                .foregroundStyle(AnkerColor.inkSecond)
                 .fixedSize(horizontal: false, vertical: true)
 
             Spacer(minLength: 0)
 
             Button("Fertig") { dismiss() }
-                .font(.system(size: 13, weight: .semibold))
+                .ankerType(AnkerType.meta)
                 .frame(maxWidth: .infinity)
         }
         .task {
             await status.refreshAccountStatus()
         }
-        .padding(18)
-        .background(AnkerColor.paper)
+        .padding(AnkerSpacing.s4)
+        .background(AnkerColor.ground)
 #if os(iOS)
         .presentationDetents([.large])
 #endif
     }
 
     private func diagnosticRow(_ label: String, _ value: String) -> some View {
-        HStack(alignment: .top, spacing: 10) {
+        HStack(alignment: .top, spacing: AnkerSpacing.s3) {
             Text(label)
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(AnkerColor.muted)
+                .ankerType(AnkerType.caption)
+                .foregroundStyle(AnkerColor.inkSecond)
                 .frame(width: 96, alignment: .leading)
 
             Text(value)
-                .font(.system(size: 11, weight: .medium, design: .monospaced))
+                .ankerType(AnkerType.numericSmall)
                 .foregroundStyle(AnkerColor.ink)
                 .textSelection(.enabled)
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
+        .padding(.horizontal, AnkerSpacing.s3)
+        .padding(.vertical, AnkerSpacing.s2)
         .accessibilityElement(children: .combine)
     }
 }
@@ -562,10 +562,9 @@ private struct CloudSyncStatusIcon: View {
                 .frame(width: 17, height: 17)
                 .tint(phase.tint)
         } else {
-            Image(systemName: phase.symbolName)
-                .font(.system(size: 13, weight: .semibold))
+            Image(phase.icon)
+                .ankerIcon(AnkerIconSize.s)
                 .foregroundStyle(phase.tint)
-                .frame(width: 17, height: 17)
         }
     }
 }
@@ -623,7 +622,7 @@ enum CloudSyncErrorFormatter {
     private static func coreDataCloudKitName(for code: Int) -> String? {
         switch code {
         case 134_400: "CloudKit-Integration nicht moeglich"
-        case 134_405: "Store nicht fuer CloudKit konfiguriert"
+        case 134_405: "Store nicht für CloudKit konfiguriert"
         case 134_406: "Anfrage abgebrochen, Setup nie erfolgreich"
         case 134_410: "Schema-Konflikt"
         case 134_422: "Store wird bereits synchronisiert"

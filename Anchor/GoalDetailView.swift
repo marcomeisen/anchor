@@ -1,158 +1,293 @@
 import SwiftData
 import SwiftUI
 
+/// Ein Anker im Detail.
+///
+/// Der Fortschrittsring ist weg. Statt „70 % erreicht" steht hier ein Satz, der eine
+/// Entscheidung verlangt — das ist der Unterschied zwischen einem Statusbildschirm und einem
+/// Werkzeug. Der Prozentwert bleibt als Balken und als Vorlesetext erhalten.
 struct GoalDetailView: View {
-    let goal: Goal
-    let week: Week
+    @Environment(\.modelContext) private var modelContext
+
+    /// `@Bindable`, nicht `let`: als einfache Konstante beobachtet die Ansicht die Aenderungen
+    /// an der Woche nicht. Der Kennzahlenblock sprang dann erst beim Neuaufbau um — ein Haken
+    /// in der Zielliste blieb ohne sichtbare Wirkung.
+    @Bindable var goal: Goal
+    @Bindable var week: Week
     var onDeleted: () -> Void = {}
 
     @State private var goalPendingDeletion: Goal?
+    @StateObject private var undo = TaskUndoCoordinator()
+    @Query(sort: \Week.monday) private var weeks: [Week]
+
+    private var report: AnkerStatistics.AnchorReport? {
+        AnkerStatistics.week(week).anchors.first { $0.id == goal.id }
+    }
 
     private var linkedTasks: [AnkerTask] {
-        week.dayList.flatMap(\.taskList).filter { $0.linkedGoal?.id == goal.id }
+        week.dayList
+            .sorted { $0.date < $1.date }
+            .flatMap { $0.taskList.filter { $0.linkedGoal?.id == goal.id } }
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            HStack(spacing: 16) {
-                ProgressRing(progress: goal.progress, color: Color(hex: goal.colorHex), lineWidth: 3.5)
-                    .frame(width: 64, height: 64)
-                    .accessibilityLabel("\(goal.title), \(Int(goal.progress * 100)) Prozent erreicht")
-                    .accessibilityIdentifier("goalProgress")
-
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(goal.title)
-                        .font(.system(size: 17, weight: .bold))
-                        .foregroundStyle(AnkerColor.ink)
-                    Text("Wochenziel · \(AnkerDateFormat.calendarWeek(week.isoWeek)) · geplant seit \(AnkerDateFormat.weekdayShortWithDayMonth(week.monday))")
-                        .font(.system(size: 11.5))
-                        .foregroundStyle(AnkerColor.muted)
+        ScrollView {
+            VStack(alignment: .leading, spacing: 0) {
+                header
+                statsRow
+                paceNotice
+                history
+                taskList
+            }
+        }
+        .background(AnkerColor.ground)
+        .navigationTitle("Ziel")
+        .safeAreaInset(edge: .bottom) {
+            if let notice = undo.notice {
+                TaskUndoToast(notice: notice) {
+                    undo.undo(weeks: weeks, modelContext: modelContext)
                 }
-                Spacer()
+                .padding(AnkerSpacing.s3)
+            }
+        }
+        .goalDeleteConfirmation(goal: $goalPendingDeletion, week: week, onDeleted: onDeleted)
+    }
+
+    // MARK: - Kopf
+
+    private var header: some View {
+        VStack(alignment: .leading, spacing: AnkerSpacing.s2) {
+            HStack(alignment: .top) {
+                Text(verbatim: kicker)
+                    .ankerType(AnkerType.eyebrow)
+                    .foregroundStyle(AnkerColor.inkSecond)
+
+                Spacer(minLength: AnkerSpacing.s4)
 
                 Button(role: .destructive) {
                     goalPendingDeletion = goal
                 } label: {
-                    Image(systemName: "trash")
-                        .font(.system(size: 12, weight: .bold))
-                        .foregroundStyle(AnkerColor.destructive)
-                        .frame(width: 30, height: 30)
-                        .background(AnkerColor.destructive.opacity(0.10), in: RoundedRectangle(cornerRadius: 8))
+                    Image(.delete)
+                        .ankerIcon(AnkerIconSize.s)
+                        .foregroundStyle(AnkerColor.accentInk)
+                        .padding(AnkerSpacing.s2)
+                        .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
                 .help("Wochenziel löschen")
                 .accessibilityLabel("Wochenziel löschen")
             }
-            .padding(.horizontal, 20)
-            .padding(.top, 20)
-            .padding(.bottom, 14)
-            .background(.regularMaterial)
-            .overlay(alignment: .bottom) { Rectangle().fill(.white.opacity(0.22)).frame(height: 1) }
+            .padding(.top, AnkerSpacing.s4)
 
-            HStack(spacing: 22) {
-                DetailStat(value: linkedTasks.count, label: "Aufgaben")
-                DetailStat(value: linkedTasks.filter(\.isDone).count, label: "Erledigt")
-                DetailStat(value: activeDays, label: "Tage aktiv")
-                Spacer()
+            Text(verbatim: goal.title)
+                .ankerType(AnkerType.title2)
+                .foregroundStyle(AnkerColor.ink)
+                .fixedSize(horizontal: false, vertical: true)
+
+            AnkerProgressBar(
+                progress: goal.progress,
+                tint: AnkerColor.goalTint(goal.colorHex),
+                thickness: AnkerBorder.rule * 4
+            )
+            .padding(.top, AnkerSpacing.s2)
+            .padding(.bottom, AnkerSpacing.s4)
+            // Der UI-Test haengt an dieser Kennung und am Wort „Prozent". Der Wert ist weiter
+            // da, nur nicht mehr als Ring.
+            .accessibilityIdentifier("goalProgress")
+            .accessibilityLabel("\(goal.title), \(Int(goal.progress * 100)) Prozent erreicht")
+        }
+        .padding(.horizontal, AnkerSpacing.screenPadding)
+    }
+
+    private var kicker: String {
+        let number = GoalOrdering.anchorNumber(of: goal, in: week)
+        let anchor = number.map { "Anker \($0)" } ?? "Überzähliger Anker"
+        return "\(anchor) · \(AnkerDateFormat.calendarWeek(week.isoWeek)) · gesetzt \(AnkerDateFormat.weekdayShortWithDayMonth(week.monday))"
+    }
+
+    // MARK: - Kennzahlen
+
+    private var statsRow: some View {
+        VStack(spacing: 0) {
+            AnkerRule(color: AnkerColor.ink)
+
+            HStack(spacing: 0) {
+                DetailStat(
+                    value: "\(report?.doneCount ?? 0)",
+                    total: "\(report?.totalCount ?? 0)",
+                    label: "Aufgaben"
+                )
+                AnkerRule(axis: .vertical)
+                DetailStat(value: "\(report?.activeDays ?? 0)", label: "Tage aktiv")
+                AnkerRule(axis: .vertical)
+                DetailStat(
+                    value: "\(report?.remainingDays ?? 0)",
+                    label: "Tage Rest",
+                    isEmphasized: (report?.remainingDays ?? 0) <= 2
+                )
             }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 14)
-            .background(AnkerColor.surface)
-            .overlay(alignment: .bottom) { Rectangle().fill(AnkerColor.lineSoft).frame(height: 1) }
+            .padding(.horizontal, AnkerSpacing.screenPadding)
+        }
+    }
 
-            HStack(spacing: 6) {
+    // MARK: - Tempo
+
+    /// Die Stelle, an der der Entwurf am deutlichsten wird: eine Prognose statt einer Zahl.
+    @ViewBuilder
+    private var paceNotice: some View {
+        let forecast = AnkerStatistics.forecast(for: week)
+
+        if forecast.kind != .empty {
+            HStack(alignment: .top, spacing: AnkerSpacing.s4) {
+                Text(verbatim: "Tempo")
+                    .ankerType(AnkerType.eyebrow)
+                    .foregroundStyle(AnkerColor.accentInk)
+                    .fixedSize()
+
+                Text(verbatim: forecast.sentence)
+                    .ankerType(AnkerType.subheadline)
+                    .foregroundStyle(AnkerColor.ink)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .padding(AnkerSpacing.s4)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(AnkerColor.accent[100])
+            .overlay(alignment: .leading) {
+                Rectangle()
+                    .fill(AnkerColor.accentMark)
+                    .frame(width: AnkerSpacing.s1)
+            }
+            .ankerEdge(.top, color: AnkerColor.ink)
+            .accessibilityElement(children: .combine)
+            .accessibilityIdentifier("goalPace")
+        }
+    }
+
+    // MARK: - Verlauf
+
+    private var history: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Text(verbatim: "Verlauf")
+                .ankerType(AnkerType.eyebrow)
+                .foregroundStyle(AnkerColor.inkSecond)
+                .padding(.top, AnkerSpacing.s5)
+                .padding(.bottom, AnkerSpacing.s3)
+
+            HStack(alignment: .bottom, spacing: AnkerSpacing.s2) {
                 ForEach(week.dayList.sorted { $0.date < $1.date }, id: \.id) { day in
-                    TimelineDayBar(day: day, goal: goal)
+                    DayHistoryBar(day: day, goal: goal)
                 }
             }
-            .padding(.horizontal, 20)
-            .padding(.top, 14)
+            .padding(.bottom, AnkerSpacing.s5)
 
-            ScrollView {
-                VStack(alignment: .leading, spacing: 0) {
-                    ForEach(week.dayList.sorted { $0.date < $1.date }, id: \.id) { day in
-                        let dayTasks = day.taskList.filter { $0.linkedGoal?.id == goal.id }
-                        if !dayTasks.isEmpty {
-                            Text(AnkerDateFormat.weekdayLongWithDayMonthNumeric(day.date))
-                                .font(.system(size: 10.5, weight: .bold))
-                                .foregroundStyle(AnkerColor.muted)
-                                .textCase(.uppercase)
-                                .padding(.top, 12)
-                                .padding(.bottom, 6)
+            AnkerRule(color: AnkerColor.ink)
+        }
+        .padding(.horizontal, AnkerSpacing.screenPadding)
+    }
 
-                            ForEach(dayTasks.sorted { $0.order < $1.order }, id: \.id) { task in
-                                TaskCard(task: task)
-                                    .padding(.bottom, 7)
-                            }
-                        }
-                    }
+    // MARK: - Aufgaben
+
+    private var taskList: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Text(verbatim: "Aufgaben")
+                .ankerType(AnkerType.eyebrow)
+                .foregroundStyle(AnkerColor.inkSecond)
+                .padding(.top, AnkerSpacing.s4)
+                .padding(.bottom, AnkerSpacing.s2)
+
+            if linkedTasks.isEmpty {
+                Text(verbatim: "Noch keine Aufgabe an diesem Anker.")
+                    .ankerType(AnkerType.body)
+                    .foregroundStyle(AnkerColor.inkTertiary)
+                    .padding(.vertical, AnkerSpacing.s4)
+            } else {
+                // Dieselbe Zeile wie in der Tagesliste, nur mit dem **Tag** in der Metazeile: hier
+                // haben alle Aufgaben denselben Anker. Vorher stand hier eine eigene Zeile mit
+                // nichts als einem Kästchen — kein Kontextmenü, keine Prioritätsänderung, kein Weg
+                // zum Titel.
+                ForEach(linkedTasks, id: \.id) { task in
+                    TaskCard(task: task, metaLine: .day, onUndoableAction: undo.present)
+                    AnkerRule()
                 }
-                .padding(.horizontal, 20)
-                .padding(.bottom, 20)
             }
         }
-        .background(AnkerColor.paper)
-        .navigationTitle("Ziel")
-        .goalDeleteConfirmation(goal: $goalPendingDeletion, week: week, onDeleted: onDeleted)
+        .padding(.horizontal, AnkerSpacing.screenPadding)
+        .padding(.bottom, AnkerSpacing.s6)
     }
-
-    private var activeDays: Int {
-        week.dayList.filter { day in
-            day.taskList.contains { $0.linkedGoal?.id == goal.id }
-        }.count
-    }
-
 }
 
+/// Eine Kennzahl im Kopf. `total` macht daraus einen Bruch.
 private struct DetailStat: View {
-    let value: Int
+    let value: String
+    var total: String?
     let label: String
+    var isEmphasized = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text("\(value)")
-                .font(.system(size: 17, weight: .bold))
-                .foregroundStyle(AnkerColor.ink)
-            Text(label.uppercased())
-                .font(.system(size: 10, weight: .bold))
-                .foregroundStyle(AnkerColor.muted)
-                .tracking(0.4)
+        VStack(alignment: .leading, spacing: AnkerSpacing.s1) {
+            HStack(alignment: .firstTextBaseline, spacing: 0) {
+                Text(verbatim: value)
+                    .ankerType(AnkerType.statValue)
+                    .foregroundStyle(isEmphasized ? AnkerColor.accentInk : AnkerColor.ink)
+                if let total {
+                    Text(verbatim: "/\(total)")
+                        .ankerType(AnkerType.statValue)
+                        .foregroundStyle(AnkerColor.inkTertiary)
+                }
+            }
+
+            Text(verbatim: label)
+                .ankerType(AnkerType.eyebrow)
+                .foregroundStyle(AnkerColor.inkSecond)
         }
-        // Zusammengefasst statt als zwei Einzeltexte: VoiceOver las bisher "1" und
-        // "AUFGABEN" getrennt vor.
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.vertical, AnkerSpacing.s4)
+        .padding(.trailing, AnkerSpacing.s3)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(value) \(label)")
+        .accessibilityLabel(total.map { "\(value) von \($0) \(label)" } ?? "\(value) \(label)")
         .accessibilityIdentifier("goalStat.\(label)")
     }
 }
 
-private struct TimelineDayBar: View {
+/// Ein Tag im Verlauf: Höhe = Anteil erledigter Aufgaben dieses Ankers an diesem Tag.
+private struct DayHistoryBar: View {
     let day: Day
     let goal: Goal
 
-    private var progress: Double {
-        let tasks = day.taskList.filter { $0.linkedGoal?.id == goal.id }
-        guard !tasks.isEmpty else { return 0 }
-        return Double(tasks.filter(\.isDone).count) / Double(tasks.count)
+    private var own: [AnkerTask] {
+        day.taskList.filter { $0.linkedGoal?.id == goal.id }
+    }
+
+    private var isToday: Bool {
+        AnkerCalendar.isSameDay(day.date, Date())
     }
 
     var body: some View {
-        VStack(spacing: 5) {
-            Text(AnkerDateFormat.weekdayShort(day.date))
-                .font(.system(size: 9.5))
-                .foregroundStyle(AnkerColor.muted)
-            GeometryReader { proxy in
-                VStack {
-                    Spacer(minLength: 0)
-                    Rectangle()
-                        .fill(Color(hex: goal.colorHex))
-                        .frame(height: proxy.size.height * progress)
+        VStack(spacing: AnkerSpacing.s2) {
+            ZStack(alignment: .bottom) {
+                Rectangle()
+                    .fill(AnkerColor.neutral[300])
+                GeometryReader { proxy in
+                    VStack(spacing: 0) {
+                        Spacer(minLength: 0)
+                        Rectangle()
+                            .fill(isToday ? AnkerColor.accentMark : AnkerColor.ink)
+                            .frame(height: proxy.size.height * fill)
+                    }
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(AnkerColor.lineSoft)
-                .clipShape(RoundedRectangle(cornerRadius: 6))
             }
-            .frame(height: 44)
+            .frame(height: 72)
+
+            Text(verbatim: AnkerDateFormat.weekdayShort(day.date))
+                .ankerType(AnkerType.eyebrow)
+                .foregroundStyle(isToday ? AnkerColor.accentInk : AnkerColor.inkSecond)
         }
+        .frame(maxWidth: .infinity)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(AnkerDateFormat.weekdayLong(day.date)), \(own.filter(\.isDone).count) von \(own.count) erledigt")
+    }
+
+    private var fill: Double {
+        own.isEmpty ? 0 : Double(own.filter(\.isDone).count) / Double(own.count)
     }
 }

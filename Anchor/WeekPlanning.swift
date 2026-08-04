@@ -94,10 +94,45 @@ enum WeekPlanning {
             return placeholder
         }
 
-        let goal = Goal(title: cleanTitle, colorHex: defaultGoalColorHex, week: week)
+        let goal = Goal(
+            title: cleanTitle,
+            colorHex: defaultGoalColorHex,
+            order: GoalOrdering.nextOrder(in: week),
+            week: week
+        )
         modelContext.insert(goal)
         week.appendGoal(goal)
         return goal
+    }
+
+    /// Legt bis zu vier Anker aus dem Onboarding an.
+    ///
+    /// Der erste ersetzt einen etwaigen Platzhalter, die weiteren kommen dahinter. Gibt die
+    /// angelegten Ziele in Eingabereihenfolge zurueck, damit der Aufrufer zum ersten springen
+    /// kann.
+    @discardableResult
+    static func createOnboardingAnchors(
+        _ titles: [String],
+        in week: Week,
+        modelContext: ModelContext
+    ) -> [Goal] {
+        var created: [Goal] = []
+
+        for (index, title) in titles.prefix(GoalOrdering.maxAnchors).enumerated() {
+            if index == 0 {
+                created.append(upsertOnboardingGoal(title: title, in: week, modelContext: modelContext))
+            } else if let goal = GoalActions.create(
+                title: title,
+                colorHex: defaultGoalColorHex,
+                in: week,
+                modelContext: modelContext
+            ) {
+                created.append(goal)
+            }
+        }
+
+        GoalOrdering.normalize(week)
+        return created
     }
 
     /// Indigo aus dem Designsystem — dieselbe Farbe, die `NewGoalSheet` vorbelegt.

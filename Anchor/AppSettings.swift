@@ -58,11 +58,11 @@ enum AppearanceMode: String, CaseIterable, Identifiable {
         }
     }
 
-    var symbolName: String {
+    var icon: AnkerIcon {
         switch self {
-        case .system: "circle.lefthalf.filled"
-        case .light: "sun.max"
-        case .dark: "moon"
+        case .system: .appearanceSystem
+        case .light: .appearanceLight
+        case .dark: .appearanceDark
         }
     }
 

@@ -13,13 +13,14 @@ struct TodayView: View {
     var onSelectDay: (Day) -> Void = { _ in }
     var onFocusDay: (Day) -> Void = { _ in }
 
-    @State private var targetedDayID: UUID?
     @State private var isSelecting = false
     @State private var selectedTaskIDs = Set<UUID>()
     @State private var showingBulkMove = false
     @State private var showingBulkPriority = false
     @State private var confirmingBulkDelete = false
     @StateObject private var undo = TaskUndoCoordinator()
+    /// Antippen eines Ankers filtert die Aufgabenliste. `nil` = alle Aufgaben des Tages.
+    @State private var filteredAnchorID: UUID?
 
     private var tasks: [AnkerTask] {
         day.taskList.sorted { $0.order < $1.order }
@@ -29,83 +30,64 @@ struct TodayView: View {
         tasks.filter { selectedTaskIDs.contains($0.id) }
     }
 
+    /// Der Entwurf zeigt auf Heute: Datum, Fokus, die vier Anker, die Aufgabenliste des Tages
+    /// und die Erfassungszeile. Was hier **nicht** mehr steht, ist Absicht des Entwurfs:
+    ///
+    /// - **Prio-Gruppen** ("Prio A/B/C" als drei Abschnitte) — der Buchstabe steht jetzt rechts
+    ///   an der Zeile, und eine Liste liest sich schneller als drei.
+    /// - **Zeitplan** — Zeitblöcke stehen in der Tagesdetailansicht, wo sie auch bearbeitbar sind.
+    /// - **Wochenstreifen** — dafür gibt es den Tab „Woche" mit allen sieben Tagen.
+    ///
+    /// Die Aufgaben liegen in einer echten `List`. Das ist keine Formsache: `swipeActions`
+    /// wirkt **nur** innerhalb einer `List`, und im Bestand gab es keine einzige — die im
+    /// Interaktionskonzept vorgesehenen Wischgesten waren toter Code.
     var body: some View {
         ZStack(alignment: .bottom) {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 0) {
-                    header
-                    weekStrip
+            List {
+                Section {
+                    focusSection
+                    anchorSection
+                }
+                .listRowInsets(EdgeInsets())
+                .listRowBackground(AnkerColor.ground)
+                .listRowSeparator(.hidden)
 
-                    if let focus = day.focusNote ?? week.goalList.first?.title {
-                        GoalBanner(label: "Verankert an Wochenziel", title: focus)
-                            .padding(.horizontal, AnkerSpacing.screenPadding)
-                            .padding(.bottom, 14)
-                    }
-
-                    SectionLabel(title: "Zeitplan")
-                        .padding(.horizontal, AnkerSpacing.screenPadding)
-
-                    VStack(spacing: 0) {
-                        ForEach(day.timeBlockList.sorted { $0.startTime < $1.startTime }, id: \.id) { block in
-                            TimeBlockRow(block: block, isAnchored: block.linkedEventIdentifier != nil)
+                Section {
+                    if visibleTasks.isEmpty {
+                        Text(filteredAnchorID == nil ? "Nichts hier. Unten eintippen." : "Kein Eintrag für diesen Anker.")
+                            .ankerType(AnkerType.body)
+                            .foregroundStyle(AnkerColor.inkTertiary)
+                            .padding(.vertical, AnkerSpacing.s4)
+                            .listRowInsets(EdgeInsets(top: 0, leading: AnkerSpacing.screenPadding,
+                                                      bottom: 0, trailing: AnkerSpacing.screenPadding))
+                            .listRowBackground(AnkerColor.ground)
+                            .listRowSeparator(.hidden)
+                    } else {
+                        ForEach(visibleTasks, id: \.id) { task in
+                            TaskCard(
+                                task: task,
+                                isSelectionMode: isSelecting,
+                                isSelected: selectedTaskIDs.contains(task.id),
+                                onSelectionToggle: { toggleSelection(for: task) },
+                                onStartSelection: { startSelection(with: task) },
+                                onUndoableAction: undo.present
+                            )
+                            .listRowInsets(EdgeInsets(top: 0, leading: AnkerSpacing.screenPadding,
+                                                      bottom: 0, trailing: AnkerSpacing.screenPadding))
+                            .listRowBackground(AnkerColor.ground)
+                            .listRowSeparatorTint(AnkerColor.divider)
                         }
                     }
-                    .padding(.horizontal, AnkerSpacing.screenPadding)
-
-                    ForEach(Priority.allCases, id: \.self) { priority in
-                        let priorityTasks = tasks.filter { $0.priority == priority }
-                        if !priorityTasks.isEmpty {
-                            SectionLabel(title: "Prio \(priority.label)")
-                                .padding(.horizontal, AnkerSpacing.screenPadding)
-
-                            VStack(spacing: 8) {
-                                ForEach(priorityTasks, id: \.id) { task in
-                                    TaskCard(
-                                        task: task,
-                                        isSelectionMode: isSelecting,
-                                        isSelected: selectedTaskIDs.contains(task.id),
-                                        onSelectionToggle: {
-                                            toggleSelection(for: task)
-                                        },
-                                        onStartSelection: {
-                                            startSelection(with: task)
-                                        },
-                                        onUndoableAction: undo.present
-                                    )
-                                }
-                            }
-                            .padding(.horizontal, AnkerSpacing.screenPadding)
-                        }
-                    }
-                }
-                .padding(.bottom, 96)
-            }
-            .background(AnkerColor.paper)
-
-            VStack(spacing: 10) {
-                if let notice = undo.notice {
-                    TaskUndoToast(notice: notice) {
-                        undo.undo(weeks: weeks, modelContext: modelContext)
-                    }
-                }
-
-                if isSelecting {
-                    TaskBulkActionBar(
-                        selectedCount: selectedTaskIDs.count,
-                        onDone: markSelectedDone,
-                        onMove: { showingBulkMove = true },
-                        onPriority: { showingBulkPriority = true },
-                        onDelete: requestBulkDelete
-                    )
-                } else {
-                    HStack {
-                        Spacer()
-                        GlassFAB(action: onAddTask)
-                    }
+                } header: {
+                    listHeader
                 }
             }
-            .padding(.horizontal, 18)
-            .padding(.bottom, 86)
+            .listStyle(.plain)
+            .scrollContentBackground(.hidden)
+            .background(AnkerColor.ground)
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                bottomBar
+            }
         }
 #if os(macOS)
         .navigationTitle("Daivento — Heute")
@@ -154,77 +136,155 @@ struct TodayView: View {
         }
     }
 
-    private var header: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(headerDate)
-                .font(.system(size: 11.5, weight: .medium, design: .monospaced))
-                .foregroundStyle(AnkerColor.muted)
-                .tracking(0.35)
-            Text("Heute")
-                .font(.system(size: 22, weight: .bold))
+    // MARK: - Abschnitte
+
+    /// Der Fokus des Tages, gross und ohne Rahmen. Im Entwurf die erste Aussage des Bildschirms.
+    private var focusSection: some View {
+        VStack(alignment: .leading, spacing: AnkerSpacing.s2) {
+            HStack(alignment: .firstTextBaseline) {
+                Text(verbatim: headerDate)
+                    .ankerType(AnkerType.overline)
+                    .foregroundStyle(AnkerColor.inkSecond)
+                Spacer(minLength: AnkerSpacing.s2)
+                Text(verbatim: "\(anchorsInMotion)/\(week.goalList.count) in Bewegung")
+                    .ankerType(AnkerType.overline)
+                    .foregroundStyle(AnkerColor.ink)
+            }
+            .padding(.top, AnkerSpacing.s3)
+            .padding(.bottom, AnkerSpacing.s2)
+
+            AnkerRule(color: AnkerColor.ink)
+
+            Text(verbatim: "Fokus heute")
+                .ankerType(AnkerType.eyebrow)
+                .foregroundStyle(AnkerColor.inkSecond)
+                .padding(.top, AnkerSpacing.s4)
+
+            Text(verbatim: focusTitle)
+                .ankerType(AnkerType.title3)
                 .foregroundStyle(AnkerColor.ink)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.bottom, AnkerSpacing.s4)
+
+            AnkerRule()
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, 16)
-        .padding(.vertical, 10)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 20))
-        .overlay(RoundedRectangle(cornerRadius: 20).stroke(.white.opacity(0.28), lineWidth: 1))
-        .shadow(color: .black.opacity(0.08), radius: 18, x: 0, y: 8)
-        .padding(.horizontal, 13)
-        .padding(.top, 12)
-        .padding(.bottom, 8)
+        .padding(.horizontal, AnkerSpacing.screenPadding)
     }
 
-    private var weekStrip: some View {
-        let orderedDays = week.dayList.sorted { $0.date < $1.date }
+    /// Die vier Anker. Antippen filtert die Liste darunter — das ersetzt die Zielpillen.
+    private var anchorSection: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(alignment: .firstTextBaseline) {
+                Text(verbatim: "Deine vier Anker")
+                    .ankerType(AnkerType.eyebrow)
+                    .foregroundStyle(AnkerColor.inkSecond)
+                Spacer(minLength: AnkerSpacing.s2)
+                Text(verbatim: "Tippen = filtern")
+                    .ankerType(AnkerType.eyebrow)
+                    .foregroundStyle(AnkerColor.inkTertiary)
+            }
+            .padding(.top, AnkerSpacing.s4)
+            .padding(.bottom, AnkerSpacing.s2)
 
-        return HStack {
-            ForEach(orderedDays, id: \.id) { item in
+            ForEach(Array(week.goalList.enumerated()), id: \.element.id) { index, goal in
                 Button {
-                    onSelectDay(item)
+                    filteredAnchorID = filteredAnchorID == goal.id ? nil : goal.id
                 } label: {
-                    WeekDot(
-                        date: item.date,
-                        isActive: AnkerCalendar.isSameDay(item.date, day.date),
-                        hasGoal: item.taskList.contains { $0.linkedGoal != nil },
-                        isDropTarget: targetedDayID == item.id
+                    AnchorRow(
+                        number: index + 1,
+                        title: goal.title,
+                        doneCount: goal.taskList.filter(\.isDone).count,
+                        totalCount: goal.taskList.count,
+                        tint: AnkerColor.goalTint(goal.colorHex),
+                        isActive: filteredAnchorID == goal.id
                     )
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel("Tag \(AnkerDateFormat.weekdayLongWithDayMonth(item.date)) öffnen")
-                .onDrop(
-                    of: TaskDropHandling.draggedTypes,
-                    isTargeted: Binding(
-                        get: { targetedDayID == item.id },
-                        set: { isTargeted in targetedDayID = isTargeted ? item.id : nil }
-                    )
-                ) { providers in
-                    dropTask(from: providers, on: item)
-                }
-
-                if item.id != orderedDays.last?.id {
-                    Spacer(minLength: 0)
-                }
+                .accessibilityIdentifier("anchorRow.\(index + 1)")
+                AnkerRule()
             }
         }
         .padding(.horizontal, AnkerSpacing.screenPadding)
-        .padding(.vertical, 6)
-        .padding(.bottom, 8)
     }
 
-
-    private func dropTask(from providers: [NSItemProvider], on targetDay: Day) -> Bool {
-        let targetDate = targetDay.date
-
-        return TaskDropHandling.loadTaskID(from: providers) { taskID in
-            let snapshot = TaskDropHandling.moveTask(id: taskID, to: targetDate, weeks: weeks, modelContext: modelContext)
-            targetedDayID = nil
-            onFocusDay(targetDay)
-
-            if let snapshot {
-                undo.present(TaskUndoNotice(message: "Aufgabe verschoben", snapshots: [snapshot]))
+    private var listHeader: some View {
+        HStack(alignment: .firstTextBaseline) {
+            Text(verbatim: listLabel)
+                .ankerType(AnkerType.eyebrow)
+                .foregroundStyle(AnkerColor.inkSecond)
+            Spacer(minLength: AnkerSpacing.s2)
+            if filteredAnchorID != nil {
+                Button("Filter aus") { filteredAnchorID = nil }
+                    .buttonStyle(AnkerButtonStyle.quiet)
             }
         }
+        .padding(.horizontal, AnkerSpacing.screenPadding)
+        .padding(.top, AnkerSpacing.s4)
+        .padding(.bottom, AnkerSpacing.s2)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(AnkerColor.ground)
+        .ankerEdge(.top, color: AnkerColor.ink)
+    }
+
+    /// Erfassungszeile, Undo-Hinweis und die Leiste der Mehrfachauswahl teilen sich den Fuss.
+    @ViewBuilder
+    private var bottomBar: some View {
+        VStack(spacing: 0) {
+            if let notice = undo.notice {
+                TaskUndoToast(notice: notice) {
+                    undo.undo(weeks: weeks, modelContext: modelContext)
+                }
+                .padding(.horizontal, AnkerSpacing.s4)
+                .padding(.bottom, AnkerSpacing.s2)
+            }
+
+            if isSelecting {
+                TaskBulkActionBar(
+                    selectedCount: selectedTaskIDs.count,
+                    onDone: markSelectedDone,
+                    onMove: { showingBulkMove = true },
+                    onPriority: { showingBulkPriority = true },
+                    onDelete: requestBulkDelete
+                )
+                .padding(.horizontal, AnkerSpacing.s4)
+                .padding(.bottom, AnkerSpacing.s2)
+            } else {
+                CaptureBar(week: week, fallbackDate: day.date)
+            }
+        }
+        .background(AnkerColor.ground)
+    }
+
+    // MARK: - Ableitungen
+
+    private var visibleTasks: [AnkerTask] {
+        let base = filteredAnchorID.map { id in
+            tasks.filter { $0.linkedGoal?.id == id }
+        } ?? tasks
+        // Erledigtes nach unten: die offene Arbeit steht oben.
+        return base.sorted { lhs, rhs in
+            lhs.isDone == rhs.isDone ? lhs.order < rhs.order : !lhs.isDone
+        }
+    }
+
+    private var focusTitle: String {
+        day.focusNote?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty
+            ?? week.goalList.first?.title
+            ?? "Kein Fokus gesetzt"
+    }
+
+    /// „In Bewegung" statt „erledigt": mitten in der Woche ist vollstaendig erledigt fast immer
+    /// null und damit keine brauchbare Aussage.
+    private var anchorsInMotion: Int {
+        week.goalList.filter { goal in goal.taskList.contains(where: \.isDone) }.count
+    }
+
+    private var listLabel: String {
+        if let id = filteredAnchorID,
+           let index = week.goalList.firstIndex(where: { $0.id == id }) {
+            return "Anker \(index + 1)"
+        }
+        return "Heute · \(tasks.filter { !$0.isDone }.count) offen"
     }
 
     private var headerDate: String {
@@ -258,9 +318,8 @@ struct TodayView: View {
 
         let snapshots = selected.map { TaskActions.snapshot($0) }
         for task in selected {
-            task.isDone = true
+            TaskActions.setDone(task, true, modelContext: modelContext)
         }
-        modelContext.saveChanges()
         undo.present(TaskUndoNotice(message: "\(selected.count) Aufgaben erledigt", snapshots: snapshots))
         finishSelection()
     }
@@ -315,43 +374,40 @@ private struct TaskBulkActionBar: View {
     let onDelete: () -> Void
 
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: AnkerSpacing.s3) {
             Text("\(selectedCount)")
-                .font(.system(size: 13, weight: .bold, design: .monospaced))
-                .foregroundStyle(.white)
+                .ankerType(AnkerType.numericSmall)
+                .foregroundStyle(AnkerColor.onAccent)
                 .frame(width: 30, height: 30)
-                .background(AnkerColor.indigo, in: Circle())
+                .background(AnkerColor.accentFill, in: Rectangle())
                 .accessibilityLabel("\(selectedCount) ausgewählt")
 
-            bulkButton("checkmark", "Erledigt", isDisabled: selectedCount == 0, action: onDone)
-            bulkButton("calendar", "Verschieben", isDisabled: selectedCount == 0, action: onMove)
-            bulkButton("flag", "Priorität", isDisabled: selectedCount == 0, action: onPriority)
-            bulkButton("trash", "Löschen", tint: AnkerColor.destructive, isDisabled: selectedCount == 0, action: onDelete)
+            bulkButton(.check, "Erledigt", isDisabled: selectedCount == 0, action: onDone)
+            bulkButton(.week, "Verschieben", isDisabled: selectedCount == 0, action: onMove)
+            bulkButton(.priority, "Priorität", isDisabled: selectedCount == 0, action: onPriority)
+            bulkButton(.delete, "Löschen", tint: AnkerColor.accentMark, isDisabled: selectedCount == 0, action: onDelete)
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 10)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 20))
-        .overlay(RoundedRectangle(cornerRadius: 20).stroke(.white.opacity(0.32), lineWidth: 1))
-        .shadow(color: .black.opacity(0.16), radius: 18, x: 0, y: 8)
+        .padding(.horizontal, AnkerSpacing.s3)
+        .padding(.vertical, AnkerSpacing.s3)
+        .ankerPanel()
+        
     }
 
     private func bulkButton(
-        _ systemName: String,
+        _ ankerIcon: AnkerIcon,
         _ title: String,
-        tint: Color = AnkerColor.indigo,
+        tint: Color = AnkerColor.accentFill,
         isDisabled: Bool,
         action: @escaping () -> Void
     ) -> some View {
         Button(action: action) {
-            VStack(spacing: 3) {
-                Image(systemName: systemName)
-                    .font(.system(size: 13, weight: .bold))
-                    .frame(width: 28, height: 24)
+            VStack(spacing: AnkerSpacing.s1) {
+                Image(ankerIcon).ankerIcon(AnkerIconSize.s)
                 Text(title)
-                    .font(.system(size: 9.5, weight: .semibold))
+                    .ankerType(AnkerType.caption)
                     .lineLimit(1)
             }
-            .foregroundStyle(isDisabled ? AnkerColor.muted : tint)
+            .foregroundStyle(isDisabled ? AnkerColor.inkSecond : tint)
             .frame(width: 62)
         }
         .buttonStyle(.plain)
@@ -368,31 +424,29 @@ struct TaskUndoToast: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack(spacing: 10) {
+            HStack(spacing: AnkerSpacing.s3) {
                 Text(notice.message)
-                    .font(.system(size: 12.5, weight: .semibold))
+                    .ankerType(AnkerType.caption)
                     .foregroundStyle(AnkerColor.ink)
                     .lineLimit(1)
-                Spacer(minLength: 8)
+                Spacer(minLength: AnkerSpacing.s2)
                 Button("Rückgängig", action: onUndo)
-                    .font(.system(size: 12.5, weight: .bold))
-                    .foregroundStyle(AnkerColor.indigoText)
+                    .ankerType(AnkerType.caption)
+                    .foregroundStyle(AnkerColor.accentInk)
                     .buttonStyle(.plain)
             }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 11)
+            .padding(.horizontal, AnkerSpacing.s4)
+            .padding(.vertical, AnkerSpacing.s3)
 
-            GeometryReader { proxy in
-                Capsule()
-                    .fill(AnkerColor.indigo)
-                    .frame(width: proxy.size.width * progress, height: 2)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
-            .frame(height: 2)
+            AnkerProgressBar(
+                progress: progress,
+                tint: AnkerColor.accentMark,
+                track: .clear,
+                thickness: AnkerBorder.rule
+            )
         }
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16))
-        .overlay(RoundedRectangle(cornerRadius: 16).stroke(.white.opacity(0.32), lineWidth: 1))
-        .shadow(color: .black.opacity(0.14), radius: 18, x: 0, y: 8)
+        .ankerPanel()
+        
         .onAppear {
             progress = 1
             withAnimation(.linear(duration: 4)) {
@@ -401,46 +455,5 @@ struct TaskUndoToast: View {
         }
         .id(notice.id)
         .accessibilityElement(children: .combine)
-    }
-}
-
-private struct TimeBlockRow: View {
-    let block: TimeBlock
-    let isAnchored: Bool
-
-    var body: some View {
-        HStack(spacing: 10) {
-            Text(AnkerDateFormat.timeOfDay(block.startTime))
-                .font(.system(size: 11, weight: .regular, design: .monospaced))
-                .foregroundStyle(AnkerColor.muted)
-                .frame(width: 38, alignment: .leading)
-
-            HStack {
-                Text(block.title)
-                    .font(.system(size: 12.5, weight: .medium))
-                    .foregroundStyle(AnkerColor.ink)
-                    .lineLimit(1)
-                Spacer(minLength: 8)
-                if isAnchored {
-                    Circle()
-                        .fill(AnkerColor.indigo)
-                        .frame(width: 7, height: 7)
-                }
-            }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 7)
-            .background(AnkerColor.card)
-            .overlay(
-                RoundedRectangle(cornerRadius: 9)
-                    .stroke(AnkerColor.line, lineWidth: 1)
-            )
-            .clipShape(RoundedRectangle(cornerRadius: 9))
-        }
-        .padding(.vertical, 7)
-        .overlay(alignment: .bottom) {
-            Rectangle()
-                .fill(AnkerColor.lineSoft)
-                .frame(height: 1)
-        }
     }
 }

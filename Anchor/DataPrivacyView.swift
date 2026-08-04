@@ -51,15 +51,15 @@ struct DataPrivacyView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: AnkerSpacing.s4) {
                 storedDataSection
                 exportSection
                 deleteSection
 
                 if let statusMessage {
                     Text(statusMessage.text)
-                        .font(.system(size: 12))
-                        .foregroundStyle(statusMessage.isError ? AnkerColor.destructive : AnkerColor.success)
+                        .ankerType(AnkerType.caption)
+                        .foregroundStyle(statusMessage.isError ? AnkerColor.accentMark : AnkerColor.ink)
                         .fixedSize(horizontal: false, vertical: true)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .accessibilityAddTraits(.isStaticText)
@@ -67,7 +67,7 @@ struct DataPrivacyView: View {
             }
             .padding(AnkerSpacing.screenPadding)
         }
-        .background(AnkerColor.paper)
+        .background(AnkerColor.ground)
         .navigationTitle("Daten und Datenschutz")
         .toolbar {
             ToolbarItem(placement: .cancellationAction) {
@@ -105,14 +105,14 @@ struct DataPrivacyView: View {
             Text("Wochen, Wochenziele, Aufgaben, Zeitblöcke, Tagesfokus und Notizen — also nur das, "
                  + "was du selbst eingibst. Es gibt keine Analyse, keine Werbung und keine Weitergabe "
                  + "an Dritte.")
-                .font(.system(size: 12.5))
+                .ankerType(AnkerType.body)
                 .foregroundStyle(AnkerColor.ink)
                 .fixedSize(horizontal: false, vertical: true)
 
             Text("Gespeichert wird auf diesem Gerät und, wenn iCloud aktiv ist, in deiner privaten "
                  + "iCloud-Datenbank. Auf diese hat nur dein Apple-Account Zugriff.")
-                .font(.system(size: 12))
-                .foregroundStyle(AnkerColor.muted)
+                .ankerType(AnkerType.caption)
+                .foregroundStyle(AnkerColor.inkSecond)
                 .fixedSize(horizontal: false, vertical: true)
 
             countRow
@@ -120,24 +120,24 @@ struct DataPrivacyView: View {
     }
 
     private var countRow: some View {
-        HStack(spacing: 18) {
+        HStack(spacing: AnkerSpacing.s4) {
             countItem(weeks.count, "Wochen")
             countItem(goals.count, "Ziele")
             countItem(tasks.count, "Aufgaben")
             countItem(timeBlocks.count, "Zeitblöcke")
             Spacer(minLength: 0)
         }
-        .padding(.top, 2)
+        .padding(.top, AnkerSpacing.s1)
     }
 
     private func countItem(_ value: Int, _ label: String) -> some View {
-        VStack(alignment: .leading, spacing: 1) {
+        VStack(alignment: .leading, spacing: AnkerSpacing.s1) {
             Text(verbatim: String(value))
-                .font(.system(size: 15, weight: .bold))
+                .ankerType(AnkerType.bodyStrong)
                 .foregroundStyle(AnkerColor.ink)
             Text(label)
-                .font(.system(size: 10.5, weight: .medium))
-                .foregroundStyle(AnkerColor.muted)
+                .ankerType(AnkerType.caption)
+                .foregroundStyle(AnkerColor.inkSecond)
         }
         .accessibilityElement(children: .combine)
     }
@@ -148,15 +148,15 @@ struct DataPrivacyView: View {
 
             Text("Legt eine JSON-Datei mit allen gespeicherten Daten an — vollständig und "
                  + "maschinenlesbar, für ein eigenes Backup oder den Umzug in eine andere App.")
-                .font(.system(size: 12.5))
+                .ankerType(AnkerType.body)
                 .foregroundStyle(AnkerColor.ink)
                 .fixedSize(horizontal: false, vertical: true)
 
             Button {
                 prepareExport()
             } label: {
-                Label("Export sichern", systemImage: "square.and.arrow.up")
-                    .font(.system(size: 12.5, weight: .semibold))
+                Label("Export sichern", ankerIcon: AnkerIcon.share)
+                    .ankerType(AnkerType.caption)
             }
             .buttonStyle(.borderedProminent)
             .accessibilityLabel("Alle Daten als JSON-Datei exportieren")
@@ -169,7 +169,7 @@ struct DataPrivacyView: View {
 
             Text("Entfernt alle Wochen, Ziele, Aufgaben, Zeitblöcke und Notizen — auf diesem Gerät "
                  + "und in iCloud, damit sie nicht auf anderen Geräten zurückkommen.")
-                .font(.system(size: 12.5))
+                .ankerType(AnkerType.body)
                 .foregroundStyle(AnkerColor.ink)
                 .fixedSize(horizontal: false, vertical: true)
 
@@ -179,18 +179,18 @@ struct DataPrivacyView: View {
             // fuer eine Loeschung seiner Daten.
             Text("Die App zu löschen reicht dafür nicht: Deine Daten bleiben dann in iCloud liegen "
                  + "und werden bei einer Neuinstallation wiederhergestellt.")
-                .font(.system(size: 12))
-                .foregroundStyle(AnkerColor.muted)
+                .ankerType(AnkerType.caption)
+                .foregroundStyle(AnkerColor.inkSecond)
                 .fixedSize(horizontal: false, vertical: true)
 
             Button(role: .destructive) {
                 showsDeleteConfirmation = true
             } label: {
-                Label("Alle Daten löschen", systemImage: "trash")
-                    .font(.system(size: 12.5, weight: .semibold))
+                Label("Alle Daten löschen", ankerIcon: AnkerIcon.delete)
+                    .ankerType(AnkerType.caption)
             }
             .buttonStyle(.bordered)
-            .tint(AnkerColor.destructive)
+            .tint(AnkerColor.accentMark)
             .disabled(totalRecordCount == 0)
             .accessibilityLabel("Alle Daten unwiderruflich löschen")
         }
@@ -268,19 +268,19 @@ struct DataPrivacyView: View {
 
     private func sectionTitle(_ text: String) -> some View {
         Text(text)
-            .font(.system(size: 13.5, weight: .bold))
+            .ankerType(AnkerType.metaStrong)
             .foregroundStyle(AnkerColor.ink)
     }
 
     private func card<Content: View>(@ViewBuilder content: () -> Content) -> some View {
-        VStack(alignment: .leading, spacing: 9) {
+        VStack(alignment: .leading, spacing: AnkerSpacing.s2) {
             content()
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(14)
-        .background(AnkerColor.card)
-        .overlay(RoundedRectangle(cornerRadius: AnkerRadius.card).stroke(AnkerColor.line))
-        .clipShape(RoundedRectangle(cornerRadius: AnkerRadius.card))
+        .padding(AnkerSpacing.s4)
+        .background(AnkerColor.surface)
+        .overlay(Rectangle().stroke(AnkerColor.divider, lineWidth: AnkerBorder.rule))
+        .clipShape(Rectangle())
     }
 }
 

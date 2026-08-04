@@ -14,11 +14,36 @@ enum GoalActions {
         }
 
         modelContext.delete(goal)
+        // Sonst bleibt eine Luecke (0, 1, 3) und `nextOrder` waechst unnoetig.
+        if let owningWeek = goal.week ?? week {
+            GoalOrdering.normalize(owningWeek)
+        }
         modelContext.saveChanges()
     }
 
     /// Wie viele Aufgaben verlieren beim Loeschen ihre Zuordnung? Fuer den Bestaetigungstext,
     /// damit die Konsequenz benannt ist statt nur die Aktion.
+    /// Legt ein Wochenziel an und vergibt dabei die Ankerordnung.
+    ///
+    /// Bisher erzeugten `NewGoalSheet` und `WeekPlanning` selbst `Goal(...)` — damit lag die
+    /// Vergabe von `order` an zwei Stellen und konnte vergessen werden.
+    @discardableResult
+    static func create(title: String, colorHex: String, in week: Week, modelContext: ModelContext) -> Goal? {
+        let cleanTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !cleanTitle.isEmpty else { return nil }
+
+        let goal = Goal(
+            title: cleanTitle,
+            colorHex: colorHex,
+            order: GoalOrdering.nextOrder(in: week),
+            week: week
+        )
+        modelContext.insert(goal)
+        week.appendGoal(goal)
+        modelContext.saveChanges()
+        return goal
+    }
+
     static func linkedTaskCount(for goal: Goal, in week: Week?) -> Int {
         linkedTasks(for: goal, in: week).count
     }
