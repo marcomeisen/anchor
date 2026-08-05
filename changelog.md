@@ -20,6 +20,31 @@ schwebt**; Modernist setzt Nullradius fuer **Struktur**.
 - Der Kontrasttest pruefte ausserdem eine Paarung, die es in der App nicht gibt (weisse Schrift auf Zielfarben). Er prueft jetzt, was wirklich vorkommt: Zielfarben als Marke gegen den Grund, 3:1 in beiden Modi.
 - Vier neue Tests halten die Mengentrennung fest: Radiusrollen und ihre Ordnung, Sektions- gegen Zeilenlinie, Karte heller als ihr Grund in beiden Modi, Zeilentrenner schwaecher als ein Rahmen. 133 Tests gruen, beide Plattformen.
 
+### iPhone: eigene Fensterrahmung statt der Systemleiste, Tableiste nach Vorlage
+
+Nachgefragt wurde, ob 3b auf dem iPhone wirklich vollstaendig ist. War es nicht: der **Inhalt** lief
+auf der neuen Sprache, die **System-Chrome** nicht — und auf iOS 26 ist sie Liquid Glass, also genau
+das, was der Neuentwurf ersetzt hat. Gemessen am Simulator, nicht am Code gelesen.
+
+- **Die Navigationsleiste ist weg.** Toolbar-Elemente sassen in schwebenden Glaskapseln, Titel und Knopfbeschriftungen in San Francisco, und der Titel war auf Heute zu „H…" gequetscht, auf Woche und Jahr unsichtbar. Neu: `toolbar(.hidden, for: .navigationBar)` plus die Bausteine in [Anchor/AnkerPhoneChrome.swift](Anchor/AnkerPhoneChrome.swift). Der Mac behaelt seine Systemleiste — dort ist sie nicht aus Glas und traegt die Fensterknoepfe.
+- **Zwei Wege wurden gemessen, nicht geraten.** Variante A („Systemleiste stylen") ist gescheitert: `UINavigationBarAppearance` und `UIBarButtonItemAppearance` greifen auf die Kapseln nicht durch — kein sichtbarer Unterschied, dafuer verschwand der grosse Blatt-Titel ersatzlos. Variante B ist umgesetzt.
+- **Die Kopfzeile eines obersten Bildschirms hat keinen Titel und keine eigene Kante.** So zeichnet es die Vorlage: oben steht die Datumszeile des Inhalts mit ihrer 2px-Kante, und wie der Bildschirm heisst, sagt die Tableiste. Ein Titel „Heute" ueber einer Tableiste, die „Heute" hervorhebt, waere dieselbe Aussage zweimal.
+- **Sieben Blaetter und Bildschirme** laufen jetzt ueber **eine** Aufrufstelle je Blatt, `.ankerSheetChrome(_:cancel:confirm:)`. Die Plattformweiche steckt darin.
+- **Die Tableiste folgt der Vorlage:** nur Text in Versalien, keine Umrandung, aktiv eine 8pt-Pille in der blassen Akzentstufe. Vorher stand ein Icon ueber jeder Beschriftung und ein 2px-Rahmen um die ganze Leiste. Sie heisst jetzt `AnkerTabBar` statt `GlassTabBar` — in einer App, deren Punkt es ist, dass nichts aus Glas ist, war der Name irrefuehrend.
+- **Erfassungszeile und Tableiste sind ein Block:** eine 2px-Kante in Tinte an seinem Kopf, eine Haarlinie dazwischen, beide auf dem Grund. Vorher hatte jede Leiste eigene Kanten und eine eigene Flaeche.
+
+**Drei Fehler, die dabei herauskamen:**
+
+- **Die Tableiste verdeckte die Erfassungszeile.** Sie lag als Overlay in einem `ZStack`, und jede Ansicht musste sich selbst 96pt Freiraum lassen — drei taten es, die Heute-Ansicht nicht. Ausgerechnet dort, wo der Entwurf den Bildschirm auf die Erfassungszeile ausrichtet. Jetzt ist sie ein `safeAreaInset`; das Freiraum-Token ist damit ueberfluessig und entfernt.
+- **Die Ankerdetailansicht wurde eine Sackgasse.** `GoalDetailView` hat keine eigene Schliessen-Schaltflaeche, sie hing komplett am Zurueck-Knopf der Systemleiste. Die Kopfzeile traegt den Weg jetzt selbst.
+- **Der erste Zurueck-Knopf tat sichtbar nichts.** Der Baustein von `navigationDestination` ist escapend und fing eine Momentaufnahme der Wurzelansicht ein — `navigation.popToTopLevel()` schrieb in die Kopie. Laeuft jetzt ueber `@Environment(\.dismiss)`. Gefunden hat es ein Test, der wirklich zurueck navigiert; die bloesse Existenz des Knopfes haette bestanden.
+
+Dazu behoben: auf der Wochenuebersicht stand bei null Ankern ein leeres Band mit einer Sektionskante
+darunter, und die Hinweiszeile der Erfassung zaehlte die Ziele der ungeordneten Beziehung statt der
+vier Anker. Neu sind zwei iOS-UI-Tests in
+[AnchorUITests/PhoneChromeTests.swift](AnchorUITests/PhoneChromeTests.swift) — sie laufen gegen einen
+iOS-Simulator, nicht gegen `platform=macOS`.
+
 ### Entwurfsrunde 3b auf alle Flaechen gezogen
 
 Runde 3 hatte die Mengentrennung eingefuehrt, aber nur dort angewandt, wo der Entwurf zeichnet.

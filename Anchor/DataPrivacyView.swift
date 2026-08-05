@@ -68,12 +68,7 @@ struct DataPrivacyView: View {
             .padding(AnkerSpacing.screenPadding)
         }
         .background(AnkerColor.ground)
-        .navigationTitle("Daten und Datenschutz")
-        .toolbar {
-            ToolbarItem(placement: .cancellationAction) {
-                Button("Fertig") { dismiss() }
-            }
-        }
+        .ankerSheetChrome("Daten und Datenschutz", cancel: AnkerSheetAction("Fertig") { dismiss() })
         .fileExporter(
             isPresented: $showsExporter,
             document: exportDocument,

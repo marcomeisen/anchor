@@ -141,31 +141,53 @@ struct AnkerRootView: View {
     /// Der Stapel wird aus dem Navigationszustand abgeleitet statt getrennt gefuehrt — so
     /// bleiben Zurueck-Gestik, Tab-Auswahl und Wiederherstellung dieselbe Quelle. Vorher war
     /// `.day` ein Tab-Ziel ohne Stapel: kein Zurueckwischen, nur ein Schliessen-Knopf.
+    /// Nur iOS: auf dem Mac gibt es keinen iPhone-Zweig, und `navigationBar` existiert dort
+    /// nicht einmal als Bezeichner.
+#if os(iOS)
     private func phoneContent(week: Week, day: Day) -> some View {
         NavigationStack(path: pushedPath) {
-            ZStack(alignment: .bottom) {
-                topLevelContent(week: week, day: day)
-
-                GlassTabBar(selection: topLevelSelection)
-                    .padding(.horizontal, AnkerSpacing.s4)
-                    .padding(.bottom, AnkerSpacing.s3)
-            }
-            .navigationDestination(for: AppDestination.self) { destination in
-                detailContent(for: destination, week: week, day: day)
-            }
-            .toolbar {
-                creationToolbarItems
-#if os(iOS)
-                searchToolbarItem
-                syncStatusToolbarItem
-#endif
-            }
-#if os(iOS)
-            .toolbarBackground(.visible, for: .navigationBar)
-            .toolbarBackground(AnkerColor.surface, for: .navigationBar)
-#endif
+            // Die Tableiste ist ein `safeAreaInset`, **kein** Overlay in einem `ZStack`.
+            //
+            // Als Overlay lag sie ueber dem Inhalt, und jede Ansicht musste sich selbst 96pt
+            // Freiraum lassen — drei taten es, die Heute-Ansicht nicht. Dort verdeckte die
+            // Leiste die Erfassungszeile, also genau das Bedienelement, auf das der Entwurf
+            // den Bildschirm ausrichtet. Als Inset stapelt SwiftUI die beiden Leisten
+            // uebereinander, und niemand muss mehr an einen Abstand denken.
+            topLevelContent(week: week, day: day)
+                .safeAreaInset(edge: .bottom, spacing: 0) {
+                    // Auf Heute sitzt die Erfassungszeile darueber; sie traegt dann die
+                    // 2px-Kante des Fussblocks und die Tableiste trennt nur mit einer Haarlinie.
+                    AnkerTabBar(
+                        selection: topLevelSelection,
+                        topEdge: navigation.topLevel == .today ? .row : .section
+                    )
+                }
+                .navigationDestination(for: AppDestination.self) { destination in
+                    detailContent(for: destination, week: week, day: day)
+                        .safeAreaInset(edge: .top, spacing: 0) { phoneHeader(showsBack: true) }
+                        .toolbar(.hidden, for: .navigationBar)
+                }
+                .safeAreaInset(edge: .top, spacing: 0) { phoneHeader() }
+                .toolbar(.hidden, for: .navigationBar)
         }
     }
+
+    /// Die Aktionen des iPhones. Kein Titel und keine Kante — beides steht schon im Inhalt,
+    /// die Begruendung in `AnkerPhoneChrome`.
+    private func phoneHeader(showsBack: Bool = false) -> some View {
+        AnkerPhoneHeader(showsBack: showsBack) {
+            AnkerHeaderButton(icon: .search, label: "Suchen") { showingSearch = true }
+            CloudSyncStatusBadge(status: cloudSyncStatus)
+                .frame(width: 44, height: 44)
+            AnkerHeaderButton(
+                icon: .goal,
+                label: "Neues Wochenziel erstellen",
+                isDisabled: hasMaximumGoals
+            ) { showingNewGoal = true }
+            AnkerHeaderButton(icon: .add, label: "Neue Aufgabe erstellen") { showingNewTask = true }
+        }
+    }
+#endif
 
     private func splitContent(week: Week, day: Day) -> some View {
         NavigationSplitView {
@@ -362,32 +384,6 @@ struct AnkerRootView: View {
     }
 
     // MARK: - Werkzeugleiste
-
-#if os(iOS)
-    /// Nur im iPhone-Zweig: die Sidebar mit `CloudSyncStatusRow` gibt es hier nicht,
-    /// im iPad-Split dagegen schon — dort waere das Badge doppelt.
-    @ToolbarContentBuilder
-    private var syncStatusToolbarItem: some ToolbarContent {
-        ToolbarItem(placement: .topBarTrailing) {
-            CloudSyncStatusBadge(status: cloudSyncStatus)
-        }
-    }
-
-    /// Links, weil rechts schon Anlegen-Buttons und der Sync-Status sitzen — und nicht
-    /// `.principal`, das den Titel der jeweiligen Ansicht ersetzen wuerde.
-    @ToolbarContentBuilder
-    private var searchToolbarItem: some ToolbarContent {
-        ToolbarItem(placement: .topBarLeading) {
-            Button {
-                showingSearch = true
-            } label: {
-                Image(.search)
-            }
-            .help("Ziele, Aufgaben und Notizen durchsuchen")
-            .accessibilityLabel("Suchen")
-        }
-    }
-#endif
 
     @ToolbarContentBuilder
     private var creationToolbarItems: some ToolbarContent {

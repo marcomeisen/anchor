@@ -33,22 +33,28 @@ struct WeekOverviewView: View {
             .background(AnkerColor.surface)
             .ankerEdge(.bottom)
 
-            HStack(spacing: AnkerSpacing.s3) {
-                ForEach(GoalOrdering.anchors(in: week), id: \.id) { goal in
-                    GoalPill(goal: goal)
-                        .contextMenu {
-                            Button(role: .destructive) {
-                                goalPendingDeletion = goal
-                            } label: {
-                                Label("Wochenziel löschen", ankerIcon: AnkerIcon.delete)
+            // Ohne Anker faellt die Leiste weg. Vorher blieben ihre 32pt Innenabstand stehen
+            // und ergaben ein leeres Band mit einer Kante darunter — eine Sektionsgrenze um
+            // nichts.
+            let anchors = GoalOrdering.anchors(in: week)
+            if !anchors.isEmpty {
+                HStack(spacing: AnkerSpacing.s3) {
+                    ForEach(anchors, id: \.id) { goal in
+                        GoalPill(goal: goal)
+                            .contextMenu {
+                                Button(role: .destructive) {
+                                    goalPendingDeletion = goal
+                                } label: {
+                                    Label("Wochenziel löschen", ankerIcon: AnkerIcon.delete)
+                                }
                             }
-                        }
+                    }
                 }
+                .padding(.horizontal, AnkerSpacing.s4)
+                .padding(.vertical, AnkerSpacing.s4)
+                .background(AnkerColor.ground)
+                .ankerEdge(.bottom)
             }
-            .padding(.horizontal, AnkerSpacing.s4)
-            .padding(.vertical, AnkerSpacing.s4)
-            .background(AnkerColor.ground)
-            .ankerEdge(.bottom)
 
             ScrollView {
                 VStack(spacing: 0) {

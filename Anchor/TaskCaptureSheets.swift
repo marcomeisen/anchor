@@ -87,19 +87,17 @@ struct NewTaskSheet: View {
                 .padding(AnkerSpacing.s4)
             }
             .background(AnkerColor.surface)
-            .navigationTitle("Schnell erfassen")
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Abbrechen") { dismiss() }
+            .ankerSheetChrome(
+                "Schnell erfassen",
+                cancel: AnkerSheetAction("Abbrechen") { dismiss() },
+                confirm: AnkerSheetAction(
+                    "Sichern",
+                    isDisabled: title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                ) {
+                    save()
+                    dismiss()
                 }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Sichern") {
-                        save()
-                        dismiss()
-                    }
-                    .disabled(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                }
-            }
+            )
         }
     }
 
@@ -433,19 +431,17 @@ struct NewGoalSheet: View {
             }
             .padding(AnkerSpacing.s4)
             .background(AnkerColor.surface)
-            .navigationTitle("Neues Wochenziel")
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Abbrechen") { dismiss() }
+            .ankerSheetChrome(
+                "Neues Wochenziel",
+                cancel: AnkerSheetAction("Abbrechen") { dismiss() },
+                confirm: AnkerSheetAction(
+                    "Sichern",
+                    isDisabled: cleanTitle.isEmpty || selectedGoalCount >= GoalOrdering.maxAnchors
+                ) {
+                    save()
+                    dismiss()
                 }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Sichern") {
-                        save()
-                        dismiss()
-                    }
-                    .disabled(cleanTitle.isEmpty || selectedGoalCount >= 4)
-                }
-            }
+            )
         }
     }
 

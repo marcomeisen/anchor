@@ -4,7 +4,7 @@ import SwiftUI
 /// Menuebodies, wo es der Systemtrenner ist.
 struct AnkerRule: View {
     /// Wofuer die Linie steht. Die Staerke folgt daraus, sie ist keine freie Wahl.
-    enum Weight {
+    enum Weight: Equatable {
         /// Sektionsgrenze: 2px. Trennt Bereiche, die verschiedene Fragen beantworten.
         case section
         /// Trenner **innerhalb** einer Liste: 1px. 2px zwischen jeder Zeile liest sich wie ein

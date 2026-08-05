@@ -186,6 +186,13 @@ struct TodayView: View {
             .padding(.top, AnkerSpacing.s4)
             .padding(.bottom, AnkerSpacing.s2)
 
+            if GoalOrdering.anchors(in: week).isEmpty {
+                Text(verbatim: "Noch kein Anker gesetzt. Oben rechts anlegen.")
+                    .ankerType(AnkerType.body)
+                    .foregroundStyle(AnkerColor.inkTertiary)
+                    .padding(.vertical, AnkerSpacing.s3)
+            }
+
             ForEach(Array(GoalOrdering.anchors(in: week).enumerated()), id: \.element.id) { index, goal in
                 Button {
                     filteredAnchorID = filteredAnchorID == goal.id ? nil : goal.id

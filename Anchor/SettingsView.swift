@@ -29,14 +29,12 @@ struct SettingsView: View {
             .padding(AnkerSpacing.screenPadding)
         }
         .background(AnkerColor.ground)
-        .navigationTitle("Einstellungen")
-        .toolbar {
-            if showsDoneButton {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Fertig") { dismiss() }
-                }
-            }
-        }
+        .ankerSheetChrome(
+            "Einstellungen",
+            // In der macOS-Einstellungen-Szene bleibt der Platz leer: das Fenster hat seinen
+            // eigenen Schliessen-Knopf, ein zweites „Fertig" waere dort verwirrend.
+            cancel: showsDoneButton ? AnkerSheetAction("Fertig") { dismiss() } : nil
+        )
         .sheet(isPresented: $showingDataPrivacy) {
             NavigationStack {
                 DataPrivacyView()

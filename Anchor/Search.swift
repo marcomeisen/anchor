@@ -322,12 +322,7 @@ struct SearchSheet: View {
             }
             .background(AnkerColor.ground)
             .searchable(text: $query, prompt: "Ziele, Aufgaben, Notizen")
-            .navigationTitle("Suchen")
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Fertig") { dismiss() }
-                }
-            }
+            .ankerSheetChrome("Suchen", cancel: AnkerSheetAction("Fertig") { dismiss() })
         }
     }
 }

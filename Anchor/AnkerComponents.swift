@@ -948,43 +948,68 @@ struct ChipButton: View {
     }
 }
 
-struct GlassTabBar: View {
+/// Die Tableiste des iPhones — Heute, Woche, Jahr, Mehr.
+///
+/// Nach der Vorlage 3b: **nur Text**, Versalien im Mikrolabel, keine Umrandung. Aktiv ist eine
+/// 8pt-Pille in der blassen Akzentstufe mit `accentInk` darauf; inaktiv steht nur die
+/// Beschriftung. Icons uebereinander gestapelt waren die Systemsprache, nicht diese.
+///
+/// Der Name des Bildschirms steht **hier** und nirgends sonst — deshalb hat die Kopfzeile oben
+/// keinen Titel (siehe `AnkerPhoneChrome`).
+///
+/// Der Entwurf zeichnet drei Tabs, weil er die vierte Flaeche nicht zeigt. „Mehr" bleibt: ohne
+/// den Tab waeren Rueckblick, Archiv und Einstellungen auf dem iPhone nicht erreichbar.
+struct AnkerTabBar: View {
     @Binding var selection: AppDestination
+    /// Wie die Leiste nach oben abschliesst.
+    ///
+    /// Die Vorlage setzt **eine** 2px-Kante an den Kopf des ganzen Fussblocks und trennt
+    /// innerhalb davon mit einer Haarlinie. Sitzt die Erfassungszeile darueber, traegt sie die
+    /// 2px und hier genuegt `.row`; steht die Tableiste allein, ist sie selbst die Sektionsgrenze.
+    var topEdge: AnkerRule.Weight = .section
 
     var body: some View {
-        HStack(spacing: 0) {
-            tab(.today, title: "Heute", ankerIcon: AnkerIcon.today)
-            tab(.week, title: "Woche", ankerIcon: AnkerIcon.week)
-            tab(.year, title: "Jahr", ankerIcon: AnkerIcon.year)
-            tab(.review, title: "Mehr", ankerIcon: AnkerIcon.more)
+        VStack(spacing: 0) {
+            // Die Farbe folgt der Rolle: der Kopf des Blocks ist Tinte, ein Trenner **im** Block
+            // ist grau. Zwei Kanten in Tinte 60pt uebereinander waeren ein Gitter.
+            AnkerRule(
+                color: topEdge == .section ? AnkerColor.ink : AnkerColor.divider,
+                weight: topEdge
+            )
+
+            HStack(spacing: AnkerSpacing.s2) {
+                tab(.today, title: "Heute")
+                tab(.week, title: "Woche")
+                tab(.year, title: "Jahr")
+                tab(.review, title: "Mehr")
+            }
+            .padding(.horizontal, AnkerSpacing.s4)
+            .padding(.top, AnkerSpacing.s2)
+            .padding(.bottom, AnkerSpacing.s3)
         }
-        .padding(AnkerSpacing.s1)
-        .background(AnkerColor.surface.opacity(0.96), in: Rectangle())
-        .overlay(Rectangle().stroke(AnkerColor.divider, lineWidth: AnkerBorder.rule))
+        .background(AnkerColor.ground)
         .accessibilityElement(children: .contain)
     }
 
-    private func tab(_ destination: AppDestination, title: String, ankerIcon: AnkerIcon) -> some View {
+    private func tab(_ destination: AppDestination, title: String) -> some View {
         Button {
             selection = destination
         } label: {
-            VStack(spacing: AnkerSpacing.s1) {
-                Image(ankerIcon).ankerIcon(AnkerIconSize.m)
-                Text(title)
-                    .ankerType(AnkerType.microLabel)
-            }
-            .foregroundStyle(isSelected(destination) ? AnkerColor.accentInk : AnkerColor.inkSecond)
-            // 44pt Mindesthoehe ist Apples Zielgroesse; die Pille darunter ist das
-            // anfassbare Objekt und deshalb rund.
-            .frame(maxWidth: .infinity, minHeight: 44)
-            .padding(.vertical, AnkerSpacing.s1)
-            .background(
-                isSelected(destination) ? AnkerColor.accent[100] : Color.clear,
-                in: RoundedRectangle(cornerRadius: AnkerRadius.control, style: .continuous)
-            )
+            Text(title)
+                .ankerType(AnkerType.microLabel)
+                .foregroundStyle(isSelected(destination) ? AnkerColor.accentInk : AnkerColor.inkSecond)
+                // 44pt ist Apples Mindestziel; die Pille darunter ist das anfassbare Objekt
+                // und deshalb rund.
+                .frame(maxWidth: .infinity, minHeight: 44)
+                .background(
+                    isSelected(destination) ? AnkerColor.accent[100] : Color.clear,
+                    in: RoundedRectangle(cornerRadius: AnkerRadius.control, style: .continuous)
+                )
+                .contentShape(RoundedRectangle(cornerRadius: AnkerRadius.control, style: .continuous))
         }
         .buttonStyle(.plain)
         .accessibilityLabel(title)
+        .accessibilityAddTraits(isSelected(destination) ? [.isSelected] : [])
     }
 
     private func isSelected(_ destination: AppDestination) -> Bool {

@@ -68,7 +68,8 @@ Code-Identifier sind Englisch.
 | [Anchor/DataPrivacyView.swift](Anchor/DataPrivacyView.swift) | Bildschirm „Daten und Datenschutz": Bestand, Export, Löschung |
 | [Anchor/TaskCaptureSheets.swift](Anchor/TaskCaptureSheets.swift) | `NewTaskSheet`, `NewGoalSheet`, `QuickCapturePopover`, `CaptureChip` |
 | [Anchor/TaskEditorSheets.swift](Anchor/TaskEditorSheets.swift) | `TaskEditorSheet`, `TaskMoveSheet` |
-| [Anchor/AnkerComponents.swift](Anchor/AnkerComponents.swift) | `TaskCard` (**die** Aufgabenzeile, überall dieselbe), `TaskTitleField` (Titel inline), `TaskCheckmark`, `SectionLabel`, `AnchorRow`, `PriorityTag`, `TaskDragEvents`/`TaskDropHandling` |
+| [Anchor/AnkerComponents.swift](Anchor/AnkerComponents.swift) | `TaskCard` (**die** Aufgabenzeile, überall dieselbe), `TaskTitleField` (Titel inline), `TaskCheckmark`, `SectionLabel`, `AnchorRow`, `PriorityTag`, `AnkerTabBar` (iPhone-Tableiste), `TaskDragEvents`/`TaskDropHandling` |
+| [Anchor/AnkerPhoneChrome.swift](Anchor/AnkerPhoneChrome.swift) | Die Fensterrahmung des iPhones **statt** der Systemleiste: `AnkerPhoneHeader`, `AnkerHeaderButton`, `AnkerSheetHeader`, `ankerSheetChrome(_:cancel:confirm:)` |
 | [Anchor/CloudSyncStatus.swift](Anchor/CloudSyncStatus.swift) | `CloudSyncStatusCenter` und die Sync-Anzeigen |
 | **Ressourcen und Tests** | |
 | [Anchor/PrivacyInfo.xcprivacy](Anchor/PrivacyInfo.xcprivacy) | Privacy Manifest — Pflicht für die App-Store-Einreichung |
@@ -82,6 +83,7 @@ Code-Identifier sind Englisch.
 | [Scripts/design-guard.swift](Scripts/design-guard.swift) | 18 Grep-Schranken gegen Rückfall in die alte Sprache; `swift Scripts/design-guard.swift` |
 | [AnchorTests/](AnchorTests/) | 128 Unit-Tests (SwiftData in-memory): Kern, Matrix, Kennzahlen, Tokens, Kontrast, Erfassungssyntax, Zeitschiene |
 | [AnchorUITests/AnchorUITests.swift](AnchorUITests/AnchorUITests.swift) | Verankerungs- und Erfassungsfluss; braucht das Startargument `-DaiventoUITest` |
+| [AnchorUITests/PhoneChromeTests.swift](AnchorUITests/PhoneChromeTests.swift) | Nur iOS: Detailansicht erreichbar **und verlassbar**, alle vier Tabs. Läuft gegen einen iOS-Simulator, nicht gegen `platform=macOS` |
 
 Alles ist ein einziges Multiplattform-Target (`Anchor`, Produkt `Daivento.app`); Plattformunterschiede
 laufen über `#if os(macOS)` / `#if os(iOS)`. Es gibt **kein** SPM-Package und keine getrennten Targets,
@@ -195,6 +197,18 @@ Für die wiederkehrenden Themen liegen Skills unter [.claude/skills/](.claude/sk
   Beim Zusammenführen doppelter Wochen überlebt die **inhaltsreichere**, nicht die mit der
   kleineren UUID. Beides ist mit Tests in
   [AnchorTests/OnboardingSyncTests.swift](AnchorTests/OnboardingSyncTests.swift) festgehalten.
+- **Auf dem iPhone gibt es keine Systemleiste.** Seit iOS 26 zeichnet sie ihre Elemente in
+  schwebende Glaskapseln — die Sprache, die der Neuentwurf ersetzt hat. Gemessen und verworfen:
+  `toolbarBackground`, `UINavigationBarAppearance` und `UIBarButtonItemAppearance` greifen nicht
+  auf die Kapseln durch, und eine gesetzte Appearance ließ zusätzlich den großen Blatt-Titel
+  verschwinden. Stattdessen `toolbar(.hidden, for: .navigationBar)` plus die Bausteine aus
+  [Anchor/AnkerPhoneChrome.swift](Anchor/AnkerPhoneChrome.swift). Ein Blatt bekommt seine Rahmung
+  über **eine** Aufrufstelle, `.ankerSheetChrome(_:cancel:confirm:)`; die Plattformweiche steckt
+  darin, der Mac behält die Systemleiste. Zwei Fallen dabei: die Kopfzeile eines obersten
+  Bildschirms hat **keinen Titel** (den trägt die Tableiste) und **keine eigene Kante** (die trägt
+  die erste Inhaltszeile) — sonst stehen zwei 2px-Kanten 60pt übereinander. Und der Zurück-Weg
+  läuft über `@Environment(\.dismiss)`, **nicht** über eine hereingereichte Closure: der Baustein
+  von `navigationDestination` ist escapend und fängt eine Momentaufnahme der Wurzelansicht ein.
 - **Die Sidebar ist nur Zeit.** Kein Ansichtswechsel, keine Zielliste, kein zweiter Zeitnavigator
   darin — das war der Befund der zweiten Runde und ist keine Geschmacksfrage. Ein Anker gehört in
   den Streifen (`AnchorStripView`), ein Modus in `AnkerViewSwitcher`.

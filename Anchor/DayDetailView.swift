@@ -67,7 +67,7 @@ struct DayDetailView: View {
                     notesSection
                 }
                 .padding(.horizontal, AnkerSpacing.screenPadding)
-                .padding(.bottom, AnkerSpacing.bottomBarClearance)
+                .padding(.bottom, AnkerSpacing.s5)
             }
             .background(AnkerColor.ground)
 

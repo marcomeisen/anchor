@@ -177,9 +177,6 @@ enum AnkerSpacing {
     static let screenPadding = s5
     static let stack = s3
 
-    /// Freiraum unter scrollenden Inhalten auf dem iPhone: darunter liegen Tableiste und
-    /// Erfassungszeile. Gemessen, nicht geraten — sonst verschwindet die letzte Zeile darunter.
-    static let bottomBarClearance: CGFloat = 96
     /// Abstand **innerhalb** einer Markergruppe — die sieben Tagesquadrate einer Wochenzeile.
     /// Kein Layoutrhythmus, sondern die Körnung des Rasters: auf der kleinsten Stufe (4) fielen
     /// die sieben Quadrate auseinander und lasen sich als sieben Dinge statt als eine Woche.

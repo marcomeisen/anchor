@@ -32,12 +32,14 @@ struct CaptureBar: View {
     }
 
     private var hint: String {
-        CaptureSyntax.hint(raw: raw, target: target, anchorCount: week.goalList.count)
+        CaptureSyntax.hint(raw: raw, target: target, anchorCount: GoalOrdering.anchors(in: week).count)
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            AnkerRule()
+            // Der Kopf des Fussblocks: 2px in **Tinte**, nicht in der Trennlinienfarbe. Die
+            // Vorlage setzt hier dieselbe Kante wie unter der Datumszeile oben.
+            AnkerRule(color: AnkerColor.ink)
 
             HStack(spacing: AnkerSpacing.s3) {
                 // Feld und Knopf sind Objekte: gerundet. Die 2px-Kante der Leiste darueber ist
@@ -80,7 +82,9 @@ struct CaptureBar: View {
                 .accessibilityIdentifier("captureBar.hint")
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(AnkerColor.surface)
+        // Die Vorlage setzt den ganzen Fussblock auf den Grund und trennt ihn allein mit der
+        // 2px-Kante daruber — nicht zusaetzlich mit einer eigenen Flaeche.
+        .background(AnkerColor.ground)
 #if os(macOS)
         // Auf dem Mac ist die Zeile der Fuss der Matrix und per Tastatur erreichbar.
         .onExitCommand { raw = ""; isFocused = false }

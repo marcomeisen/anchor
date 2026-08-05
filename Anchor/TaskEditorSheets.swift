@@ -47,22 +47,14 @@ struct TaskEditorSheet: View {
                 .padding(AnkerSpacing.s4)
             }
             .background(AnkerColor.ground)
-            .navigationTitle("Aufgabe bearbeiten")
-#if os(iOS)
-            .navigationBarTitleDisplayMode(.inline)
-#endif
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Abbrechen") { dismiss() }
+            .ankerSheetChrome(
+                "Aufgabe bearbeiten",
+                cancel: AnkerSheetAction("Abbrechen") { dismiss() },
+                confirm: AnkerSheetAction("Sichern", isDisabled: cleanTitle.isEmpty) {
+                    save()
+                    dismiss()
                 }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Sichern") {
-                        save()
-                        dismiss()
-                    }
-                    .disabled(cleanTitle.isEmpty)
-                }
-            }
+            )
             .confirmationDialog("Aufgabe löschen?", isPresented: $confirmsDelete, titleVisibility: .visible) {
                 Button("Löschen", role: .destructive) {
                     TaskActions.delete(task, modelContext: modelContext)
@@ -363,18 +355,14 @@ struct TaskMoveSheet: View {
             }
             .padding(AnkerSpacing.s4)
             .background(AnkerColor.ground)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Abbrechen") { dismiss() }
+            .ankerSheetChrome(
+                "Verschieben",
+                cancel: AnkerSheetAction("Abbrechen") { dismiss() },
+                confirm: AnkerSheetAction("Verschieben", isDisabled: cleanTasks.isEmpty) {
+                    moveTasks()
+                    dismiss()
                 }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Verschieben") {
-                        moveTasks()
-                        dismiss()
-                    }
-                    .disabled(cleanTasks.isEmpty)
-                }
-            }
+            )
             .onAppear(perform: loadInitialDate)
         }
     }

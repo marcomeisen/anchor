@@ -26,7 +26,7 @@ struct YearOverviewView: View {
             }
             .padding(.horizontal, AnkerSpacing.screenPadding)
 #if os(iOS)
-            .padding(.bottom, AnkerSpacing.bottomBarClearance)
+            .padding(.bottom, AnkerSpacing.s5)
 #else
             .padding(.bottom, AnkerSpacing.s5)
 #endif
