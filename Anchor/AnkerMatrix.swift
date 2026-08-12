@@ -162,8 +162,13 @@ struct AnkerMatrixMetrics: Equatable {
     /// Darunter wird eine Tagesspalte unlesbar; dann scrollt die Matrix waagerecht.
     static let minDayColumnWidth: CGFloat = 108
 
+    /// `containerWidth` ist die Breite **innerhalb** der Bildschirmränder, nicht die des Fensters.
+    /// Die Aufrufstelle zieht `AnkerSpacing.screenPadding` beidseitig ab.
     static func dayColumnWidth(containerWidth: CGFloat) -> (width: CGFloat, needsHorizontalScroll: Bool) {
-        let available = containerWidth - anchorColumnWidth
+        // Die senkrechte Regel zwischen Ankerspalte und Tagen ist 2px breit und gehoert in die
+        // Rechnung. Ohne sie war das Raster genau diese 2px breiter als sein Platz — die
+        // Sonntagsspalte lief rechts an.
+        let available = containerWidth - anchorColumnWidth - AnkerBorder.rule
         let ideal = available / 7
         if ideal < minDayColumnWidth {
             return (minDayColumnWidth, true)

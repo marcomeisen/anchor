@@ -37,7 +37,18 @@ struct AnkerIcon: Sendable, Hashable {
 
     static let add = AnkerIcon("lucide-plus")
     static let addCircle = AnkerIcon("lucide-circle-plus")
-    static let goal = AnkerIcon("lucide-target")
+    /// Der Anker als **Balken**, nicht als Zielscheibe.
+    ///
+    /// Runde 1 hat den Fortschrittsring ueberall durch einen Balken ersetzt; ein Anker ist in
+    /// Streifen, Matrix und Detail seitdem ein Balken. Das Zielscheibensymbol war der letzte
+    /// Rest der alten Darstellung und stand ausgerechnet auf dem Knopf, der einen Anker
+    /// **anlegt**.
+    ///
+    /// Mit Achse, nicht ohne. Die reinen liegenden Balken (`lucide-align-left`) sind zwar naeher
+    /// am Fortschrittsbalken der Anker, lasen sich am Geraet aber als Menue-Symbol — drei
+    /// gleich lange Striche direkt neben einem Plus. Am Bildschirm geprueft, nicht geraten.
+    /// Die Rolle heisst weiter `goal` und traegt alle fuenf Aufrufstellen mit.
+    static let goal = AnkerIcon("lucide-chart-bar")
     static let check = AnkerIcon("lucide-check")
     static let checkCircle = AnkerIcon("lucide-circle-check")
     static let checkCircleLarge = AnkerIcon("lucide-circle-check-big")

@@ -33,9 +33,6 @@ struct AnkerMatrixView: View {
     }
 
     var body: some View {
-        GeometryReader { proxy in
-            let metrics = AnkerMatrixMetrics.dayColumnWidth(containerWidth: proxy.size.width)
-
             VStack(spacing: 0) {
                 headerBar
 
@@ -46,27 +43,64 @@ struct AnkerMatrixView: View {
                 //    Fenster hinaus — der Knopf „Sichern" war nicht mehr erreichbar.
                 // 2. Beim Querscrollen wanderten die Spalten, der Header nicht. Die
                 //    Wochentagsbeschriftung stand dann ueber der falschen Spalte.
-                ScrollView([.vertical, metrics.needsHorizontalScroll ? .horizontal : []]) {
-                    VStack(spacing: 0) {
-                        dayHeader(width: metrics.width)
+                // Die `GeometryReader` misst **das Fenster der Scrollansicht**, nicht das des
+                // Bildschirms. Beides auseinanderzuhalten ist hier keine Feinheit, sondern der
+                // Unterschied zwischen ausgerichtet und schief:
+                //
+                // 1. Die Spaltenbreite muss aus **dieser** Breite kommen. Aus der Fensterbreite
+                //    gerechnet war die Tabelle auf dem iPad um 15pt zu breit und rutschte nach
+                //    rechts — links 39pt Rand, rechts 9pt, waehrend Schlagzeile und
+                //    Erfassungszeile bei 24pt standen. Gemessen, nicht geschaetzt.
+                // 2. Ohne dieses Mass laesst sich die Tabelle nicht oben verankern: eine
+                //    `ScrollView` mit beiden Achsen zentriert Inhalt, der kleiner ist als ihr
+                //    Fenster, und bei wenigen Ankern hing sie in der Mitte. `maxHeight:
+                //    .infinity` hilft nicht — in einer Scrollansicht ist der Hoehenvorschlag
+                //    unbegrenzt, der Modifikator also wirkungslos. Eine **Mindesthoehe** greift.
+                GeometryReader { scrollProxy in
+                    let metrics = AnkerMatrixMetrics.dayColumnWidth(
+                        containerWidth: scrollProxy.size.width
+                    )
 
-                        ForEach(rows) { row in
-                            matrixRow(row, width: metrics.width)
-                            AnkerRule()
+                    ScrollView([.vertical, metrics.needsHorizontalScroll ? .horizontal : []]) {
+                        VStack(spacing: 0) {
+                            // `fixedSize` haelt die Tabelle auf ihrer natuerlichen Hoehe. Ohne
+                            // das schluckt sie die Mindesthoehe darunter: die Zellen sind nach
+                            // oben flexibel (`minHeight`), und eine einzelne Zeile zog sich
+                            // dann ueber den ganzen Bildschirm. Den Rest nimmt der Spacer.
+                            VStack(spacing: 0) {
+                                dayHeader(width: metrics.width)
+
+                                ForEach(rows) { row in
+                                    matrixRow(row, width: metrics.width)
+                                    AnkerRule()
+                                }
+                            }
+                            .fixedSize(horizontal: false, vertical: true)
+
+                            Spacer(minLength: 0)
                         }
+                        .frame(minHeight: scrollProxy.size.height, alignment: .top)
                     }
                 }
+                // Der Bildschirmrand sitzt an der **Scrollansicht**, nicht an ihrem Inhalt. Am
+                // Inhalt war er messbar falsch: die Tabelle stand dann 39pt vom linken und 9pt
+                // vom rechten Rand, waehrend Schlagzeile und Erfassungszeile bei 24pt lagen.
+                // Aussen kann das nicht passieren — das Fenster der Scrollansicht **ist** der
+                // Platz, den die Spaltenrechnung aufteilt. Die 2px-Kante ueber der Tabelle
+                // bleibt randlos: sie trennt zwei Baender des Bildschirms, die Tabellenlinien
+                // gehoeren zur Tabelle.
+                .padding(.horizontal, AnkerSpacing.screenPadding)
 
                 if let notice = undo.notice {
                     TaskUndoToast(notice: notice) {
                         undo.undo(weeks: weeks, modelContext: modelContext)
                     }
-                    .padding(AnkerSpacing.s3)
+                    .padding(.horizontal, AnkerSpacing.screenPadding)
+                    .padding(.vertical, AnkerSpacing.s3)
                 }
 
                 CaptureBar(week: week, fallbackDate: selectedDay.date)
             }
-        }
         .background(AnkerColor.ground)
         .navigationTitle("Wochenübersicht")
         .goalDeleteConfirmation(goal: $goalPendingDeletion, week: week)
@@ -101,11 +135,16 @@ struct AnkerMatrixView: View {
     private func dayHeader(width: CGFloat) -> some View {
         VStack(spacing: 0) {
             HStack(spacing: 0) {
+                // Polsterung **vor** der Breite. Andersherum sass sie aussen, die Ankerspalte
+                // der Kopfzeile war damit 212 + 2 × 16 = 244pt breit — 32pt mehr als dieselbe
+                // Spalte in den Datenzeilen. Der VStack nahm die groessere Breite, die Zeilen
+                // wurden darin zentriert und standen 16pt zu weit rechts, und die Tabelle war
+                // 32pt breiter als ihr Platz. Genau so entstand der schiefe Rand.
                 Text(verbatim: "Anker")
                     .ankerType(AnkerType.eyebrow)
                     .foregroundStyle(AnkerColor.inkSecond)
-                    .frame(width: AnkerMatrixMetrics.anchorColumnWidth, alignment: .leading)
                     .padding(.horizontal, AnkerSpacing.s4)
+                    .frame(width: AnkerMatrixMetrics.anchorColumnWidth, alignment: .leading)
 
                 ForEach(days, id: \.id) { day in
                     let isToday = day.id == todayID

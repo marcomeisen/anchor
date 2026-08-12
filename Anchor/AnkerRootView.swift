@@ -154,6 +154,11 @@ struct AnkerRootView: View {
             // den Bildschirm ausrichtet. Als Inset stapelt SwiftUI die beiden Leisten
             // uebereinander, und niemand muss mehr an einen Abstand denken.
             topLevelContent(week: week, day: day)
+                // Nach unten ziehen fordert einen Abgleich an. `refreshable` reicht die Aktion
+                // ueber die Umgebung an die scrollende Ansicht darin weiter — Liste wie
+                // Scrollansicht —, deshalb steht sie hier einmal statt in jedem Bildschirm.
+                .refreshable { await cloudSyncStatus.requestSync() }
+                .safeAreaInset(edge: .top, spacing: 0) { syncStatusBanner }
                 .safeAreaInset(edge: .bottom, spacing: 0) {
                     // Auf Heute sitzt die Erfassungszeile darueber; sie traegt dann die
                     // 2px-Kante des Fussblocks und die Tableiste trennt nur mit einer Haarlinie.
@@ -169,6 +174,26 @@ struct AnkerRootView: View {
                 }
                 .safeAreaInset(edge: .top, spacing: 0) { phoneHeader() }
                 .toolbar(.hidden, for: .navigationBar)
+        }
+    }
+
+    /// Dieselbe Statuszeile wie im Sidebar-Fuss von Mac und iPad — `CloudSyncStatusRow`, nicht
+    /// eine zweite Darstellung derselben Sache.
+    ///
+    /// Sie steht nicht dauerhaft: auf einem Telefon waeren das 40pt fuer eine Aussage, die
+    /// meistens „alles gut" lautet, und das Symbol im Kopf sagt das schon. Eingeblendet wird
+    /// sie, wenn sie etwas zu sagen hat — waehrend eines angeforderten Abgleichs, bei einem
+    /// Problem und wenn der Sync abgeschaltet ist.
+    @ViewBuilder
+    private var syncStatusBanner: some View {
+        if cloudSyncStatus.isShowingManualSync
+            || cloudSyncStatus.phase == .issue
+            || cloudSyncStatus.phase == .disabled {
+            CloudSyncStatusRow(status: cloudSyncStatus)
+                .padding(.horizontal, AnkerSpacing.screenPadding)
+                .padding(.bottom, AnkerSpacing.s2)
+                .background(AnkerColor.ground)
+                .transition(.move(edge: .top).combined(with: .opacity))
         }
     }
 

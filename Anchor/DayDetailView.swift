@@ -78,7 +78,7 @@ struct DayDetailView: View {
                     }
                 }
             }
-            .padding(.horizontal, AnkerSpacing.s4)
+            .padding(.horizontal, AnkerSpacing.screenPadding)
             .padding(.bottom, AnkerSpacing.s4)
         }
         .navigationTitle(navigationTitle)

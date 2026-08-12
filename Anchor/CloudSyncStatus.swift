@@ -114,7 +114,19 @@ final class CloudSyncStatusCenter: ObservableObject {
 
     private var observers: [NSObjectProtocol] = []
     private var pendingExportWatchdog: Task<Void, Never>?
+    /// Laeuft gerade eine per Geste angeforderte Pruefung?
+    ///
+    /// Steuert auf dem iPhone, ob die Statuszeile eingeblendet ist. Ohne das Flag muesste die
+    /// Zeile dauerhaft stehen — auf einem Telefon ist das 40pt Hoehe fuer eine Aussage, die in
+    /// 95 % der Faelle „alles gut" lautet.
+    @Published private(set) var isShowingManualSync = false
+
     private var isSyncDisabled = false
+
+    /// Zaehlt jedes CloudKit-Ereignis. `requestSync` erkennt daran, ob waehrend des Wartens
+    /// wirklich etwas passiert ist — eine Phase abzufragen reicht nicht, weil sie danach
+    /// wieder auf demselben Wert stehen kann.
+    private var syncEventCount = 0
 
     /// Ohne Nebenwirkungen: die Beobachter entstehen erst in `startObserving()`.
     ///
@@ -261,6 +273,58 @@ final class CloudSyncStatusCenter: ObservableObject {
         }
     }
 
+    /// Vom Nutzer angeforderter Abgleich — auf dem iPhone die Geste „nach unten ziehen".
+    ///
+    /// **CloudKit kennt kein „jetzt synchronisieren".** `NSPersistentCloudKitContainer` plant
+    /// Im- und Export selbst; weder SwiftData noch Core Data bieten dafür eine Schnittstelle, und
+    /// `CKContainer` direkt anzusprechen ginge am Mirroring vorbei. Eine Geste, die den Abgleich
+    /// *erzwingt*, lässt sich also nicht bauen — eine, die ihn sichtbar macht und den häufigsten
+    /// Grund für „synct nicht" findet, schon. Drei Dinge passieren wirklich:
+    ///
+    /// 1. Der iCloud-Accountstatus wird neu abgefragt. Das ist echte Arbeit und fängt den mit
+    ///    Abstand häufigsten Fall — kein Account, abgemeldet, eingeschränkt.
+    /// 2. Danach wartet die Geste kurz auf ein CloudKit-Ereignis. Läuft gerade ein Import oder
+    ///    Export, sieht der Nutzer ihn zu Ende laufen statt ins Leere zu ziehen.
+    /// 3. Das Ergebnis landet in derselben Anzeige wie auf Mac und iPad.
+    ///
+    /// Wichtig ist, was die Geste **nicht** tut: „Nichts zu übertragen" behaupten, wo in
+    /// Wahrheit nur nichts gemessen wurde. Bleibt der Account unerreichbar, steht das da.
+    func requestSync() async {
+        guard !isSyncDisabled, CloudSyncConfiguration.usesCloudKit else {
+            markCloudSyncDisabled()
+            return
+        }
+
+        let eventsBefore = syncEventCount
+        isShowingManualSync = true
+        phase = .syncing
+        detail = "Abgleich angefordert"
+        tooltip = "Daivento prüft den iCloud-Account und wartet auf den nächsten Abgleich."
+
+        await refreshAccountStatus()
+
+        // Nicht endlos warten: CloudKit meldet sich oft binnen Sekundenbruchteilen, manchmal
+        // gar nicht — dann lag schlicht nichts an.
+        let deadline = Date().addingTimeInterval(3)
+        while syncEventCount == eventsBefore, phase == .syncing, Date() < deadline {
+            try? await Task.sleep(for: .milliseconds(120))
+        }
+
+        // Ein Ereignis oder ein Accountproblem hat die Anzeige schon gesetzt — dann nicht
+        // darüberschreiben.
+        if syncEventCount == eventsBefore, phase == .syncing {
+            phase = .synced
+            detail = "Nichts zu übertragen"
+            tooltip = "Der iCloud-Account ist erreichbar, und es lag keine Änderung zum Abgleich an."
+        }
+
+        // Das Ergebnis kurz stehen lassen. `refreshable` haelt seinen Ladeindikator, bis diese
+        // Funktion zurueckkehrt — Indikator und Statuszeile verschwinden dadurch gemeinsam,
+        // statt dass das Ergebnis im selben Moment aufblitzt und weg ist.
+        try? await Task.sleep(for: .seconds(1.5))
+        isShowingManualSync = false
+    }
+
     private static let noAccountDetail = "Kein iCloud-Account"
 
     private static func summary(for status: CKAccountStatus) -> String {
@@ -321,6 +385,7 @@ final class CloudSyncStatusCenter: ObservableObject {
     private func apply(_ update: CloudSyncEventUpdate) {
         guard !isSyncDisabled else { return }
 
+        syncEventCount += 1
         pendingExportWatchdog?.cancel()
         pendingExportWatchdog = nil
         phase = update.phase
@@ -341,6 +406,7 @@ final class CloudSyncStatusCenter: ObservableObject {
         // Der Zaehler laeuft auch bei abgeschaltetem Sync und waehrend `.syncing` weiter:
         // er steuert das Aufraeumen, nicht die Anzeige.
         remoteChangeCount += 1
+        syncEventCount += 1
 
         guard !isSyncDisabled, phase != .syncing else { return }
 

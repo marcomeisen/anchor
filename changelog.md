@@ -1,5 +1,44 @@
 # Changelog
 
+## 2026-08-06
+
+### Zielsymbol, Bildschirmränder, Ziehen zum Abgleichen
+
+- **Der Anker ist überall ein Balken, jetzt auch auf dem Knopf.** Die Zielscheibe war der letzte Rest der Ringdarstellung aus Runde 1 und stand ausgerechnet dort, wo man einen Anker **anlegt**. `AnkerIcon.goal` traegt alle fuenf Aufrufstellen mit; `lucide-target` ist aus dem Katalog raus, damit die Schranke „kein verwaistes Asset" haelt. Gewaehlt ist die Variante **mit Achse**: die reinen liegenden Balken lasen sich am Geraet als Menue-Symbol — drei gleich lange Striche direkt neben einem Plus. Am Bildschirm geprueft, nicht geraten.
+- **Ein Bildschirmrand fuer alles.** Kopfzeile und Ankerstreifen standen bei 24pt, die Erfassungszeile bei 16pt, das 4×7-Raster bei 0 — es lief bis an den Fensterrand. Alle drei liegen jetzt auf `AnkerSpacing.screenPadding`; dieselbe Korrektur in der Wochenuebersicht und beim Undo-Streifen des Tagesdetails. Die 2px-Sektionsgrenzen bleiben randlos: sie trennen Baender des Bildschirms, nicht Inhalt.
+- **Ziehen nach unten fordert einen Abgleich an** (iPhone, alle obersten Bildschirme). Ehrlich gebaut: CloudKit kennt **kein** „jetzt synchronisieren", weder ueber SwiftData noch ueber Core Data. Die Geste prueft den iCloud-Accountstatus neu — der haeufigste Grund fuer „synct nicht" —, wartet danach kurz auf ein CloudKit-Ereignis und berichtet, was sie gesehen hat. Kein Fortschrittsbalken, der so tut als ob.
+- **Die Sync-Anzeige ist auf allen drei Plattformen dieselbe.** Das iPhone zeigt jetzt `CloudSyncStatusRow` — denselben Baustein wie der Sidebar-Fuss von Mac und iPad — statt nur eines Symbols. Nicht dauerhaft: eingeblendet waehrend eines angeforderten Abgleichs, bei einem Problem und bei abgeschaltetem Sync. Im Normalfall genuegt das Symbol im Kopf, und 40pt Telefonhoehe bleiben frei.
+
+**Drei Fehler kamen beim Ausmessen heraus, alle drei aelter als diese Aenderung** — gefunden, weil ich
+die Raender in Pixeln gemessen habe statt sie anzusehen:
+
+- Die Kopfzeile der Matrix baute ihre Ankerspalte als `.frame(width: 212).padding(.horizontal, 16)`, war damit **244pt** breit und 32pt breiter als dieselbe Spalte in den Datenzeilen. Der VStack nahm die groessere Breite, die Zeilen wurden darin zentriert und standen 16pt zu weit rechts — links 39pt Rand, rechts 9pt. Die Polsterung steht jetzt vor der Breite.
+- Eine `ScrollView` mit **beiden** Achsen zentriert Inhalt, der kleiner ist als ihr Fenster. Bei wenigen Ankern hing die Tabelle deshalb in der Bildschirmmitte, mit einem Loch zwischen Schlagzeile und Kopfzeile. `maxHeight: .infinity` hilft dagegen nicht — in einer Scrollansicht ist der Hoehenvorschlag unbegrenzt. Eine Mindesthoehe aus dem gemessenen Fenster greift, und `fixedSize` haelt die Zeilen dabei auf ihrer natuerlichen Hoehe.
+- Die senkrechte 2px-Regel zwischen Ankerspalte und Tagen fehlte in der Spaltenrechnung. Das Raster war dadurch genau diese 2px breiter als sein Platz.
+
+## 2026-08-05
+
+### iCloud-Sync: der UI-Testmodus schaltete ihn dauerhaft ab
+
+Gemeldet war „iPhone synct nicht mit dem Mac in TestFlight". Der Mac war nachweislich gesund — der
+installierte TestFlight-Build exportiert und importiert erfolgreich, mit `aps-environment:
+production` und `Production`-Container. Damit schied das aus, was zuerst naheliegt: das
+CloudKit-Schema, die Entitlements, `remote-notification`, die Container-Kennung.
+
+Gefunden wurde stattdessen ein Fehler mit langer Reichweite im Testmodus:
+
+- `UITestMode.prepare` schrieb `cloudSyncEnabled = false` in die Nutzereinstellungen. Der Wert ueberlebt den Testlauf, und Debug- und TestFlight-Build teilen Bundle-ID und damit den Defaults-Bereich. Auf einem Geraet, auf dem je ein UI-Test lief, blieb der iCloud-Sync danach **dauerhaft** aus — lautlos, ohne Fehler, mit lokal weiterlaufender App. Genau die Sorte Fehler, die man in TestFlight als „synct nicht" sieht und im Code nicht findet.
+- Der Schreibvorgang war fuer seinen Zweck ueberfluessig: `CloudSyncConfiguration.usesCloudKit` und `modelConfiguration` fragen `UITestMode.isActive` ohnehin direkt ab. Jetzt tun `CloudSyncPreference.isEnabled` und `hasBeenChosen` dasselbe, und `prepare` **entfernt** nur noch Schluessel, statt welche zu setzen.
+- Festgehalten als Test ueber `UITestMode.resetKeys`: die Sync-Schluessel duerfen nicht darin vorkommen. Bewusst ueber die Liste statt ueber den Aufruf — `prepare` ist im Unit-Test wirkungslos, eine Zusicherung ueber den Aufruf waere eine Zusicherung ueber nichts.
+
+Ein bereits abgeschaltetes Geraet heilt der Fix nicht: dort steht der Wert schon. Die App zeigt das
+als „Nur auf diesem Geraet" an; Einstellungen > iCloud-Sync einschalten und die App **vollstaendig**
+neu starten, weil `activeAtLaunch` pro Prozess feststeht.
+
+Nebenbefund, nicht behoben: `AnchorUITests` scheitert gegen einen iOS-Simulator („Onboarding wurde
+nicht angezeigt"). Durch Zurueckstellen der Aenderung geprueft — der Fehler ist aelter, die Suite ist
+fuer den Mac geschrieben. `AnchorUITests/PhoneChromeTests` laeuft auf iOS gruen.
+
 ## 2026-08-04
 
 ### Entwurfsrunde 3 — Objekte werden rund, Struktur bleibt scharf

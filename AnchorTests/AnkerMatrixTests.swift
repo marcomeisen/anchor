@@ -168,9 +168,21 @@ final class AnkerMatrixTests: XCTestCase {
     }
 
     func testDayColumnsShareTheWidthAndFallBackToScrolling() {
+        // Die senkrechte Regel zwischen Ankerspalte und Tagen zaehlt mit: sie ist 2px breit und
+        // steht im Raster, nicht daneben. Ohne sie in der Rechnung war das Raster genau diese
+        // 2px breiter als sein Platz und die Sonntagsspalte lief rechts an.
         let wide = AnkerMatrixMetrics.dayColumnWidth(containerWidth: 1200)
         XCTAssertFalse(wide.needsHorizontalScroll)
-        XCTAssertEqual(wide.width, (1200 - AnkerMatrixMetrics.anchorColumnWidth) / 7, accuracy: 0.01)
+        XCTAssertEqual(
+            wide.width,
+            (1200 - AnkerMatrixMetrics.anchorColumnWidth - AnkerBorder.rule) / 7,
+            accuracy: 0.01
+        )
+        XCTAssertLessThanOrEqual(
+            AnkerMatrixMetrics.anchorColumnWidth + AnkerBorder.rule + 7 * wide.width,
+            1200,
+            "Das Raster ist breiter als der Platz, den es bekommt"
+        )
 
         // Im schmalen iPad-Split wird eine Spalte sonst unlesbar.
         let narrow = AnkerMatrixMetrics.dayColumnWidth(containerWidth: 640)

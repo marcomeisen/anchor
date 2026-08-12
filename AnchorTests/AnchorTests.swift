@@ -749,6 +749,41 @@ final class AnchorTests: XCTestCase {
         XCTAssertTrue(CloudSyncPreference.hasBeenChosen(in: defaults))
     }
 
+    /// Der UI-Testmodus darf keine Sync-Einstellung hinterlassen.
+    ///
+    /// Er hat es getan: `prepare` schrieb `cloudSyncEnabled = false`. Debug- und TestFlight-Build
+    /// teilen Bundle-ID und Defaults-Bereich, also blieb der iCloud-Sync auf einem Geraet, auf dem
+    /// je ein UI-Test lief, danach **dauerhaft** aus — ohne Fehler, ohne Hinweis, mit lokal
+    /// weiterlaufender App. Genau die Sorte Fehler, die man in TestFlight als "synct nicht" sieht
+    /// und im Code nicht findet.
+    ///
+    /// Geprueft wird die Schluesselliste, nicht der Aufruf: `prepare` ist im Unit-Test wirkungslos,
+    /// weil `UITestMode.isActive` nur mit Startargument wahr ist. Eine Zusicherung ueber den
+    /// Aufruf wuerde hier immer bestehen und nichts bedeuten.
+    @MainActor
+    func testUITestModeResetsNoSyncPreference() throws {
+#if DEBUG
+        XCTAssertFalse(UITestMode.resetKeys.contains(AppSettingsKey.cloudSyncEnabled),
+                       "Der Testmodus darf den Sync-Schalter nicht anfassen")
+        XCTAssertFalse(UITestMode.resetKeys.contains(AppSettingsKey.hasChosenCloudSync),
+                       "Der Testmodus darf die iCloud-Frage nicht als beantwortet hinterlassen")
+
+        // Und er stellt ausschliesslich zurueck, statt zu setzen: nach einem Lauf auf einem
+        // frischen Bereich steht kein einziger Wert drin.
+        let suite = "AnchorTests.\(#function)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+
+        UITestMode.prepare(defaults: defaults)
+
+        for key in UITestMode.resetKeys + [AppSettingsKey.cloudSyncEnabled, AppSettingsKey.hasChosenCloudSync] {
+            XCTAssertNil(defaults.object(forKey: key), "\(key) wurde gesetzt statt zurueckgestellt")
+        }
+
+        XCTAssertTrue(CloudSyncPreference.isEnabled(in: defaults))
+#endif
+    }
+
     @MainActor
     private func kinds(for query: String, in weeks: [Week]) -> [AnkerSearch.Kind] {
         var seen: [AnkerSearch.Kind] = []

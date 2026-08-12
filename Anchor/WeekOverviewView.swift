@@ -28,7 +28,7 @@ struct WeekOverviewView: View {
                     .ankerType(AnkerType.numericSmall)
                     .foregroundStyle(AnkerColor.inkSecond)
             }
-            .padding(.horizontal, AnkerSpacing.s4)
+            .padding(.horizontal, AnkerSpacing.screenPadding)
             .padding(.vertical, AnkerSpacing.s3)
             .background(AnkerColor.surface)
             .ankerEdge(.bottom)
@@ -50,7 +50,7 @@ struct WeekOverviewView: View {
                             }
                     }
                 }
-                .padding(.horizontal, AnkerSpacing.s4)
+                .padding(.horizontal, AnkerSpacing.screenPadding)
                 .padding(.vertical, AnkerSpacing.s4)
                 .background(AnkerColor.ground)
                 .ankerEdge(.bottom)
@@ -62,7 +62,7 @@ struct WeekOverviewView: View {
                         dayDropButton(day)
                     }
                 }
-                .padding(.horizontal, AnkerSpacing.s4)
+                .padding(.horizontal, AnkerSpacing.screenPadding)
                 .padding(.vertical, AnkerSpacing.s3)
             }
             .background(AnkerColor.ground)
@@ -284,7 +284,7 @@ private struct TaskShortcutHintBar: View {
             shortcut("⌘D", "Duplizieren")
             Spacer(minLength: 0)
         }
-        .padding(.horizontal, AnkerSpacing.s4)
+        .padding(.horizontal, AnkerSpacing.screenPadding)
         .padding(.vertical, AnkerSpacing.s2)
         .background(AnkerColor.surface)
         .ankerEdge(.top)

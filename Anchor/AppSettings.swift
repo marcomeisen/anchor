@@ -18,18 +18,32 @@ enum UITestMode {
         ProcessInfo.processInfo.arguments.contains(launchArgument)
     }
 
+    /// Die Schluessel, die ein UI-Test-Start zurueckstellt — und **nur** diese.
+    ///
+    /// Bewusst eine benannte Liste statt einer Schleife im Rumpf, damit ein Test sie pruefen kann:
+    /// `prepare` ist in einem Unit-Test wirkungslos (`isActive` ist dort falsch), eine Zusicherung
+    /// ueber das Verhalten waere also eine Zusicherung ueber nichts.
+    ///
+    /// Zurueckgestellt wird nur, was der Testlauf frisch braucht, und ausschliesslich durch
+    /// **Entfernen**. Kein Wert wird gesetzt. Vorher stand hier `cloudSyncEnabled = false`, und das
+    /// war ein Fehler mit langer Reichweite: der Wert ueberlebt den Lauf, und weil Debug- und
+    /// TestFlight-Build dieselbe Bundle-ID und damit denselben Defaults-Bereich benutzen, blieb der
+    /// iCloud-Sync auf einem Geraet, auf dem je ein UI-Test lief, danach dauerhaft aus — lautlos,
+    /// ohne Fehler, mit lokal weiterlaufender App. Der Testmodus braucht den Schreibvorgang gar
+    /// nicht: `CloudSyncPreference` und `CloudSyncConfiguration` fragen `UITestMode.isActive` direkt ab.
+    static let resetKeys = [
+        AppSettingsKey.appearance,
+        "hasCompletedOnboarding",
+        "onboardingVersion"
+    ]
+
     /// Muss vor dem `ModelContainer` und vor der ersten View laufen.
     static func prepare(defaults: UserDefaults = .standard) {
         guard isActive else { return }
 
-        for key in [AppSettingsKey.appearance, "hasCompletedOnboarding", "onboardingVersion"] {
+        for key in resetKeys {
             defaults.removeObject(forKey: key)
         }
-
-        // Sync aus und als beantwortet markiert: der Test soll weder CloudKit anfassen noch
-        // ueber die Sync-Frage im Onboarding laufen.
-        defaults.set(false, forKey: AppSettingsKey.cloudSyncEnabled)
-        defaults.set(true, forKey: AppSettingsKey.hasChosenCloudSync)
     }
 }
 #endif
@@ -111,13 +125,25 @@ enum AppearanceMode: String, CaseIterable, Identifiable {
 enum CloudSyncPreference {
     /// Standard ist eingeschaltet: bestehende Installationen synchronisieren bereits, und ein
     /// stiller Wechsel auf "aus" waere aus Nutzersicht ein Datenverlust.
+    ///
+    /// Im UI-Test **immer** aus, und zwar hier statt ueber einen geschriebenen Wert: der Testmodus
+    /// darf keine Einstellung hinterlassen, die den naechsten echten Start ueberlebt.
     static func isEnabled(in defaults: UserDefaults = .standard) -> Bool {
-        defaults.object(forKey: AppSettingsKey.cloudSyncEnabled) as? Bool ?? true
+#if DEBUG
+        if UITestMode.isActive { return false }
+#endif
+        return defaults.object(forKey: AppSettingsKey.cloudSyncEnabled) as? Bool ?? true
     }
 
     /// Hat der Nutzer die Frage im Onboarding schon beantwortet?
+    ///
+    /// Im UI-Test gilt sie als beantwortet, damit der Lauf nicht ueber die iCloud-Frage geht —
+    /// ebenfalls ohne Schreibvorgang, aus demselben Grund.
     static func hasBeenChosen(in defaults: UserDefaults = .standard) -> Bool {
-        defaults.bool(forKey: AppSettingsKey.hasChosenCloudSync)
+#if DEBUG
+        if UITestMode.isActive { return true }
+#endif
+        return defaults.bool(forKey: AppSettingsKey.hasChosenCloudSync)
     }
 
     static func set(_ isEnabled: Bool, in defaults: UserDefaults = .standard) {

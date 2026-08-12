@@ -69,7 +69,7 @@ struct CaptureBar: View {
                     .opacity(input.isEmpty ? 0.45 : 1)
                     .accessibilityIdentifier("captureBar.commit")
             }
-            .padding(.horizontal, AnkerSpacing.s4)
+            .padding(.horizontal, AnkerSpacing.screenPadding)
             .padding(.top, AnkerSpacing.s3)
 
             Text(verbatim: hint)

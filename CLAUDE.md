@@ -75,7 +75,7 @@ Code-Identifier sind Englisch.
 | [Anchor/PrivacyInfo.xcprivacy](Anchor/PrivacyInfo.xcprivacy) | Privacy Manifest — Pflicht für die App-Store-Einreichung |
 | [Anchor/Localizable.xcstrings](Anchor/Localizable.xcstrings) | String Catalog, Quellsprache Deutsch |
 | [Anchor/Fonts/Archivo.ttf](Anchor/Fonts/Archivo.ttf) | Archivo als Variable Font (OFL-1.1); Gewichte über die `wght`-Achse |
-| `Anchor/Assets.xcassets/Icons/` | 43 Lucide-Icons als Vektor-Imagesets (ISC) |
+| `Anchor/Assets.xcassets/Icons/` | 41 Lucide-Icons als Vektor-Imagesets (ISC). Katalog und `AnkerIcon.all` müssen deckungsgleich sein — zwei Tests prüfen beide Richtungen |
 | `Anchor/Assets.xcassets/AppIcon.appiconset/` | App-Icon: die 4×7-Matrix. `AppIcon-*` für iOS (randlos, ohne Alpha), `AppIconMac-*` für macOS (gerundet, mit Rand) |
 | [Scripts/make-app-icons.swift](Scripts/make-app-icons.swift) | Erzeugt den Iconsatz aus [assets/icon/](assets/icon/); `swift Scripts/make-app-icons.swift` |
 | `Anchor/Assets.xcassets/MenuBarTemplate.imageset/` | Glyph der macOS-Menüleiste, `template-rendering-intent` |
@@ -173,6 +173,16 @@ Für die wiederkehrenden Themen liegen Skills unter [.claude/skills/](.claude/sk
   vorbehalten. Das alte Muster `background(surface)` + `Rectangle().stroke(divider, rule)` +
   `clipShape(Rectangle())` ist damit ersetzt; `clipShape(Rectangle())` ist eine eigene Schranke,
   weil es auf einer scharfen Fläche wirkungslos und auf einer runden falsch ist.
+- **Der Bildschirmrand ist `AnkerSpacing.screenPadding`, und zwar überall derselbe.** Inhalt wird
+  eingerückt, **Kanten laufen durch**: eine 2px-Sektionsgrenze trennt zwei Bänder des Bildschirms
+  und hört nicht 24pt vorher auf. Das Muster steht in `AnkerMatrixView.headerBar` — Inhalt gepolstert,
+  `AnkerRule` randlos daneben. Zwei Fallen dabei, beide gemessen: Ein Rand am **Inhalt** einer
+  Scrollansicht statt an der Scrollansicht selbst geht schief, sobald die Spaltenbreite aus der
+  Fensterbreite gerechnet wird — die Polsterung gehört nach außen, dann *ist* das Fenster der
+  Scrollansicht der Platz, den die Rechnung aufteilt. Und `.frame(width:).padding()` ist **nicht**
+  dasselbe wie `.padding().frame(width:)`: in dieser Reihenfolge liegt die Polsterung außen und die
+  Spalte wird breiter als angegeben. In der Matrix war die Kopfzeile so 32pt breiter als ihre
+  Datenzeilen, die Zeilen wurden darin zentriert und standen 16pt zu weit rechts.
 - **2px trennt Bereiche, 1px trennt Zeilen.** `AnkerRule(weight: .section)` gegen
   `.row`/`AnkerBorder.hairline`. Eine 2px-Kante an jeder Listenzeile liest sich wie ein
   Tabellengitter. Listen sitzen in `.ankerCard()` — Elevation **statt** Rahmen; das ist die einzige
@@ -197,6 +207,14 @@ Für die wiederkehrenden Themen liegen Skills unter [.claude/skills/](.claude/sk
   Beim Zusammenführen doppelter Wochen überlebt die **inhaltsreichere**, nicht die mit der
   kleineren UUID. Beides ist mit Tests in
   [AnchorTests/OnboardingSyncTests.swift](AnchorTests/OnboardingSyncTests.swift) festgehalten.
+- **Der Testmodus hinterlässt nichts.** `UITestMode.prepare` darf Schlüssel nur **entfernen**, nie
+  setzen — die Liste steht als `UITestMode.resetKeys` und ist mit einem Test gegen die
+  Sync-Schlüssel abgesichert. Grund: Debug- und TestFlight-Build teilen Bundle-ID und damit den
+  Defaults-Bereich, ein geschriebener Wert überlebt also den Testlauf und gilt für jeden späteren
+  echten Start. Ein `cloudSyncEnabled = false` an dieser Stelle hat den iCloud-Sync auf betroffenen
+  Geräten dauerhaft abgeschaltet — lautlos, ohne Fehler, mit lokal weiterlaufender App. Wer im Test
+  ein Verhalten abschalten will, fragt `UITestMode.isActive` beim **Lesen** ab; so machen es
+  `CloudSyncConfiguration.usesCloudKit` und `CloudSyncPreference`.
 - **Auf dem iPhone gibt es keine Systemleiste.** Seit iOS 26 zeichnet sie ihre Elemente in
   schwebende Glaskapseln — die Sprache, die der Neuentwurf ersetzt hat. Gemessen und verworfen:
   `toolbarBackground`, `UINavigationBarAppearance` und `UIBarButtonItemAppearance` greifen nicht
