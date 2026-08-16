@@ -153,7 +153,7 @@ struct TodayView: View {
             .padding(.top, AnkerSpacing.s3)
             .padding(.bottom, AnkerSpacing.s2)
 
-            AnkerRule(color: AnkerColor.ink)
+            AnkerRule()
 
             Text(verbatim: "Fokus heute")
                 .ankerType(AnkerType.eyebrow)
@@ -230,7 +230,7 @@ struct TodayView: View {
         .padding(.bottom, AnkerSpacing.s2)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(AnkerColor.ground)
-        .ankerEdge(.top, color: AnkerColor.ink)
+        .ankerEdge(.top)
     }
 
     /// Erfassungszeile, Undo-Hinweis und die Leiste der Mehrfachauswahl teilen sich den Fuss.

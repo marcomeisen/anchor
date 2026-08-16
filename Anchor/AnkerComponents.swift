@@ -21,26 +21,25 @@ struct SectionLabel: View {
 struct PriorityTag: View {
     let priority: Priority
 
-    /// Die Marke traegt Schrift, also muss jede Stufe 4,5:1 mit `onAccent` halten.
+    /// Lot nimmt der Prioritaet die Flaeche: „Prio-Gruppen fallen weg — der Buchstabe steht
+    /// rechts an der Zeile." Damit ist es keine Marke mehr, sondern Text, und die Stufen
+    /// unterscheiden sich ueber die Textrampe statt ueber drei gefuellte Kaestchen.
     ///
-    /// Deshalb **nicht** `accentMark`: das ist die 3:1-Markenfarbe fuer Linien und Icons, und mit
-    /// einem Buchstaben darauf kam sie auf 4,20:1. Die Stufen laufen jetzt ueber die Rampe —
-    /// A tiefer als B, C aus der Textrampe.
+    /// **Abweichung vom Entwurf.** Der setzt C auf `LotTextFaint` (`#A09889`) — 2,82:1 auf der
+    /// Karte. Ein Prioritaetsbuchstabe ist Information, keine Zierde; die drei Stufen laufen
+    /// deshalb eine Stufe hoeher und halten alle 4,5:1.
     var color: Color {
         switch priority {
-        case .a: AnkerColor.accent[700]
-        case .b: AnkerColor.accentFill
-        case .c: AnkerColor.inkSecond
+        case .a: AnkerColor.accentInk
+        case .b: AnkerColor.inkSecond
+        case .c: AnkerColor.inkMuted
         }
     }
 
     var body: some View {
         Text(priority.label)
-            .ankerType(AnkerType.microLabel)
-            .foregroundStyle(AnkerColor.onAccent)
-            .padding(.horizontal, AnkerSpacing.s1)
-            .padding(.vertical, AnkerSpacing.s1)
-            .background(color, in: Rectangle())
+            .ankerType(AnkerType.metaStrong)
+            .foregroundStyle(color)
             .accessibilityLabel("Priorität \(priority.label)")
     }
 }
@@ -54,10 +53,11 @@ struct TaskCheckmark: View {
         RoundedRectangle(cornerRadius: AnkerRadius.check, style: .continuous)
             .fill(isDone ? AnkerColor.ink : Color.clear)
             .overlay(
-                // Auch offen eine 2px-Kante in Tinte, nicht in der Trennlinienfarbe: das
-                // Kaestchen ist ein Bedienelement und muss als solches lesbar sein.
+                // Erledigt traegt Tinte, offen die Umrisslinie — „Zustand kommt aus Fuellung,
+                // nicht aus Farbton". Eine Kontur in voller Tinte an jeder offenen Aufgabe
+                // liest sich als Gitter aus Kaestchen statt als Liste.
                 RoundedRectangle(cornerRadius: AnkerRadius.check, style: .continuous)
-                    .stroke(AnkerColor.ink, lineWidth: AnkerBorder.rule)
+                    .stroke(isDone ? AnkerColor.ink : AnkerColor.divider, lineWidth: AnkerBorder.heavy)
             )
             .overlay {
                 if isDone {
@@ -915,7 +915,7 @@ struct AnchorRow: View {
                     .ankerType(isActive ? AnkerType.subheadline : AnkerType.bodyStrong)
                     .foregroundStyle(AnkerColor.ink)
                     .lineLimit(1)
-                AnkerProgressBar(progress: progress, tint: tint, thickness: AnkerBorder.rule * 2)
+                AnkerProgressBar(progress: progress, tint: tint, thickness: 4)
             }
 
             Text(verbatim: fraction)
@@ -973,12 +973,10 @@ struct AnkerTabBar: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // Die Farbe folgt der Rolle: der Kopf des Blocks ist Tinte, ein Trenner **im** Block
-            // ist grau. Zwei Kanten in Tinte 60pt uebereinander waeren ein Gitter.
-            AnkerRule(
-                color: topEdge == .section ? AnkerColor.ink : AnkerColor.divider,
-                weight: topEdge
-            )
+            // Die Farbe folgt der Rolle: die Grenze des Blocks ist die staerkere Haarlinie,
+            // ein Trenner **im** Block die schwaechere. Sitzt die Erfassungszeile darueber,
+            // traegt sie die Grenze und hier genuegt `.row`.
+            AnkerRule(weight: topEdge)
 
             HStack(spacing: AnkerSpacing.s2) {
                 tab(.today, title: "Heute")
@@ -990,7 +988,9 @@ struct AnkerTabBar: View {
             .padding(.top, AnkerSpacing.s2)
             .padding(.bottom, AnkerSpacing.s3)
         }
-        .background(AnkerColor.ground)
+        // Die Tableiste schwimmt ueber dem Inhalt. Die Lichtkante traegt schon `AnkerRule`
+        // darueber, deshalb hier ohne eigene.
+        .ankerGlass(.top)
         .accessibilityElement(children: .contain)
     }
 
@@ -1005,7 +1005,7 @@ struct AnkerTabBar: View {
                 // und deshalb rund.
                 .frame(maxWidth: .infinity, minHeight: 44)
                 .background(
-                    isSelected(destination) ? AnkerColor.accent[100] : Color.clear,
+                    isSelected(destination) ? AnkerColor.accentTint : Color.clear,
                     in: RoundedRectangle(cornerRadius: AnkerRadius.control, style: .continuous)
                 )
                 .contentShape(RoundedRectangle(cornerRadius: AnkerRadius.control, style: .continuous))

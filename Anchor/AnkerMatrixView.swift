@@ -67,7 +67,12 @@ struct AnkerMatrixView: View {
                 CaptureBar(week: week, fallbackDate: selectedDay.date)
             }
         }
-        .background(AnkerColor.ground)
+        // Die Matrix ist das **Fenster**, nicht ein Blatt auf dem Schreibtisch: sie trägt als
+        // einzige Ansicht keine Karten, sondern ein durchgehendes Raster. Deshalb `card` und
+        // nicht `ground` — sonst fehlt die Fensterfläche, und die eingelassenen Töne des
+        // heutigen Tages und des Eingangskorbs (`LotSurfaceSunken`) stehen als weiße Blöcke
+        // auf dem Schreibtisch, statt sich leicht in die Fläche einzusenken.
+        .background(AnkerColor.card)
         .navigationTitle("Wochenübersicht")
         .goalDeleteConfirmation(goal: $goalPendingDeletion, week: week)
     }
@@ -94,7 +99,7 @@ struct AnkerMatrixView: View {
             .padding(.horizontal, AnkerSpacing.s5)
             .padding(.vertical, AnkerSpacing.s4)
 
-            AnkerRule(color: AnkerColor.ink)
+            AnkerRule()
         }
     }
 
@@ -124,7 +129,7 @@ struct AnkerMatrixView: View {
                     .background(isToday ? AnkerColor.highlight : Color.clear)
                 }
             }
-            AnkerRule(color: AnkerColor.ink)
+            AnkerRule()
         }
     }
 
@@ -162,7 +167,7 @@ struct AnkerMatrixView: View {
                     AnkerProgressBar(
                         progress: row.progress,
                         tint: AnkerColor.goalTint(row.colorHex),
-                        thickness: AnkerBorder.rule * 2 + 1
+                        thickness: 5
                     )
                 }
 

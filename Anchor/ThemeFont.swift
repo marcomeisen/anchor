@@ -7,45 +7,50 @@ import AppKit
 import UIKit
 #endif
 
-/// Die fuenf Gewichte, die das Designsystem benutzt.
+/// Die drei Gewichte, die Lot benutzt.
+///
+/// „Gewichte 400 / 500 / 600 — nie schwerer, das uebernimmt der Grad." Das ist der sichtbarste
+/// Bruch mit dem Modernist-System, das bis 900 ging: dort trug das Gewicht die Hierarchie, in
+/// Lot tragen sie Groesse, Farbe und Flaeche.
 enum AnkerFontWeight: Int, CaseIterable, Sendable {
+    case regular = 400
     case medium = 500
     case semibold = 600
-    case bold = 700
-    case extraBold = 800
-    case black = 900
 
-    /// Rueckfall, wenn Archivo nicht geladen werden konnte.
     var systemWeight: Font.Weight {
         switch self {
+        case .regular: .regular
         case .medium: .medium
         case .semibold: .semibold
-        case .bold: .bold
-        case .extraBold: .heavy
-        case .black: .black
         }
     }
 }
 
-/// Archivo, ueber die Gewichtsachse angesprochen.
+/// Welche Familie eine Schriftrolle spricht — und damit, in welchem Modus der Nutzer ist.
 ///
-/// Ausgeliefert wird der **Variable Font** `Archivo.ttf` — statische Schnitte gibt es im
-/// Google-Fonts-Repository nicht. Das Gewicht wird deshalb nicht ueber einen PostScript-Namen
-/// gewaehlt (`Font.custom("Archivo-Bold", …)` haengt daran, dass Core Text die benannten
-/// Instanzen der `fvar`-Tabelle als eigene Namen anbietet — das ist nicht zugesichert),
-/// sondern die Achse `wght` wird direkt auf den Zahlwert gesetzt. Das ist deterministisch,
-/// braucht eine Datei statt fuenf und deckt jedes Gewicht ab, das die Achse hergibt.
+/// „Die Schrift sagt, in welchem Modus du bist." Das ist keine Zierde: der Wechsel auf die
+/// Serif ist das einzige Signal, dass gerade nicht gearbeitet wird.
+enum AnkerFontFamily: Sendable {
+    /// Arbeitsflaeche — die Systemschrift.
+    case workface
+    /// Ritual — Instrument Serif.
+    case ritual
+}
+
+/// Die beiden Familien des Systems.
 ///
-/// `wdth` wird bewusst auf 100 festgenagelt: Archivo hat auch eine Breitenachse, und ohne
-/// Angabe entscheidet die Standardinstanz der Datei.
+/// **Arbeitsflaeche: San Francisco.** Der Entwurf verlangt hier ausdruecklich die Systemschrift
+/// („SF Pro. In der App. Dynamic Type, optische Groessen, alle Sprachen"); Instrument Sans ist
+/// dort nur der Stellvertreter fuer Web und Dokumente. Damit faellt die Archivo-Buendelung des
+/// Modernist-Systems weg — und Dynamic Type, optische Groessen und die Sprachabdeckung kommen
+/// ohne eigene Datei.
+///
+/// **Ritual: Instrument Serif** (OFL-1.1), als einzige geliefert. Ein Serif in einer
+/// Produktivitaets-App ist ungewoehnlich — genau deshalb markiert er den Modus.
 enum AnkerFont {
-    static let familyName = "Archivo"
+    static let ritualFamilyName = "Instrument Serif"
 
-    /// Vierzeichen-Codes der Achsen, als Zahl. `'wght'` bzw. `'wdth'`.
-    private static let weightAxis = 0x7767_6874
-    private static let widthAxis = 0x7764_7468
-
-    /// Registriert die mitgelieferte Schrift im Prozess. Mehrfachaufruf ist unschaedlich.
+    /// Registriert die mitgelieferte Serif im Prozess. Mehrfachaufruf ist unschaedlich.
     ///
     /// Zusaetzlich zu `UIAppFonts`/`ATSApplicationFontsPath`, weil die
     /// `PBXFileSystemSynchronizedRootGroup` Ressourcen flach in den Resources-Wurzelordner
@@ -55,38 +60,74 @@ enum AnkerFont {
     static func bootstrap() -> Bool {
         guard !isRegistered else { return true }
 
+        // Hat `UIAppFonts` bzw. `ATSApplicationFontsPath` die Datei schon geladen, ist hier
+        // nichts mehr zu tun. Ohne diese Abkuerzung laeuft `CTFontManagerRegisterFontsForURL`
+        // trotzdem los und das System meldet „GSFont: file already registered" in die Konsole —
+        // harmlos, aber es sieht im Gerätelog nach einem Fehler aus.
+        if isRitualFamilyAvailable {
+            isRegistered = true
+            return true
+        }
+
         // Beide Orte probieren: die synchronisierte Gruppe legt Ressourcen flach ab, ein
         // Unterordner ist aber nicht ausgeschlossen.
         let candidates = ["Fonts", nil].compactMap { subdirectory in
-            Bundle.main.url(forResource: "Archivo", withExtension: "ttf", subdirectory: subdirectory)
+            Bundle.main.url(
+                forResource: "InstrumentSerif-Regular",
+                withExtension: "ttf",
+                subdirectory: subdirectory
+            )
         }
 
         for url in candidates {
             if CTFontManagerRegisterFontsForURL(url as CFURL, .process, nil) { break }
         }
 
-        isRegistered = isFamilyAvailable
+        isRegistered = isRitualFamilyAvailable
         if !isRegistered {
-            fontLog.error("Archivo konnte nicht registriert werden — die App laeuft mit der Systemschrift.")
+            fontLog.error("Instrument Serif konnte nicht registriert werden — der Ritual-Modus laeuft mit der System-Serif.")
         }
         return isRegistered
     }
 
-    /// Ist die Familie ansprechbar? Einmal geprueft, dann gemerkt.
-    static var isAvailable: Bool {
+    /// Ist die Serif ansprechbar? Einmal geprueft, dann gemerkt.
+    static var isRitualAvailable: Bool {
         if let cached = availabilityCache { return cached }
-        let available = isFamilyAvailable || bootstrap()
+        let available = isRitualFamilyAvailable || bootstrap()
         availabilityCache = available
         return available
     }
 
-    /// Archivo im gewuenschten Gewicht — oder die Systemschrift, wenn die Datei fehlt.
-    static func archivo(_ weight: AnkerFontWeight, size: CGFloat, tabular: Bool = false) -> Font {
-        guard isAvailable, let ctFont = makeFont(weight, size: size, tabular: tabular) else {
-            let system = Font.system(size: size, weight: weight.systemWeight)
-            return tabular ? system.monospacedDigit() : system
+    /// Die Schrift zu einer Rolle.
+    static func font(
+        _ family: AnkerFontFamily,
+        weight: AnkerFontWeight,
+        size: CGFloat,
+        tabular: Bool = false
+    ) -> Font {
+        switch family {
+        case .workface: workface(weight, size: size, tabular: tabular)
+        case .ritual: ritual(size: size)
         }
-        return Font(ctFont)
+    }
+
+    /// Arbeitsflaeche: die Systemschrift. `monospacedDigit()` ist genau fuer sie spezifiziert.
+    static func workface(_ weight: AnkerFontWeight, size: CGFloat, tabular: Bool = false) -> Font {
+        // design-guard: erlaubt — hier *entsteht* die Schrift des Systems.
+        let font = Font.system(size: size, weight: weight.systemWeight)
+        return tabular ? font.monospacedDigit() : font
+    }
+
+    /// Ritual: Instrument Serif — oder die System-Serif, wenn die Datei fehlt.
+    ///
+    /// Der Rueckfall ist bewusst `design: .serif` und nicht die Standardschrift: faellt die
+    /// Datei aus, soll der Modus trotzdem als Modus lesbar bleiben.
+    static func ritual(size: CGFloat) -> Font {
+        guard isRitualAvailable else {
+            // design-guard: erlaubt — Rueckfall der Ritual-Familie.
+            return Font.system(size: size, weight: .regular, design: .serif)
+        }
+        return Font.custom(ritualFamilyName, fixedSize: size)
     }
 
     // MARK: - Intern
@@ -94,32 +135,24 @@ enum AnkerFont {
     private nonisolated(unsafe) static var isRegistered = false
     private nonisolated(unsafe) static var availabilityCache: Bool?
 
-    private static var isFamilyAvailable: Bool {
+    /// Nicht `private`, damit `AnkerThemeTests` genau diesen Weg prueft und nicht einen
+    /// nachgebauten daneben.
+    static var isRitualFamilyAvailable: Bool {
 #if os(macOS)
-        NSFont(name: familyName, size: 12) != nil
+        NSFont(name: ritualFamilyName, size: 12) != nil
 #else
-        UIFont(name: familyName, size: 12) != nil
+        UIFont(name: ritualFamilyName, size: 12) != nil
 #endif
     }
 
-    /// Nicht `private`, damit `AnkerThemeTests` genau diesen Weg prueft und nicht einen
-    /// nachgebauten daneben.
-    static func makeFont(_ weight: AnkerFontWeight, size: CGFloat, tabular: Bool) -> CTFont? {
-        // Die Achsen im Attributwoerterbuch setzen, nicht nachtraeglich ueber
-        // `CTFontDescriptorCreateCopyWithVariation` — nur so nimmt der Deskriptor beide
-        // Werte verlaesslich an (nachtraeglich kopiert ging ab 600 verloren).
+    /// Der Weg, den `ritual(size:)` nimmt — als `CTFont`, damit ein Test die Familie und die
+    /// Ziffernbreite messen kann statt der Selbstauskunft zu glauben.
+    static func makeRitualFont(size: CGFloat, tabular: Bool) -> CTFont? {
         var descriptor = CTFontDescriptorCreateWithAttributes([
-            kCTFontFamilyNameAttribute: familyName,
-            kCTFontVariationAttribute: [
-                weightAxis as CFNumber: weight.rawValue,
-                widthAxis as CFNumber: 100,
-            ],
+            kCTFontFamilyNameAttribute: ritualFamilyName,
         ] as CFDictionary)
 
         if tabular {
-            // `Font.monospacedDigit()` ist fuer die Systemschrift spezifiziert und bleibt bei
-            // einer eigenen Schrift wirkungslos. Die Ziffernbreite kommt deshalb aus dem
-            // OpenType-Feature.
             descriptor = CTFontDescriptorCreateCopyWithFeature(
                 descriptor,
                 kNumberSpacingType as CFNumber,

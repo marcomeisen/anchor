@@ -578,6 +578,13 @@ private struct CloudSyncStatusDetail: View {
                 AnkerRule(color: AnkerColor.cardDivider, weight: .row)
                 diagnosticRow("Server", status.serverProbeSummary)
                 AnkerRule(color: AnkerColor.cardDivider, weight: .row)
+                // Die aussagekräftigste Zahl, wenn ein Gerät nichts vom anderen mitbekommt:
+                // wie oft dieses Gerät seit dem Start überhaupt eine Fremdänderung empfangen
+                // hat. Steht hier 0, während das andere Gerät exportiert, ist nicht der Export
+                // das Problem, sondern der **Import** auf diesem Gerät — das trennt die beiden
+                // Seiten, ohne dass jemand ein Gerätelog mitlesen muss.
+                diagnosticRow("Fremdänderungen", "\(status.remoteChangeCount) seit Start")
+                AnkerRule(color: AnkerColor.cardDivider, weight: .row)
                 diagnosticRow("Umgebung", CloudSyncDiagnostics.environmentName)
                 AnkerRule(color: AnkerColor.cardDivider, weight: .row)
                 diagnosticRow("Container", CloudSyncDiagnostics.containerIdentifier)
@@ -855,8 +862,23 @@ private struct CloudSyncEventUpdate: Sendable {
             let endDate = event.endDate ?? Date()
             phase = .synced
             detail = "Zuletzt \(AnkerDateFormat.clock(endDate))"
-            tooltip = "\(event.type.detailTitle) erfolgreich abgeschlossen um \(AnkerDateFormat.clock(endDate))."
-            cloudSyncLog.notice("\(event.type.detailTitle, privacy: .public) erfolgreich")
+
+            // **Erfolgreich heisst nicht: alles durch.** `succeeded` sagt nur, dass die
+            // Aktivitaet durchgelaufen ist — einzelne Records koennen dabei abgewiesen worden
+            // sein, und dann haengt ein Fehler am Ereignis. Genau diese Lage sah bisher wie ein
+            // sauberer Export aus: die Zeile „iCloud-Export erfolgreich" stand im Log, waehrend
+            // die Aenderung das andere Geraet nie erreichte. Der haeufigste Grund steht in
+            // `CloudSyncErrorFormatter.hint(for:)` — in Production ist das Schema
+            // schreibgeschuetzt, ein dort unbekanntes Feld laesst den Record auflaufen.
+            if let error = event.error {
+                let description = CloudSyncErrorFormatter.describe(error)
+                tooltip = "\(event.type.detailTitle) abgeschlossen um \(AnkerDateFormat.clock(endDate)), "
+                    + "aber nicht vollstaendig: \(description)"
+                cloudSyncLog.warning("\(event.type.detailTitle, privacy: .public) abgeschlossen, aber mit Fehler — \(description, privacy: .public)")
+            } else {
+                tooltip = "\(event.type.detailTitle) erfolgreich abgeschlossen um \(AnkerDateFormat.clock(endDate))."
+                cloudSyncLog.notice("\(event.type.detailTitle, privacy: .public) erfolgreich")
+            }
         } else {
             phase = .issue
             detail = event.type.issueTitle

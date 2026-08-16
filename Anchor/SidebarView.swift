@@ -140,16 +140,16 @@ struct SidebarView: View {
 
             HStack(spacing: 0) {
                 stepperButton("‹", help: "Vorherige Woche", action: onPreviousWeek)
-                AnkerRule(axis: .vertical, color: AnkerColor.ink, weight: .row)
+                AnkerRule(axis: .vertical, weight: .row)
                 stepperButton("Heute", help: "Zur laufenden Woche", isLabel: true, action: onCurrentWeek)
-                AnkerRule(axis: .vertical, color: AnkerColor.ink, weight: .row)
+                AnkerRule(axis: .vertical, weight: .row)
                 stepperButton("›", help: "Nächste Woche", action: onNextWeek)
             }
             .fixedSize()
             .clipShape(RoundedRectangle(cornerRadius: AnkerRadius.control, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: AnkerRadius.control, style: .continuous)
-                    .stroke(AnkerColor.ink, lineWidth: AnkerBorder.rule)
+                    .stroke(AnkerColor.divider, lineWidth: AnkerBorder.hairline)
             )
         }
         .padding(.horizontal, AnkerSpacing.s4)
@@ -252,7 +252,7 @@ struct SidebarView: View {
 
     private var footer: some View {
         VStack(spacing: 0) {
-            AnkerRule(color: AnkerColor.ink)
+            AnkerRule()
 
             reviewRow
             AnkerRule(weight: .row)
@@ -449,7 +449,7 @@ private struct SidebarWeekRow: View {
     }
 
     private var background: Color {
-        if isDropTarget { return AnkerColor.accent[200] }
+        if isDropTarget { return AnkerColor.accentTint }
         return isSelected ? AnkerColor.accentFill : .clear
     }
 }
@@ -521,7 +521,7 @@ private struct SidebarDayRow: View {
         .padding(.vertical, AnkerSpacing.s2)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
-            isDropTarget ? AnkerColor.accent[200] : (isSelected ? AnkerColor.surface : Color.clear),
+            isDropTarget ? AnkerColor.accentTint : (isSelected ? AnkerColor.surface : Color.clear),
             in: RoundedRectangle(cornerRadius: AnkerRadius.tile, style: .continuous)
         )
         .padding(.horizontal, AnkerSpacing.s1)

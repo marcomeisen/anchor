@@ -4,8 +4,12 @@ Multiplattform-SwiftUI-App (iPhone / iPad / Mac) für Wochenplanung: max. 4 Woch
 pro Woche, an die Aufgaben verankert werden. Persistenz über SwiftData mit CloudKit-Sync.
 
 Seit dem Neuentwurf *Modernist* (2026-08-04) ist **das Datenmodell die Oberfläche**: 4 Anker × 7 Tage
-als ein sichtbares Raster, nicht als Kalenderabbild. Visuell heißt das flach — Radius 0, keine
-Verläufe, keine Materialien, keine Schatten, 2px-Regeln, Archivo in schweren Schnitten.
+als ein sichtbares Raster, nicht als Kalenderabbild. Diese Struktur gilt unverändert.
+
+Das **Material** dagegen ist seit dem Reskin *Lot* (2026-08-16) ein anderes: warme Neutralen statt
+Blaugrau, Bernstein statt Rot, **Rost nur für Rückstand**, weiche Radien und Höhe statt 2px-Linien,
+Glas für Chrome, San Francisco statt Archivo. Der Rückblick wechselt in den **Ritual-Modus** —
+dunkel, Instrument Serif, kein Chrome. „Nähe entsteht durch Material und Höhe, nicht durch Rahmen."
 [Scripts/design-guard.swift](Scripts/design-guard.swift) hält diese Regeln als Schranke fest.
 
 Die zweite Entwurfsrunde (2026-08-04, *Mac Sidebar*, Variante **2a „Zeitschiene"**) hat die Rollen
@@ -44,11 +48,11 @@ Code-Identifier sind Englisch.
 | [Anchor/SidebarTimeline.swift](Anchor/SidebarTimeline.swift) | Zeitschiene: Wochenzeile mit sieben Tagesquadraten (`DayMark`) — „nichts geplant" ≠ „nichts geschafft" |
 | [Anchor/AnkerArchive.swift](Anchor/AnkerArchive.swift) | Archivierte Wochen: geschlossen **oder** vergangen, mit Kennzahlen pro Woche |
 | **Designtokens** (dürfen die Grundbausteine benutzen, alles andere nicht) | |
-| [Anchor/Theme.swift](Anchor/Theme.swift) | `AnkerColor` (Rampen, dreiteiliger Akzent, Karten), `AnkerSpacing`, `AnkerBorder`, `AnkerRadius` — **keine** Hex-Werte in Views |
-| [Anchor/ThemeType.swift](Anchor/ThemeType.swift) | `AnkerType` — 20 Typo-Tokens mit Größe, Gewicht, Laufweite, Großschreibung; `.ankerType(_:)` |
-| [Anchor/ThemeFont.swift](Anchor/ThemeFont.swift) | Archivo-Registrierung und Gewichtsachse; Ziffern mit gleicher Laufweite |
+| [Anchor/Theme.swift](Anchor/Theme.swift) | `AnkerColor` (15 Lot-Tokens, Bernstein, Rost, `Ritual`, Glas), `AnkerElevation`, `AnkerSpacing`, `AnkerBorder`, `AnkerRadius` — **keine** Hex-Werte in Views |
+| [Anchor/ThemeType.swift](Anchor/ThemeType.swift) | `AnkerType` — 22 Typo-Tokens mit Familie, Größe, Gewicht, Laufweite, Großschreibung; `.ankerType(_:)` |
+| [Anchor/ThemeFont.swift](Anchor/ThemeFont.swift) | Die zwei Familien: San Francisco für die Arbeitsfläche, Instrument Serif fürs Ritual |
 | [Anchor/ThemeIcon.swift](Anchor/ThemeIcon.swift) | `AnkerIcon` (Lucide), `AnkerIconSize`, `AnkerLabel` |
-| [Anchor/ThemeSurfaces.swift](Anchor/ThemeSurfaces.swift) | `AnkerRule` (`.section`/`.row`), die vier Flächen-Idiome `ankerCard()` / `ankerField()` / `ankerControl()` / `ankerPanel()`, `ankerEdge(_:)`, `AnkerProgressBar`, `AnkerButtonStyle`, `AnkerToggleStyle` |
+| [Anchor/ThemeSurfaces.swift](Anchor/ThemeSurfaces.swift) | `AnkerRule` (`.section`/`.row`), die sechs Flächen-Idiome `ankerCard()` / `ankerGlass()` / `ankerField()` / `ankerControl()` / `ankerPill()` / `ankerPanel()`, `ankerElevation(_:)`, `AnkerProgressBar`, `AnkerButtonStyle`, `AnkerToggleStyle` |
 | [Anchor/SampleData.swift](Anchor/SampleData.swift) | Beispieldaten, nur für Previews und Tests |
 | **Views** | |
 | [Anchor/AnkerRootView.swift](Anchor/AnkerRootView.swift) | Verteilt auf Onboarding, Split-Layout und iPhone-Layout; hält den Navigationszustand |
@@ -63,7 +67,7 @@ Code-Identifier sind Englisch.
 | [Anchor/DayDetailView.swift](Anchor/DayDetailView.swift) | Tagesdetailansicht: Kennzahlen, Tagesfokus, Ziele, Zeitplan, Aufgaben, Notizen |
 | [Anchor/GoalDetailView.swift](Anchor/GoalDetailView.swift) | Ankerdetail: Balken statt Ring, Kennzahlen, Tempo-Satz, Tagesverlauf |
 | [Anchor/OnboardingView.swift](Anchor/OnboardingView.swift) | Zwei Schritte: iCloud-Entscheidung, dann bis zu vier Anker setzen |
-| [Anchor/WeeklyReviewView.swift](Anchor/WeeklyReviewView.swift) | Wochenrückblick als rotes Plakat (die einzige Vollfläche im Akzent) plus Übertrag **pro Aufgabe** |
+| [Anchor/WeeklyReviewView.swift](Anchor/WeeklyReviewView.swift) | Wochenrückblick als **Ritual**: immer dunkel, Serif, Dichte 1,4 — plus Übertrag **pro Aufgabe** |
 | [Anchor/SettingsView.swift](Anchor/SettingsView.swift) | Einstellungen: Erscheinungsbild, iCloud-Sync, Zugang zu Daten und Datenschutz |
 | [Anchor/DataPrivacyView.swift](Anchor/DataPrivacyView.swift) | Bildschirm „Daten und Datenschutz": Bestand, Export, Löschung |
 | [Anchor/TaskCaptureSheets.swift](Anchor/TaskCaptureSheets.swift) | `NewTaskSheet`, `NewGoalSheet`, `QuickCapturePopover`, `CaptureChip` |
@@ -74,13 +78,13 @@ Code-Identifier sind Englisch.
 | **Ressourcen und Tests** | |
 | [Anchor/PrivacyInfo.xcprivacy](Anchor/PrivacyInfo.xcprivacy) | Privacy Manifest — Pflicht für die App-Store-Einreichung |
 | [Anchor/Localizable.xcstrings](Anchor/Localizable.xcstrings) | String Catalog, Quellsprache Deutsch |
-| [Anchor/Fonts/Archivo.ttf](Anchor/Fonts/Archivo.ttf) | Archivo als Variable Font (OFL-1.1); Gewichte über die `wght`-Achse |
-| `Anchor/Assets.xcassets/Icons/` | 43 Lucide-Icons als Vektor-Imagesets (ISC) |
+| [Anchor/Fonts/InstrumentSerif-Regular.ttf](Anchor/Fonts/InstrumentSerif-Regular.ttf) | Instrument Serif (OFL-1.1) — die **einzige** mitgelieferte Schrift, nur fürs Ritual |
+| `Anchor/Assets.xcassets/Icons/` | 41 Lucide-Icons als Vektor-Imagesets (ISC) plus `daivento-wochenpuls` — die eigene Marke, kein Lucide |
 | `Anchor/Assets.xcassets/AppIcon.appiconset/` | App-Icon: die 4×7-Matrix. `AppIcon-*` für iOS (randlos, ohne Alpha), `AppIconMac-*` für macOS (gerundet, mit Rand) |
-| [Scripts/make-app-icons.swift](Scripts/make-app-icons.swift) | Erzeugt den Iconsatz aus [assets/icon/](assets/icon/); `swift Scripts/make-app-icons.swift` |
+| [Scripts/make-app-icons.swift](Scripts/make-app-icons.swift) | **Zeichnet** den Iconsatz (Wochenpuls) für iOS, macOS und Menüleiste; `swift Scripts/make-app-icons.swift` |
 | `Anchor/Assets.xcassets/MenuBarTemplate.imageset/` | Glyph der macOS-Menüleiste, `template-rendering-intent` |
-| [assets/icon/](assets/icon/) | Iconquellen. Was hier liegt, ist die Vorlage — der Katalog hält Kopien |
-| [Scripts/design-guard.swift](Scripts/design-guard.swift) | 18 Grep-Schranken gegen Rückfall in die alte Sprache; `swift Scripts/design-guard.swift` |
+| ~~[assets/icon/](assets/icon/)~~ | **Überholt.** Die alten roten Vorlagen; seit Lot zeichnet das Skript die Icons selbst |
+| [Scripts/design-guard.swift](Scripts/design-guard.swift) | 26 Schranken des Lot-Systems; `swift Scripts/design-guard.swift` |
 | [AnchorTests/](AnchorTests/) | 128 Unit-Tests (SwiftData in-memory): Kern, Matrix, Kennzahlen, Tokens, Kontrast, Erfassungssyntax, Zeitschiene |
 | [AnchorUITests/AnchorUITests.swift](AnchorUITests/AnchorUITests.swift) | Verankerungs- und Erfassungsfluss; braucht das Startargument `-DaiventoUITest` |
 | [AnchorUITests/PhoneChromeTests.swift](AnchorUITests/PhoneChromeTests.swift) | Nur iOS: Detailansicht erreichbar **und verlassbar**, alle vier Tabs. Läuft gegen einen iOS-Simulator, nicht gegen `platform=macOS` |
@@ -98,17 +102,30 @@ muss dafür nicht angefasst werden.
 
 ## Referenzdokumente (Ground Truth für Design & Verhalten)
 
-- **Daivento Neu.dc.html** (Claude-Design-Projekt *New Daivento direction*,
-  `d96eecb8-cc9f-407d-aadd-80ad4697cf6a`) — **die** verbindliche visuelle Referenz seit 2026-08-04.
-  Nicht im Repo; die Umsetzung ist in [Scripts/design-guard.swift](Scripts/design-guard.swift) und
-  [AnchorTests/AnkerThemeTests.swift](AnchorTests/AnkerThemeTests.swift) festgehalten. Drei bewusste
-  Abweichungen sind dort begründet: der Akzent ist für Marke, Fläche und Schrift dreigeteilt (eine
-  Farbe erreicht nicht in allen drei Rollen 4,5:1), die Mikro-Beschriftung nutzt `inkSecond` statt
-  `#9b9797` (2,59:1 wäre unlesbar), und Archivo liegt als Variable Font statt in statischen Schnitten.
-- **Daivento Apple-getunt.dc.html** (dasselbe Projekt) — Runde 3, Variante **3b** ist umgesetzt
-  („Objekte werden rund. Struktur bleibt scharf."). 3a war der Stand davor, nur als Referenz.
+- **Lot Designsystem.dc.html** und **Daivento in Lot.dc.html** (Claude-Design-Projekt
+  *New Daivento direction*, `d96eecb8-cc9f-407d-aadd-80ad4697cf6a`) — **die** verbindliche visuelle
+  Referenz seit 2026-08-16. Das erste ist das System (Modi, Farbachsen, Material, Radius,
+  Signaturbausteine), das zweite die Anwendung auf die Screens samt Tokentabelle, Zuständen und
+  Bewegung. Nicht im Repo; die Umsetzung ist in
+  [Scripts/design-guard.swift](Scripts/design-guard.swift) und
+  [AnchorTests/AnkerThemeTests.swift](AnchorTests/AnkerThemeTests.swift) festgehalten. **Struktur,
+  Daten und Interaktion sind unverändert** — Lot wechselt das Material, nicht den Aufbau.
+  Vier bewusste Abweichungen sind dort begründet: die drei gemessenen Kontrastkorrekturen (siehe
+  Konventionen) und die Serif ohne tabellarische Ziffern, weil Instrument Serif keine `tnum`-Tabelle
+  mitbringt. Wo die beiden Dokumente sich widersprachen — Schrift der Arbeitsfläche —, gilt das
+  Systemblatt: **SF Pro in der App**, Instrument Sans nur als Web-Stellvertreter (Entscheidung des
+  Nutzers, 2026-08-16).
+- **Daivento AppIcon Lot.dc.html** (dasselbe Projekt) — der Iconsatz: vier Anker, sieben Tage,
+  Bernstein auf Papierweiß, drei Erscheinungsbilder für iOS, Big-Sur-Maske für macOS, ein
+  Template für die Menüleiste. Umgesetzt in
+  [Scripts/make-app-icons.swift](Scripts/make-app-icons.swift).
+- ~~**Daivento Neu.dc.html**~~ (dasselbe Projekt) — der Modernist-Neuentwurf vom 2026-08-04. Seine
+  **Struktur** gilt weiter, sein Material ist von Lot abgelöst. Nur noch als Historie lesen.
+- **Daivento Apple-getunt.dc.html** (dasselbe Projekt) — Runde 3 („Objekte werden rund. Struktur
+  bleibt scharf."). Von Lot überholt, das alles rundet außer Wochenpuls und Fortschrittsbalken.
   Offen aus der Spalte *Mehr als Radius*: SF Symbols statt Lucide (widerspricht der
-  Bündelungsentscheidung, siehe Konventionen), Dynamic Type, Federn und Haptik.
+  Bündelungsentscheidung, siehe Konventionen) und Dynamic Type in der Breite. Federn und Haptik
+  sind mit Lot spezifiziert (Abschnitt *Bewegung und Haptik* in `Daivento in Lot.dc.html`).
 - **Daivento Mac Sidebar.dc.html** (dasselbe Projekt) — Runde 2. Legte **zwei** unvereinbare
   Sidebars vor; gewählt ist **2a „Zeitschiene"** (Entscheidung des Nutzers, 2026-08-04). Die vier
   dort gemeinsam festgelegten Punkte gelten unabhängig davon: Rückblick scharf statt laut, Übertrag
@@ -141,13 +158,22 @@ Für die wiederkehrenden Themen liegen Skills unter [.claude/skills/](.claude/sk
   Datumsheader, Ergebnis statt Vorgehen).
 - **Kein Tracking, keine Analytics, keine Netzwerkaufrufe** außer CloudKit.
 - Gebündelt sind genau zwei fremde Ressourcen, beide als Datei im Repo und ohne Paketmanager:
-  **Archivo** (OFL-1.1) und **Lucide** (ISC). Der Neuentwurf verlangt sie; die frühere Regel
-  „keine Custom-Fonts, keine Drittanbieter-Dependencies" ist damit ausdrücklich aufgehoben
-  (Entscheidung des Nutzers, 2026-08-04). Weitere Abhängigkeiten bleiben ausgeschlossen.
+  **Instrument Serif** (OFL-1.1) und **Lucide** (ISC). Archivo ist mit dem Lot-Reskin entfallen —
+  die Arbeitsfläche spricht die Systemschrift, und damit kommen Dynamic Type, optische Größen und
+  die Sprachabdeckung ohne eigene Datei. Weitere Abhängigkeiten bleiben ausgeschlossen.
+- **Der Wochenpuls ist die Signaturfigur, nicht ein Icon unter vielen.** Dieselbe Zeichnung trägt
+  App-Icon, Menüleiste und die Rolle `AnkerIcon.goal`; Geometrie und Füllstände stehen in
+  [Scripts/make-app-icons.swift](Scripts/make-app-icons.swift) und im SVG daneben. Wer eines von
+  beiden ändert, ändert beide — sonst zeigen Icon und Glyphe verschiedene Wochen.
 - Abstände kommen aus `AnkerSpacing`, Schrift aus `AnkerType`, Icons aus `AnkerIcon`, Farben aus
   `AnkerColor`. Vor dem Abschluss einer Änderung `swift Scripts/design-guard.swift` laufen lassen.
 - **App-Icons nicht von Hand anfassen** — [Scripts/make-app-icons.swift](Scripts/make-app-icons.swift)
-  erzeugt sie aus [assets/icon/](assets/icon/). Die beiden Plattformen brauchen ausdrücklich
+  **zeichnet** sie (seit Lot aus einer Geometrievorschrift, nicht mehr aus Vorlagen in
+  `assets/icon/`). Der Grund für das Zeichnen: die kleinen Größen sind nicht dasselbe Bild in klein.
+  Ab 40 px fallen die Tagesfugen weg und aus 4×7 Feldern werden vier Balken mit denselben
+  Füllständen — das lässt sich nicht herunterrechnen. Für die Menüleiste zählt dabei die
+  **Punktgröße** (immer 18) und nicht die Pixelgröße der Datei, sonst trägt ausgerechnet die
+  @3x-Fassung sieben Fugen. Die beiden Plattformen brauchen ausdrücklich
   Verschiedenes: **macOS** maskiert nicht selbst, die Form muss mitgeliefert werden (Apples Raster:
   Körper 824/1024 zentriert, Eckenradius 185,4, transparenter Rand). **iOS** maskiert selbst mit
   demselben fortlaufend gerundeten Quadrat — dort muss das Bild randlos und **ohne** Alphakanal
@@ -157,37 +183,57 @@ Für die wiederkehrenden Themen liegen Skills unter [.claude/skills/](.claude/sk
   genullt und fällt nur an gleichen Prüfsummen auf) — reines CoreGraphics benutzen. Und die
   gerundete Ecke gehört über `RoundedRectangle(style: .continuous)` gezogen, nicht über
   `CGPath(roundedRect:)`: Apples Ecke ist eine fortlaufende Kurve, ein Kreisbogen ist sichtbar
-  kantiger.
-- **Objekte sind rund, Struktur bleibt scharf.** Runde 3 hat den Nullradius nicht aufgeweicht,
-  sondern zwei Mengen getrennt. Rund ist, was man **anfasst oder was schwebt**: Knöpfe und Felder
-  (`AnkerRadius.control`), Karten (`.card`), das Häkchen (`.check`), Auswahlkacheln (`.tile`) —
-  immer `style: .continuous`, **nie** `.circular`. Scharf bleibt die Struktur: das 4×7-Raster, die
-  Fortschrittsbalken, alle Sektionskanten und das Rückblick-Plakat. Daten und Flächen sind keine
-  Objekte. Radius nur über eine **Rolle**, nie als Zahl — eine Rolle sagt, *warum* etwas rund ist.
-- **Vier Flächen-Idiome, keine handgebauten fünften.** Jede Fläche in einer View kommt aus genau
-  einem davon, und die Wahl beantwortet die Frage „was ist das":
-  `.ankerCard()` trägt Inhalt und schwebt (Elevation, kein Rahmen) · `.ankerCard(fill:elevated: false)`
-  ist eine getönte Hinweisfläche — rund, aber ohne Gewicht · `.ankerField()` ist ein Eingabefeld
-  (rund, flach, Haarlinie) · `.ankerControl()` ist ein Knopf, eine Auswahlkachel oder eine
-  Schrittschalter-Anzeige (rund, 2px-Kante) · `.ankerPanel()` bleibt der **scharfen** Struktur
-  vorbehalten. Das alte Muster `background(surface)` + `Rectangle().stroke(divider, rule)` +
-  `clipShape(Rectangle())` ist damit ersetzt; `clipShape(Rectangle())` ist eine eigene Schranke,
-  weil es auf einer scharfen Fläche wirkungslos und auf einer runden falsch ist.
-- **2px trennt Bereiche, 1px trennt Zeilen.** `AnkerRule(weight: .section)` gegen
-  `.row`/`AnkerBorder.hairline`. Eine 2px-Kante an jeder Listenzeile liest sich wie ein
-  Tabellengitter. Listen sitzen in `.ankerCard()` — Elevation **statt** Rahmen; das ist die einzige
-  Stelle, an der „nichts schwebt" bewusst zurückgenommen ist, und `.shadow(` bleibt außerhalb der
-  Tokendateien verboten. Segmentleisten (Ankerstreifen, Ansichtswechsel, Behalten/Streichen) werden
-  als **ein** gerundetes Objekt geklippt, die Trenner darin bleiben 2px.
-- **Die Rampe ist keine Textfarbe.** Schrift und Icons kommen aus `ink` / `inkSecond` / `inkTertiary`
-  bzw. `accentInk` — nur die tragen einen zugesicherten Kontrast. Eine Rampenstufe direkt als
-  `foregroundStyle` ist geraten: `neutral[500]` (`#9B9797`) stand an sechs Stellen und lag bei
-  2,4:1. Ebenso trägt `accentMark` **keine** Schrift — das ist die 3:1-Markenfarbe für Linien und
-  Icons; eine Fläche mit Text darauf ist `accentFill` oder eine tiefere Rampenstufe.
-- **Der Akzent kippt im Dunkelmodus.** `accentFill` geht hoch (sonst säuft die Fläche auf dunklem
-  Grund ab), und `onAccent` kippt mit auf Tinte. Fest auf Weiss wäre 1,9:1. Dasselbe gilt für
-  `goalTint`: die angebotenen Zielfarben sind Rampenstufen und spiegeln mit — sonst ist ein dunkles
-  Ziel als Balken auf dunklem Grund unsichtbar.
+  kantiger. `Shape.path(in:)` liefert sie ohne Renderer — eine eigene Bezier-Näherung beult die
+  Kante aus, das war beim Lot-Iconsatz schon einmal sichtbar.
+- **Alles ist rund, außer zwei Dingen.** Lot hebt die Modernist-Mengentrennung auf: gerundet wird
+  auf 4pt-Basis über eine **Rolle** (`AnkerRadius.check`/`.control`/`.card`/`.group`/`.glass`),
+  immer `style: .continuous`, **nie** `.circular`. Ohne Radius bleiben genau zwei Dinge, beide mit
+  Begründung: der **Wochenpuls** (die sieben Felder müssen als Raster lesbar bleiben) und der
+  **Fortschrittsbalken** (ein rundes Ende lügt über den Wert). Beide zeichnen `Rectangle`.
+- **Sechs Flächen-Idiome, keine handgebauten siebten.** Jede Fläche kommt aus genau einem, und die
+  Wahl beantwortet „was ist das": `.ankerCard()` trägt Inhalt und steht auf Höhe 1 ·
+  `.ankerCard(elevated: false)` ist eine getönte Hinweisfläche · `.ankerGlass()` ist **Chrome über
+  Inhalt** · `.ankerField()` ist ein Eingabefeld · `.ankerControl()` ist ein Knopf oder eine
+  Auswahlkachel · `.ankerPill()` ist Filter, Zähler oder Marke · `.ankerPanel()` bleibt der
+  eingelassenen Leiste.
+- **Material und Höhe sind erlaubt — aber nur über ein Idiom.** Das ist die ausdrückliche Umkehr der
+  Modernist-Regel „nichts schwebt": „Nähe entsteht durch Material und Höhe, nicht durch Rahmen."
+  Roh an der Aufrufstelle bleiben beide verboten, denn genau dort entstünden Glas hinter Fließtext
+  und ein vierter Schatten ohne Bedeutung. `AnkerElevation` hat vier Stufen: `flat` (Listenzeile),
+  `card`, `lifted` (gezogene Karte, Popover), `sheet`.
+- **Glas nur für Chrome, Text nur auf deckendem Grund.** `.ankerGlass()` gehört auf Kopfzeile,
+  Erfassungsleiste, Tableiste und Sheets — nie auf Inhalt: „Text auf Glas ist auf Fotos und beim
+  Scrollen nicht verlässlich lesbar." `design-guard` prüft das über eine Dateiliste, nicht über ein
+  Zeilenmuster.
+- **Rost ist ausschließlich Rückstand.** `AnkerColor.rust`/`.rustInk` markieren Übertrag und
+  Liegengebliebenes, höchstens zweimal pro Bildschirm — **nie** eine Marke, nie den Zustand „aktiv",
+  nie einen Knopf. Bernstein ist „jetzt, aktiv, primär" und nie eine Warnung. Kein Grün, kein Gelb,
+  kein Blau: die vier Zustände unterscheiden sich über **Füllung**, nicht über Farbton, damit sie
+  ohne Legende und ohne Farbsehen lesbar bleiben.
+- **Zwei Modi, zwei Schriften.** Die Arbeitsfläche spricht San Francisco (Dynamic Type, optische
+  Größen, alle Sprachen — ohne Bündelung), das **Ritual** Instrument Serif. Der Serif ist Display:
+  nur im Wochenrückblick, nie unter 28 pt, nie für Fließtext. Gewichte nur 400/500/600 — die
+  Hierarchie tragen Grad, Farbe und Fläche, nicht das Gewicht. Der Ritual-Modus ist **immer dunkel**
+  und nimmt `AnkerColor.Ritual` statt der kippenden Tokens; Abstände dort × 1,4
+  (`AnkerSpacing.ritual(_:)`).
+- **Die Linie trennt über Farbe, nicht über Stärke.** Abschnittsgrenze und Zeilentrenner sind beide
+  eine Haarlinie; der Unterschied ist `AnkerColor.divider` gegen `.cardDivider`
+  (`AnkerRule(weight: .section)` gegen `.row`). Die 2px-Regel ist damit abgelöst — was einen Bereich
+  abgrenzt, tut das über Fläche und Höhe. Segmentleisten werden als **ein** gerundetes Objekt
+  geklippt, die Trenner darin bleiben Haarlinien.
+- **Nicht jedes Farbtoken ist eine Textfarbe.** Schrift kommt aus `ink` / `inkSecond` / `inkMuted` /
+  `inkTertiary` bzw. `accentInk` und `rustInk` — nur die tragen einen zugesicherten Kontrast.
+  `AnkerColor.faint` (der Entwurfswert `LotTextFaint`) ist **Fläche**: als Schrift sind es 2,10:1
+  auf dem Grund, dieselbe Falle wie `#9B9797` im Modernist-System. Ebenso trägt `accentMark` keine
+  Schrift — das ist die 3:1-Markenfarbe für Linien und Icons; eine Fläche mit Text darauf ist
+  `accentFill`.
+- **Drei Werte des Entwurfs sind gemessen korrigiert**, jeder mit seinem Messwert in
+  `AnkerThemeTests` festgehalten: `LotTextFaint` als Mikro-Beschriftung (2,10:1 → `inkTertiary`),
+  `LotAmber` als Marke (2,15:1 → `accentMark` = `LotAmberDeep`) und Papierweiß auf Bernstein für den
+  primären Knopf (2,89:1 → `onAccent` = Tinte). **`onAccent` ist deshalb als einziges Token
+  statisch**: Bernstein ist in beiden Modi hell, also bleibt die Schrift darauf in beiden Modi
+  Tinte. `goalTint` dagegen kippt weiter mit — sonst ist ein dunkles Ziel als Balken auf dunklem
+  Grund unsichtbar.
 - **Das Kästchen hakt ab, der Titel wird bearbeitet.** Diese Regel gilt auf jeder Fläche. Kein Klick
   auf eine Zeilenfläche darf einen Zustand ändern; Doppelklick auf den Titel öffnet ihn zum Tippen
   (`TaskTitleField`), das Blatt `TaskEditorSheet` bleibt für Woche, Tag und Anker.
@@ -197,6 +243,16 @@ Für die wiederkehrenden Themen liegen Skills unter [.claude/skills/](.claude/sk
   Beim Zusammenführen doppelter Wochen überlebt die **inhaltsreichere**, nicht die mit der
   kleineren UUID. Beides ist mit Tests in
   [AnchorTests/OnboardingSyncTests.swift](AnchorTests/OnboardingSyncTests.swift) festgehalten.
+- **Nie zusammenführen, solange der Import läuft.** Die Inhaltsgewichtung allein genügt nicht —
+  sie unterstellt, dass beide Wochen zum Vergleichszeitpunkt vollständig vorliegen. CloudKit
+  liefert `Week`, `Day`, `Goal` und `AnkerTask` aber als getrennte Records in getrennten Batches:
+  trifft die Woche vor ihren Kindern ein, wiegt sie 0 und verliert gegen eine frisch angelegte
+  Onboarding-Woche. Sie zu löschen heißt, einen **synchronisierten** Record zu löschen — und das
+  wandert als Löschung in die Cloud und auf alle anderen Geräte. Deshalb zwei Schranken:
+  `StoreMaintenance` schiebt eine Gruppe auf, in der eine Woche leer und eine andere gefüllt ist,
+  und der Aufruf in `AnkerRootView` wartet drei ruhige Sekunden ab, bevor er wiegt. Der Preis ist
+  eine dauerhaft leere Dublette, die liegen bleibt — sie trägt keine Information, und die
+  Oberfläche zeigt ohnehin die inhaltsreichere Woche.
 - **Auf dem iPhone gibt es keine Systemleiste.** Seit iOS 26 zeichnet sie ihre Elemente in
   schwebende Glaskapseln — die Sprache, die der Neuentwurf ersetzt hat. Gemessen und verworfen:
   `toolbarBackground`, `UINavigationBarAppearance` und `UIBarButtonItemAppearance` greifen nicht

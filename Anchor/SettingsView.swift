@@ -174,7 +174,7 @@ struct SettingsView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(AnkerSpacing.s3)
-        .ankerCard(fill: AnkerColor.neutral[500].opacity(0.12), elevated: false)
+        .ankerCard(fill: AnkerColor.accentTint, elevated: false)
     }
 
     // MARK: - Daten

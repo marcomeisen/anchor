@@ -39,7 +39,7 @@ struct CaptureBar: View {
         VStack(alignment: .leading, spacing: 0) {
             // Der Kopf des Fussblocks: 2px in **Tinte**, nicht in der Trennlinienfarbe. Die
             // Vorlage setzt hier dieselbe Kante wie unter der Datumszeile oben.
-            AnkerRule(color: AnkerColor.ink)
+            AnkerRule()
 
             HStack(spacing: AnkerSpacing.s3) {
                 // Feld und Knopf sind Objekte: gerundet. Die 2px-Kante der Leiste darueber ist
@@ -82,9 +82,9 @@ struct CaptureBar: View {
                 .accessibilityIdentifier("captureBar.hint")
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        // Die Vorlage setzt den ganzen Fussblock auf den Grund und trennt ihn allein mit der
-        // 2px-Kante daruber — nicht zusaetzlich mit einer eigenen Flaeche.
-        .background(AnkerColor.ground)
+        // Die Erfassungszeile schwebt ueber der Liste und ist immer da — in Lot also Glas.
+        // Die Lichtkante sitzt oben, an der Kante zum Inhalt.
+        .ankerGlass(.top)
 #if os(macOS)
         // Auf dem Mac ist die Zeile der Fuss der Matrix und per Tastatur erreichbar.
         .onExitCommand { raw = ""; isFocused = false }

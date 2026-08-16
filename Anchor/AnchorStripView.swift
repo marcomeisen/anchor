@@ -43,15 +43,17 @@ struct AnchorStripView: View {
                     }
                 }
                 .clipShape(RoundedRectangle(cornerRadius: AnkerRadius.control, style: .continuous))
-                .overlay(RoundedRectangle(cornerRadius: AnkerRadius.control, style: .continuous).stroke(AnkerColor.ink, lineWidth: AnkerBorder.rule))
+                .overlay(RoundedRectangle(cornerRadius: AnkerRadius.control, style: .continuous).stroke(AnkerColor.divider, lineWidth: AnkerBorder.hairline))
                 .padding(.bottom, AnkerSpacing.s3)
             }
         }
         .padding(.horizontal, AnkerSpacing.s5)
         .padding(.top, AnkerSpacing.s3)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(AnkerColor.ground)
-        .ankerEdge(.bottom, color: AnkerColor.ink)
+        // Der Streifen ist Inhalt und steht auf derselben Fensterflaeche wie die Matrix
+        // darunter — sonst laeuft eine Farbnaht quer durch das Fenster.
+        .background(AnkerColor.card)
+        .ankerEdge(.bottom)
     }
 
     private func header(_ reports: [AnkerStatistics.AnchorReport]) -> some View {
@@ -98,7 +100,7 @@ private struct AnchorChip: View {
                 AnkerProgressBar(
                     progress: report.progress,
                     tint: report.isStalled ? AnkerColor.accentMark : AnkerColor.ink,
-                    thickness: AnkerBorder.rule * 2
+                    thickness: 4
                 )
                 .padding(.top, AnkerSpacing.s2)
 
@@ -204,7 +206,7 @@ struct AnkerViewSwitcher: View {
         }
         .fixedSize()
         .clipShape(RoundedRectangle(cornerRadius: AnkerRadius.control, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: AnkerRadius.control, style: .continuous).stroke(AnkerColor.ink, lineWidth: AnkerBorder.rule))
+        .overlay(RoundedRectangle(cornerRadius: AnkerRadius.control, style: .continuous).stroke(AnkerColor.divider, lineWidth: AnkerBorder.hairline))
     }
 }
 
@@ -239,7 +241,11 @@ struct AnkerContentHeader: View {
         .padding(.horizontal, AnkerSpacing.s5)
         .padding(.vertical, AnkerSpacing.s3)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(AnkerColor.ground)
-        .ankerEdge(.bottom, color: AnkerColor.ink)
+        // `LotSurfaceSunken` ist im Entwurf woertlich der **Fensterkopf**. Bewusst deckend und
+        // nicht `ankerGlass()`: die Kopfzeile ist gestapelt, nicht ueberlagernd — unter ihr
+        // scrollt nichts durch. Ein Material haette hier nichts zu durchscheinen als den
+        // Schreibtisch hinter dem Fenster.
+        .background(AnkerColor.surface)
+        .ankerEdge(.bottom)
     }
 }

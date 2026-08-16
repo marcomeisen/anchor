@@ -123,7 +123,7 @@ struct DayDetailView: View {
                     .accessibilityLabel("\(Int(progress * 100)) Prozent des Tages erledigt")
             }
 
-            AnkerProgressBar(progress: progress, thickness: AnkerBorder.rule * 3)
+            AnkerProgressBar(progress: progress, thickness: 6)
                 .padding(.top, AnkerSpacing.s2)
 
             if let onClose {

@@ -1,11 +1,16 @@
 import SwiftData
 import SwiftUI
 
-/// Der Wochenrückblick als Plakat.
+/// Der Wochenrückblick als **Ritual**.
 ///
-/// Der Entwurf begründet das so: statt einer Liste mit Häkchen eine Zahl, eine Serie, das eine
-/// nicht gehaltene Ziel mit seinem Übertrag, eine Frage. **Rot als Fläche — die einzige Stelle
-/// in der App, die so laut ist.**
+/// Lot löst das rote Plakat ab, ohne die Hierarchie anzufassen: eine Zahl, das nicht Gehaltene,
+/// eine Frage. Was wechselt, ist die Lautstärke — sie kommt jetzt aus Fläche und Schriftwechsel
+/// statt aus Signalfarbe. „Dunkel, Serif, kein Chrome. Der Übertrag wird hier entschieden — pro
+/// Aufgabe, nicht stillschweigend."
+///
+/// Der Bildschirm ist der zweite Modus des Systems und deshalb **immer dunkel**, auch wenn die
+/// App hell läuft: er nimmt `AnkerColor.Ritual` statt der kippenden Tokens. Abstände laufen über
+/// `AnkerSpacing.ritual(_:)` — Dichte 1,4.
 ///
 /// Die Antwort landet in `Week.reflection` und überlebt damit den Bildschirmwechsel; vorher war
 /// sie `@State` und beim Verlassen weg.
@@ -69,7 +74,10 @@ struct WeeklyReviewView: View {
                 appSection
             }
         }
-        .background(AnkerColor.ground)
+        .background(AnkerColor.Ritual.surface)
+        // Das Ritual bringt seine eigene Helligkeit mit. Ohne das zeichnet das System
+        // Auswahlfarben, Menüs und den Textcursor für den hellen Modus in eine dunkle Fläche.
+        .environment(\.colorScheme, .dark)
         .navigationTitle("Wochenrückblick")
         .task(id: week.id) {
             draft = week.reflection ?? ""
@@ -98,40 +106,55 @@ struct WeeklyReviewView: View {
         }
     }
 
-    // MARK: - Plakat
+    // MARK: - Die Zahl
 
+    /// „Im Rückblick wird die Woche zu einer Zahl im Serif. Der einzige Ort, an dem eine
+    /// Kennzahl groß sein darf."
     private func poster(_ report: AnkerStatistics.WeekReport) -> some View {
         VStack(alignment: .leading, spacing: 0) {
             Text(verbatim: "Rückblick · \(AnkerDateFormat.calendarWeek(week.isoWeek))")
                 .ankerType(AnkerType.eyebrow)
-                .foregroundStyle(AnkerColor.accent[300])
-                .padding(.bottom, AnkerSpacing.s3)
+                .foregroundStyle(AnkerColor.Ritual.amber)
 
-            AnkerRule(color: AnkerColor.onAccent)
-
-            HStack(alignment: .firstTextBaseline, spacing: 0) {
-                Text(verbatim: "\(report.inMotionCount)")
-                    .ankerType(AnkerType.poster)
-                    .foregroundStyle(AnkerColor.onAccent)
-                Text(verbatim: "/\(report.anchorCount)")
-                    .ankerType(AnkerType.poster)
-                    .foregroundStyle(AnkerColor.accent[300])
-            }
-            .padding(.top, AnkerSpacing.s5)
+            ritualCount(report)
+                .padding(.top, AnkerSpacing.ritual(AnkerSpacing.s5))
 
             Text(verbatim: posterHeadline(report))
-                .ankerType(AnkerType.title2)
-                .foregroundStyle(AnkerColor.onAccent)
+                .ankerType(AnkerType.ritualTitle)
+                .foregroundStyle(AnkerColor.Ritual.ink)
                 .fixedSize(horizontal: false, vertical: true)
-                .padding(.top, AnkerSpacing.s3)
-                .padding(.bottom, AnkerSpacing.s5)
+                .padding(.top, AnkerSpacing.s4)
 
             missedSection(report)
         }
-        .padding(AnkerSpacing.s5)
+        .padding(.horizontal, AnkerSpacing.ritual(AnkerSpacing.s5))
+        .padding(.top, AnkerSpacing.ritual(AnkerSpacing.s6))
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(AnkerColor.accentMark)
         .accessibilityIdentifier("reviewPoster")
+    }
+
+    /// Der Bruch „3/4" im Serif.
+    ///
+    /// Instrument Serif hat keine tabellarischen Ziffern (siehe `AnkerType.poster`), und beim
+    /// Schliessen der Woche zaehlt der Zaehler hoch. Ohne festen Kasten schoebe „/4" dabei
+    /// sichtbar hin und her — „1" ist in dieser Schrift knapp halb so breit wie „0". Der Kasten
+    /// ist deshalb auf die **breiteste** Ziffer bemessen: gemessen 0,46 em, aufgerundet auf
+    /// 0,5 em. `AnkerThemeTests` prueft die Messung, damit sie bei einem Schriftwechsel auffaellt.
+    private static let widestDigitEm: CGFloat = 0.5
+
+    private func ritualCount(_ report: AnkerStatistics.WeekReport) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 0) {
+            Text(verbatim: "\(report.inMotionCount)")
+                .ankerType(AnkerType.poster)
+                .foregroundStyle(AnkerColor.Ritual.ink)
+                .frame(width: AnkerType.poster.size * Self.widestDigitEm, alignment: .trailing)
+                .contentTransition(.numericText())
+            Text(verbatim: "/\(report.anchorCount)")
+                .ankerType(AnkerType.poster)
+                .foregroundStyle(AnkerColor.Ritual.faint)
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(report.inMotionCount) von \(report.anchorCount) Ankern")
     }
 
     private func posterHeadline(_ report: AnkerStatistics.WeekReport) -> String {
@@ -147,31 +170,34 @@ struct WeeklyReviewView: View {
     }
 
     /// Der nicht gehaltene Anker mit seinem Übertrag — benannt, nicht stillschweigend verschoben.
+    ///
+    /// Die einzige Stelle des Bildschirms in Rost: „Rost markiert nur den Rückstand."
     @ViewBuilder
     private func missedSection(_ report: AnkerStatistics.WeekReport) -> some View {
         if let missed = report.firstMissedAnchor {
-            AnkerRule(color: AnkerColor.onAccent)
+            AnkerRule(color: AnkerColor.Ritual.hairline)
+                .padding(.top, AnkerSpacing.ritual(AnkerSpacing.s5))
 
             Text(verbatim: "Nicht gehalten")
                 .ankerType(AnkerType.eyebrow)
-                .foregroundStyle(AnkerColor.accent[300])
+                .foregroundStyle(AnkerColor.Ritual.rust)
                 .padding(.top, AnkerSpacing.s4)
                 .padding(.bottom, AnkerSpacing.s3)
 
             HStack(alignment: .top, spacing: AnkerSpacing.s3) {
                 Text(verbatim: "\(missed.number)")
-                    .ankerType(AnkerType.subheadline)
-                    .foregroundStyle(AnkerColor.onAccent)
+                    .ankerType(AnkerType.ritualQuestion)
+                    .foregroundStyle(AnkerColor.Ritual.faint)
 
                 VStack(alignment: .leading, spacing: AnkerSpacing.s1) {
                     Text(verbatim: missed.title)
-                        .ankerType(AnkerType.bodyStrong)
-                        .foregroundStyle(AnkerColor.onAccent)
+                        .ankerType(AnkerType.subheadline)
+                        .foregroundStyle(AnkerColor.Ritual.ink)
                         .fixedSize(horizontal: false, vertical: true)
 
                     Text(verbatim: carryText(for: missed))
-                        .ankerType(AnkerType.overline)
-                        .foregroundStyle(AnkerColor.accent[300])
+                        .ankerType(AnkerType.meta)
+                        .foregroundStyle(AnkerColor.Ritual.inkMuted)
                 }
             }
             .accessibilityElement(children: .combine)
@@ -197,28 +223,31 @@ struct WeeklyReviewView: View {
         VStack(alignment: .leading, spacing: 0) {
             Text(verbatim: "Eine Frage")
                 .ankerType(AnkerType.eyebrow)
-                .foregroundStyle(AnkerColor.inkSecond)
-                .padding(.top, AnkerSpacing.s5)
-                .padding(.bottom, AnkerSpacing.s2)
-
-            Text(verbatim: "Was hat dich diese Woche wirklich aufgehalten?")
-                .ankerType(AnkerType.headline)
-                .foregroundStyle(AnkerColor.ink)
-                .fixedSize(horizontal: false, vertical: true)
+                .foregroundStyle(AnkerColor.Ritual.inkMuted)
+                .padding(.top, AnkerSpacing.ritual(AnkerSpacing.s6))
                 .padding(.bottom, AnkerSpacing.s3)
 
+            Text(verbatim: "Was hat dich diese Woche wirklich aufgehalten?")
+                .ankerType(AnkerType.ritualQuestion)
+                .foregroundStyle(AnkerColor.Ritual.ink)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.bottom, AnkerSpacing.s4)
+
             TextEditor(text: $draft)
-                .ankerType(AnkerType.body)
-                .foregroundStyle(AnkerColor.ink)
+                .ankerType(AnkerType.taskTitle)
+                .foregroundStyle(AnkerColor.Ritual.ink)
                 .scrollContentBackground(.hidden)
                 .frame(minHeight: 88)
                 .padding(AnkerSpacing.s3)
-                .ankerField()
+                .background(
+                    AnkerColor.Ritual.field,
+                    in: RoundedRectangle(cornerRadius: AnkerRadius.card, style: .continuous)
+                )
                 .focused($isEditing)
                 .accessibilityLabel("Antwort auf die Wochenfrage")
                 .accessibilityIdentifier("reviewAnswer")
         }
-        .padding(.horizontal, AnkerSpacing.screenPadding)
+        .padding(.horizontal, AnkerSpacing.ritual(AnkerSpacing.s5))
     }
 
     // MARK: - Übertrag pro Aufgabe
@@ -237,18 +266,18 @@ struct WeeklyReviewView: View {
                 HStack(alignment: .firstTextBaseline, spacing: AnkerSpacing.s3) {
                     Text(verbatim: "Übertrag")
                         .ankerType(AnkerType.eyebrow)
-                        .foregroundStyle(AnkerColor.inkSecond)
+                        .foregroundStyle(AnkerColor.Ritual.inkMuted)
 
                     Spacer(minLength: AnkerSpacing.s2)
 
                     Text(verbatim: "\(open.count) offen · Ziel \(nextWeekLabel)")
-                        .ankerType(AnkerType.microLabel)
-                        .foregroundStyle(AnkerColor.inkTertiary)
+                        .ankerType(AnkerType.meta)
+                        .foregroundStyle(AnkerColor.Ritual.faint)
                 }
-                .padding(.top, AnkerSpacing.s5)
-                .padding(.bottom, AnkerSpacing.s2)
+                .padding(.top, AnkerSpacing.ritual(AnkerSpacing.s6))
+                .padding(.bottom, AnkerSpacing.s3)
 
-                AnkerRule(color: AnkerColor.ink)
+                AnkerRule(color: AnkerColor.Ritual.hairline)
 
                 ForEach(open, id: \.id) { task in
                     CarryRow(
@@ -259,10 +288,10 @@ struct WeeklyReviewView: View {
                     ) { decision in
                         decisions[task.id] = decision
                     }
-                    AnkerRule(weight: .row)
+                    AnkerRule(color: AnkerColor.Ritual.hairline, weight: .row)
                 }
             }
-            .padding(.horizontal, AnkerSpacing.screenPadding)
+            .padding(.horizontal, AnkerSpacing.ritual(AnkerSpacing.s5))
         }
     }
 
@@ -270,36 +299,34 @@ struct WeeklyReviewView: View {
 
     @ViewBuilder
     private func actions(_ report: AnkerStatistics.WeekReport) -> some View {
-        VStack(alignment: .leading, spacing: AnkerSpacing.s3) {
+        VStack(alignment: .leading, spacing: AnkerSpacing.s4) {
             if report.isClosed {
                 Text(verbatim: closedLabel)
-                    .ankerType(AnkerType.overline)
-                    .foregroundStyle(AnkerColor.inkSecond)
+                    .ankerType(AnkerType.eyebrow)
+                    .foregroundStyle(AnkerColor.Ritual.inkMuted)
 
-                Button("Wieder öffnen") {
+                RitualButton("Wieder öffnen", kind: .quiet) {
                     WeekActions.reopen(week, modelContext: modelContext)
                 }
-                .buttonStyle(AnkerButtonStyle.secondary)
             } else {
-                Button(closeLabel) {
+                RitualButton(closeLabel, kind: .primary) {
                     if tally.dropped > 0 {
                         confirmingDrop = true
                     } else {
                         close()
                     }
                 }
-                .buttonStyle(AnkerButtonStyle.primaryBlock)
                 .accessibilityIdentifier("closeWeek")
             }
 
             if report.carriedInTaskCount > 0 {
                 Text(verbatim: "\(report.carriedInTaskCount) Aufgaben kamen aus einer früheren Woche.")
                     .ankerType(AnkerType.caption)
-                    .foregroundStyle(AnkerColor.inkSecond)
+                    .foregroundStyle(AnkerColor.Ritual.inkMuted)
             }
         }
-        .padding(.horizontal, AnkerSpacing.screenPadding)
-        .padding(.top, AnkerSpacing.s5)
+        .padding(.horizontal, AnkerSpacing.ritual(AnkerSpacing.s5))
+        .padding(.top, AnkerSpacing.ritual(AnkerSpacing.s6))
     }
 
     private var closedLabel: String {
@@ -343,37 +370,78 @@ struct WeeklyReviewView: View {
 
     // MARK: - App
 
+    /// Der eine Werkzeugzugang, den das Ritual tragen muss.
+    ///
+    /// „Kein Chrome, keine Werkzeuge" gilt der Rahmung — Leisten, Tabs, Glas. Diese Zeile bleibt
+    /// trotzdem, weil sie auf dem iPhone der **einzige** Weg in die Einstellungen ist (siehe
+    /// `AnkerTabBar`). Sie steht deshalb ganz unten, hinter der Entscheidung, und so leise wie
+    /// eine Zeile sein kann.
     private var appSection: some View {
         VStack(alignment: .leading, spacing: 0) {
-            AnkerRule(color: AnkerColor.ink)
-                .padding(.top, AnkerSpacing.s5)
+            AnkerRule(color: AnkerColor.Ritual.hairline)
+                .padding(.top, AnkerSpacing.ritual(AnkerSpacing.s6))
 
             Button {
                 showingSettings = true
             } label: {
                 HStack(spacing: AnkerSpacing.s3) {
                     Image(.settings).ankerIcon(AnkerIconSize.s)
-                        .foregroundStyle(AnkerColor.accentInk)
+                        .foregroundStyle(AnkerColor.Ritual.inkMuted)
                     VStack(alignment: .leading, spacing: AnkerSpacing.s1) {
                         Text(verbatim: "Einstellungen")
-                            .ankerType(AnkerType.bodyStrong)
-                            .foregroundStyle(AnkerColor.ink)
+                            .ankerType(AnkerType.body)
+                            .foregroundStyle(AnkerColor.Ritual.inkSecond)
                         Text(verbatim: "Erscheinungsbild, iCloud-Sync, Daten")
                             .ankerType(AnkerType.caption)
-                            .foregroundStyle(AnkerColor.inkSecond)
+                            .foregroundStyle(AnkerColor.Ritual.inkMuted)
                     }
                     Spacer(minLength: 0)
                     Image(.chevronRight).ankerIcon(AnkerIconSize.xs)
-                        .foregroundStyle(AnkerColor.inkSecond)
+                        .foregroundStyle(AnkerColor.Ritual.faint)
                 }
                 .padding(.vertical, AnkerSpacing.s4)
+                .frame(minHeight: AnkerSpacing.touchTarget)
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
             .accessibilityLabel("Einstellungen öffnen")
         }
-        .padding(.horizontal, AnkerSpacing.screenPadding)
-        .padding(.bottom, AnkerSpacing.s6)
+        .padding(.horizontal, AnkerSpacing.ritual(AnkerSpacing.s5))
+        .padding(.bottom, AnkerSpacing.section)
+    }
+}
+
+/// Ein Knopf im Ritual: eine **Pille**, feste Farben, mittige Beschriftung.
+///
+/// Nicht `AnkerButtonStyle`: der zieht seine Farben aus den kippenden Tokens, und das Ritual ist
+/// immer dunkel. Die Form folgt dem Entwurf — im Ritual ist ein Knopf das einzige Objekt auf der
+/// Seite, und eine Pille sagt das deutlicher als ein 12pt-Radius.
+private struct RitualButton: View {
+    enum Kind { case primary, quiet }
+
+    let title: String
+    let kind: Kind
+    let action: () -> Void
+
+    init(_ title: String, kind: Kind, action: @escaping () -> Void) {
+        self.title = title
+        self.kind = kind
+        self.action = action
+    }
+
+    var body: some View {
+        Button(action: action) {
+            Text(verbatim: title)
+                .ankerType(AnkerType.label)
+                .foregroundStyle(kind == .primary ? AnkerColor.Ritual.surface : AnkerColor.Ritual.inkSecond)
+                .frame(maxWidth: .infinity, minHeight: AnkerSpacing.touchTarget)
+                .padding(.horizontal, AnkerSpacing.s4)
+                .ankerPill(
+                    fill: kind == .primary ? AnkerColor.Ritual.amber : .clear,
+                    stroke: kind == .primary ? nil : AnkerColor.Ritual.hairline
+                )
+        }
+        .buttonStyle(.plain)
     }
 }
 
@@ -405,28 +473,30 @@ private struct CarryRow: View {
             VStack(alignment: .leading, spacing: AnkerSpacing.s1) {
                 Text(verbatim: task.title)
                     .ankerType(AnkerType.taskTitle)
-                    .foregroundStyle(isDropped ? AnkerColor.inkTertiary : AnkerColor.ink)
-                    .strikethrough(isDropped, color: AnkerColor.inkTertiary)
+                    .foregroundStyle(isDropped ? AnkerColor.Ritual.faint : AnkerColor.Ritual.ink)
+                    .strikethrough(isDropped, color: AnkerColor.Ritual.faint)
                     .lineLimit(2)
                     .fixedSize(horizontal: false, vertical: true)
 
                 Text(verbatim: metaLine)
-                    .ankerType(AnkerType.overline)
-                    .foregroundStyle(isReanchored ? AnkerColor.accentInk : AnkerColor.inkSecond)
+                    .ankerType(AnkerType.meta)
+                    .foregroundStyle(isReanchored ? AnkerColor.Ritual.amber : AnkerColor.Ritual.inkMuted)
             }
 
             Spacer(minLength: AnkerSpacing.s2)
 
+            // Eine Segmentleiste wird als **ein** gerundetes Objekt geklippt; die Trenner darin
+            // bleiben Haarlinien.
             HStack(spacing: 0) {
                 choiceButton("Behalten", isActive: decision == .keep) { onChange(.keep) }
-                AnkerRule(axis: .vertical)
+                AnkerRule(axis: .vertical, color: AnkerColor.Ritual.hairline)
                 choiceButton("Streichen", isActive: isDropped) { onChange(.drop) }
-                AnkerRule(axis: .vertical)
+                AnkerRule(axis: .vertical, color: AnkerColor.Ritual.hairline)
                 reanchorMenu
             }
             .fixedSize()
+            .background(AnkerColor.Ritual.field)
             .clipShape(RoundedRectangle(cornerRadius: AnkerRadius.control, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: AnkerRadius.control, style: .continuous).stroke(AnkerColor.ink, lineWidth: AnkerBorder.rule))
         }
         .padding(.vertical, AnkerSpacing.s3)
         .accessibilityElement(children: .contain)
@@ -450,10 +520,10 @@ private struct CarryRow: View {
         Button(action: action) {
             Text(verbatim: title)
                 .ankerType(AnkerType.microLabel)
-                .foregroundStyle(isActive ? AnkerColor.onAccent : AnkerColor.ink)
-                .padding(.horizontal, AnkerSpacing.s2)
-                .padding(.vertical, AnkerSpacing.s2)
-                .background(isActive ? AnkerColor.accentFill : Color.clear, in: Rectangle())
+                .foregroundStyle(isActive ? AnkerColor.Ritual.surface : AnkerColor.Ritual.inkSecond)
+                .padding(.horizontal, AnkerSpacing.s3)
+                .padding(.vertical, AnkerSpacing.s3)
+                .background(isActive ? AnkerColor.Ritual.amber : Color.clear, in: Rectangle())
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -476,10 +546,10 @@ private struct CarryRow: View {
         } label: {
             Text(verbatim: reanchorTarget == nil ? "Verankern" : "Anker ✓")
                 .ankerType(AnkerType.microLabel)
-                .foregroundStyle(isReanchored ? AnkerColor.onAccent : AnkerColor.ink)
-                .padding(.horizontal, AnkerSpacing.s2)
-                .padding(.vertical, AnkerSpacing.s2)
-                .background(isReanchored ? AnkerColor.accentFill : Color.clear, in: Rectangle())
+                .foregroundStyle(isReanchored ? AnkerColor.Ritual.surface : AnkerColor.Ritual.inkSecond)
+                .padding(.horizontal, AnkerSpacing.s3)
+                .padding(.vertical, AnkerSpacing.s3)
+                .background(isReanchored ? AnkerColor.Ritual.amber : Color.clear, in: Rectangle())
                 .contentShape(Rectangle())
         }
         .menuStyle(.borderlessButton)

@@ -167,6 +167,16 @@
         }
       }
     },
+    "%lld von %lld Ankern" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld von %2$lld Ankern"
+          }
+        }
+      }
+    },
     "%lld/4 Wochenziele" : {
 
     },

@@ -50,7 +50,7 @@ struct YearOverviewView: View {
                 .fixedSize(horizontal: false, vertical: true)
                 .padding(.bottom, AnkerSpacing.s4)
 
-            AnkerRule(color: AnkerColor.ink)
+            AnkerRule()
         }
     }
 
@@ -82,7 +82,7 @@ struct YearOverviewView: View {
             }
             .frame(height: 110)
 
-            AnkerRule(color: AnkerColor.ink)
+            AnkerRule()
 
             HStack {
                 Text(verbatim: AnkerDateFormat.calendarWeek(1))
@@ -108,7 +108,7 @@ struct YearOverviewView: View {
 
     private func stats(_ report: AnkerStatistics.YearReport) -> some View {
         VStack(spacing: 0) {
-            AnkerRule(color: AnkerColor.ink)
+            AnkerRule()
                 .padding(.top, AnkerSpacing.s5)
 
             HStack(spacing: 0) {
@@ -131,7 +131,7 @@ struct YearOverviewView: View {
                 YearStat(
                     value: "\(report.carriedInTaskCount)",
                     label: "Übertragungen",
-                    isEmphasized: report.carriedInTaskCount > 0
+                    isBacklog: report.carriedInTaskCount > 0
                 )
             }
         }
@@ -180,10 +180,10 @@ private struct YearBandBar: View {
     private var fill: Color {
         switch bar.standing {
         case .held: AnkerColor.ink
-        case .missed: AnkerColor.neutral[600]
+        case .missed: AnkerColor.rust
         case .running: AnkerColor.accentMark
-        case .unplanned: AnkerColor.neutral[300]
-        case .upcoming: AnkerColor.neutral[200]
+        case .unplanned: AnkerColor.faint
+        case .upcoming: AnkerColor.divider
         }
     }
 }
@@ -192,13 +192,14 @@ private struct YearStat: View {
     let value: String
     let label: String
     var hint: String?
-    var isEmphasized = false
+    /// Rueckstand — und nur das. Rost ist ausschliesslich Rueckstand und Uebertrag.
+    var isBacklog = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: AnkerSpacing.s1) {
             Text(verbatim: value)
                 .ankerType(AnkerType.statValue)
-                .foregroundStyle(isEmphasized ? AnkerColor.accentInk : AnkerColor.ink)
+                .foregroundStyle(isBacklog ? AnkerColor.rustInk : AnkerColor.ink)
 
             Text(verbatim: hint.map { "\(label) · \($0)" } ?? label)
                 .ankerType(AnkerType.eyebrow)

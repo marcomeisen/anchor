@@ -2,11 +2,103 @@
 
 ## 2026-08-16
 
+### Reskin *Lot* — dieselben Screens, in neuem Material
+
+Grundlage sind `Lot Designsystem.dc.html` und `Daivento in Lot.dc.html`. **Struktur, Daten und
+Interaktion sind unveraendert** — der Modernist-Aufbau hat sich bewaehrt, gewechselt ist das
+Material: warme Neutralen statt Blaugrau, Bernstein statt Rot, Rost nur noch fuer Rueckstand,
+weiche Radien und Hoehe statt 2px-Linien, Glas fuer Chrome.
+
+- Die Tokenschicht traegt die fuenfzehn Lot-Werte. Die gespiegelte Neunerrampe ist weg: Lot gibt
+  fuer jede Rolle ein eigenes Hell-Dunkel-Paar an, weil eine Spiegelung im Warmen danebenliegt.
+  Die Tokennamen sind geblieben — dadurch rasten rund 400 Aufrufstellen ohne eigene Aenderung ein.
+- **Drei Werte des Entwurfs sind gemessen korrigiert.** `LotTextFaint` (`#A09889`) als
+  Mikro-Beschriftung sind 2,10:1 auf dem Grund und damit unlesbar; sie laeuft auf `LotTextMuted`,
+  der Entwurfswert bleibt als `AnkerColor.faint` fuer Flaechen. `LotAmber` (`#D9820F`) als Marke
+  sind 2,15:1; Linien und Icons nehmen `LotAmberDeep` (3,21:1), waehrend `LotAmber` die Flaeche
+  bleibt. Und Papierweiss auf Bernstein — der primaere Knopf des Entwurfs — sind 2,89:1; `onAccent`
+  ist deshalb **Tinte** (5,92:1 hell, 8,09:1 dunkel) und als einziges Token statisch, weil
+  Bernstein in beiden Modi hell ist.
+- Material und Schatten sind nicht mehr verboten, sondern gebunden: `.ankerGlass()` fuer Chrome
+  ueber Inhalt, `AnkerElevation` mit vier Stufen fuer alles, was schwebt. Roh an der Aufrufstelle
+  bleiben beide gesperrt. Kopfzeile, Erfassungsleiste, Tableiste und Blattkopf sind jetzt Glas.
+- Radius laeuft auf 4pt-Basis ueber fuenf Rollen (8/12/16/20/28). Ohne Radius bleiben genau zwei
+  Dinge, beide mit Begruendung: der Wochenpuls und der Fortschrittsbalken.
+- Die Abschnittsgrenze ist eine Haarlinie geworden. Was zwei Bereiche trennt, ist jetzt die
+  **Farbe** der Linie, nicht ihre Staerke — die 2px-Regel ist abgeloest.
+- Rost hat genau eine Bedeutung. „Tage Rest" im Ankerdetail und „Uebertragungen" im Jahresband
+  hiessen vorher `isEmphasized` und waren bernsteinfarben; sie heissen jetzt `isBacklog` und sind
+  rostfarben. Die Prioritaet verliert ihre gefuellte Marke und steht als Buchstabe an der Zeile.
+- **Der Wochenrueckblick ist ein Ritual.** Statt des roten Plakats jetzt dunkel, Instrument Serif,
+  Abstaende × 1,4 — und immer dunkel, auch wenn die App hell laeuft. Dieselbe Hierarchie wie
+  vorher (eine Zahl, das nicht Gehaltene, eine Frage), aber die Lautstaerke kommt aus Flaeche und
+  Schriftwechsel statt aus Signalfarbe. Die Einstellungszeile bleibt trotz „kein Chrome" stehen:
+  sie ist auf dem iPhone der einzige Weg dorthin.
+- **Archivo ist entfallen.** Die Arbeitsflaeche spricht San Francisco, wie das Systemblatt es
+  verlangt; damit kommen Dynamic Type, optische Groessen und die Sprachabdeckung ohne eigene Datei.
+  Geliefert wird nur noch **Instrument Serif** (OFL-1.1) fuer das Ritual. Gewichte gehen nur noch
+  bis 600 — die Hierarchie tragen Grad, Farbe und Flaeche.
+- **Eine Regel des Entwurfs ist nicht erfuellbar und deshalb benannt:** „Ziffern immer
+  tabellarisch" gilt fuer die Arbeitsflaeche ausnahmslos, aber Instrument Serif bringt keine
+  `tnum`-Tabelle mit — das OpenType-Feature laeuft ins Leere (gemessen bei 20 pt: „1" 4,98 pt
+  gegen „0" 9,20 pt, vor **und** nach dem Setzen des Features). Die Serif gewinnt, weil sie den
+  Modus markiert; damit die Zahl beim Wochenschluss trotzdem nicht springt, steht der Zaehler in
+  einem festen Kasten von 0,5 em. Ein Test misst, dass die breiteste Ziffer hineinpasst.
+- Der Iconsatz wird **gezeichnet** statt skaliert. Der Grund steht im Entwurf: ab 40 px fallen die
+  Tagesfugen weg und aus 4×7 Feldern werden vier Balken mit denselben Fuellstaenden — das laesst
+  sich nicht herunterrechnen. `Scripts/make-app-icons.swift` haelt die Geometrie als Vorschrift und
+  erzeugt dreizehn Dateien: drei Erscheinungsbilder fuer iOS (hell, dunkel und getoent, alle drei
+  gezeichnet statt abgeleitet, damit die 26-%-Spuren der offenen Tage erhalten bleiben), sieben
+  macOS-Groessen mit Big-Sur-Maske und drei Menueleisten-Templates. Fuer die Menueleiste zaehlt die
+  **Punktgroesse** (immer 18), nicht die Pixelgroesse der Datei — sonst traegt ausgerechnet die
+  @3x-Fassung sieben Fugen, die niemand aufloesen kann.
+- Zwei Fallen beim Icon: eine selbst gebaute Bezier-Naeherung der fortlaufenden Ecke beult die
+  Kante sichtbar aus. `RoundedRectangle(style: .continuous).path(in:)` liefert Apples Kurve ohne
+  Renderer — dieselbe Quelle, aus der die App ihre Flaechen zieht.
+- `Scripts/design-guard.swift` prueft jetzt 26 Schranken statt 18. Neu sind unter anderem: Serif
+  und Ritualfarben nur in der Ritual-Datei, Glas nur in Chrome-Dateien (ueber eine Dateiliste, weil
+  sich das nicht als Zeilenmuster fassen laesst), `faint` nie als Schriftfarbe, Rost nie als Knopf,
+  keine dritte Schrift und keine gerechnete Kantenstaerke.
+- **Datenverlust beim Erstimport behoben.** Das Zusammenfuehren doppelter Wochen lief bei
+  *jeder* Fremdaenderung, also auch mitten im CloudKit-Erstimport. CloudKit liefert `Week`, `Day`,
+  `Goal` und `AnkerTask` als getrennte Records in getrennten Batches; traf der Wochen-Record ein,
+  bevor seine Kinder da waren, wog die echte Woche in diesem Moment 0 und verlor gegen die frisch
+  angelegte Onboarding-Woche. Sie wurde geloescht — und weil es ein **synchronisierter** Record
+  war, wanderte die Loeschung in die Cloud und auf alle anderen Geraete. Auf einem neu
+  installierten iPhone blieb der Bestand dadurch leer, waehrend Mac und iPad die Woche verloren.
+  Zwei Schranken dagegen: das Aufraeumen wartet jetzt drei ruhige Sekunden ab (`task(id:)` bricht
+  bei jeder neuen Fremdaenderung ab, der Schlaf wird damit zum Wartefenster) und holt die Wochen
+  danach frisch statt aus einer alten Momentaufnahme; und eine Gruppe, in der eine Woche leer und
+  eine andere gefuellt ist, gilt als nicht entscheidungsreif und wird aufgeschoben statt
+  zusammengefuehrt. Zwei Regressionstests halten beide Richtungen fest.
+- Die Gewichtung nach Inhalt allein reichte nicht: sie unterstellt, dass beide Wochen zum
+  Vergleichszeitpunkt vollstaendig vorliegen. `testMergingKeepsTheRicherWeekEvenWhenItsUUIDIsHigher`
+  baut beide fertig bestueckt auf und konnte den Fall deshalb nicht fangen.
+- Das iCloud-Diagnoseblatt zeigt jetzt **Fremdaenderungen** — wie oft dieses Geraet seit dem
+  Start eine Aenderung von aussen empfangen hat. Das trennt Export- von Importseite, ohne dass
+  jemand ein Geraetelog mitlesen muss: exportiert Geraet A, und Geraet B steht weiter bei 0, ist
+  nicht der Export das Problem, sondern der Import auf B. Erreichbar ueber das Wolkensymbol in
+  der Kopfzeile (iPhone) bzw. die Sync-Zeile im Sidebar-Fuss (Mac, iPad).
+- Ein abgeschlossener Export mit Fehler sieht nicht mehr aus wie ein sauberer. `event.succeeded`
+  sagt nur, dass die Aktivitaet durchgelaufen ist — einzelne Records koennen dabei abgewiesen
+  worden sein, und der Fehler haengt dann trotzdem am Ereignis. Der Erfolgszweig hat `event.error`
+  bisher verworfen und „iCloud-Export erfolgreich" geloggt, waehrend die Aenderung das andere
+  Geraet nie erreichte. Jetzt laeuft der Fehler auch dort durch `CloudSyncErrorFormatter` und
+  landet als Warnung im Log samt Hinweis auf den haeufigsten Grund (Schema nur in Development).
+- Die Rolle `AnkerIcon.goal` traegt jetzt den **Wochenpuls** statt `lucide-target`. Eine
+  Zielscheibe sagte nichts ueber die App; die Balken sind dieselbe Zeichnung wie das App-Icon in
+  der vereinfachten Fassung, mit denselben Fuellstaenden. Damit traegt die Figur Icon, Menueleiste
+  und Oberflaeche — „dieselbe Figur in jeder Groesse". `lucide-target` ist entfallen.
+- `AnkerThemeTests` misst den Kontrast jeder Textstufe gegen **alle drei** Flaechen statt nur gegen
+  den Grund, dazu die Ritual-Palette einzeln (sie kippt nicht mit) und das Glas als
+  zusammengerechnete Flaeche. Die drei Korrekturen am Entwurf stehen als eigener Test mit ihrem
+  Messwert daneben, damit sie niemand zurueckdreht.
+
 - CloudKit-Schema-Upload repariert: `initializeCloudKitSchema` lief inline in `App.init` auf dem Main-Thread und scheiterte dort reproduzierbar nach rund 130 Sekunden mit „the requests timed out (a 30s wait failed)". Der Aufruf wartet synchron auf den Setup-Request des Mirroring-Delegate — und den blockierte er selbst, solange die Runloop noch nicht lief. Er laeuft jetzt drei Sekunden nach dem Start auf einem Hintergrund-Thread und ist nach rund elf Sekunden durch.
 - Waehrend des Upload-Laufs oeffnet die App ihren eigenen Store ohne CloudKit. Zwei Stores, die im selben Prozess dieselbe Zone desselben Containers spiegeln, konkurrieren sonst um denselben Setup-Request; das Startargument macht den Lauf ohnehin zum Werkzeug und nicht zum normalen Start.
 - Fehlschlaege des Uploads sind erstmals lesbar: statt `localizedDescription` („Ein Core Data-Fehler ist aufgetreten") laeuft der Fehler durch `CloudSyncErrorFormatter` und landet zusammen mit dem Erfolgsfall im System-Log. `print` allein war ausserhalb von Xcode unsichtbar, weil es in eine Pipe blockgepuffert schreibt.
 - Damit sind `CD_reflection`, `CD_reviewedAt`, `CD_completedAt` und `CD_carryOverCount` erstmals im Development-Schema. Sie fehlten seit der Modellaenderung vom 4. August: CloudKit legt ein Feld faul an, naemlich erst beim Export eines Records mit Wert darin — ein durchgehend `nil` gebliebener Optional bleibt dem Schema deshalb unbekannt. `CD_order` war nur deshalb vorhanden, weil die Ordnungsnormalisierung jeden Goal-Record einmal neu geschrieben hat.
-- **Offen und nicht aus dem Repo machbar:** Deploy des Schemas nach Production in der CloudKit-Konsole. Bis dahin bleibt der Sync in TestFlight tot.
+- ~~**Offen:** Deploy des Schemas nach Production.~~ **Erledigt** (in der Konsole geprueft, 2026-08-16): Production fuehrt dieselben Felder wie Development, Feldzahl je Record Type identisch (CD_AnkerTask 19, CD_Day 16, CD_Goal 16, CD_TimeBlock 17, CD_Week 17). `CD_completedAt`, `CD_carryOverCount`, `CD_reflection` und `CD_reviewedAt` sind vorhanden. Ein weiterhin ausbleibender Sync zwischen zwei TestFlight-Geraeten hat also eine andere Ursache.
 - Drei Icons angeglichen, die fuer dieselbe Aktion je nach Flaeche verschieden aussahen: „Erledigt zuruecknehmen" ist im iPhone-Wisch jetzt `.open` statt `.undo` (wie im Mac-Hover — der Partner `.check` ist ein Zustand, kein Aktionsicon), „In die naechste Woche verschieben" im Mac-Hover `.nextMonth` statt `.week` (wie im Kontextmenue, gleiches Kuerzel ⌘⇧M), und der iPhone-Wisch „Verschieben" `.pickDate` statt `.week`, weil er dasselbe Blatt oeffnet wie „Datum waehlen …". Geprueft ist ausserdem: kein SF-Symbol und kein roher `Image("…")`-String im Code, alle 41 Imagesets `idiom: universal` ohne Plattformvarianten, jede referenzierte Glyphe vorhanden, kein verwaistes Asset.
 - Die Rolle `AnkerIcon.undo` hat dadurch keine Aufrufstelle mehr. Sie bleibt vorerst stehen; das zugehoerige `lucide-undo-2` waere sonst ebenfalls verwaist.
 - TestFlight-Uploads laufen ohne Rueckfrage durch: `ITSAppUsesNonExemptEncryption` steht als `false` in der Info.plist. Bisher blieb jeder Build in App Store Connect liegen, bis die Export-Compliance-Frage von Hand beantwortet war. Die App benutzt ausser HTTPS/CloudKit keine Verschluesselung und faellt damit unter die Ausnahme.

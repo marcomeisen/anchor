@@ -28,7 +28,7 @@ struct ArchiveView: View {
                         .fixedSize(horizontal: false, vertical: true)
                         .padding(.vertical, AnkerSpacing.s5)
                 } else {
-                    AnkerRule(color: AnkerColor.ink)
+                    AnkerRule()
 
                     ForEach(entries) { entry in
                         ArchiveRow(entry: entry) { onSelectWeek(entry.monday) }

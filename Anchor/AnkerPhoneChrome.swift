@@ -67,7 +67,8 @@ struct AnkerPhoneHeader<Actions: View>: View {
             actions()
         }
         .padding(.horizontal, AnkerSpacing.s3)
-        .background(AnkerColor.ground)
+        // Kopfzeile ist Chrome ueber Inhalt — eine der vier Stellen, an denen Lot Glas zulaesst.
+        .ankerGlass(.bottom)
     }
 }
 
@@ -110,8 +111,8 @@ struct AnkerSheetHeader: View {
                 .padding(.top, AnkerSpacing.s2)
                 .padding(.bottom, AnkerSpacing.s3)
         }
-        .background(AnkerColor.ground)
-        .ankerEdge(.bottom, color: AnkerColor.ink)
+        .ankerGlass(.bottom)
+        .ankerEdge(.bottom)
     }
 }
 

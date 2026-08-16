@@ -1,14 +1,18 @@
 import SwiftUI
 
-/// Eine 2px-Regel. Ersetzt `Divider()` an gezeichneten Kanten — `Divider()` bleibt nur in
-/// Menuebodies, wo es der Systemtrenner ist.
+/// Eine gezeichnete Linie. Ersetzt `Divider()` an gezeichneten Kanten — `Divider()` bleibt nur
+/// in Menuebodies, wo es der Systemtrenner ist.
+///
+/// In Lot sind beide Staerken eine Haarlinie; der Unterschied liegt in der **Farbe**. Das ist
+/// der Bruch mit dem Modernist-System, wo 2px gegen 1px die Aussage trug: „weiche Radien und
+/// Schatten statt 2-px-Linien". Was einen Bereich abgrenzt, tut das jetzt ueber Flaeche und
+/// Hoehe — die Linie sagt nur noch, wo etwas endet.
 struct AnkerRule: View {
-    /// Wofuer die Linie steht. Die Staerke folgt daraus, sie ist keine freie Wahl.
+    /// Wofuer die Linie steht. Farbe und Staerke folgen daraus, sie sind keine freie Wahl.
     enum Weight: Equatable {
-        /// Sektionsgrenze: 2px. Trennt Bereiche, die verschiedene Fragen beantworten.
+        /// Abschnittsgrenze: Haarlinie in `LotHairlineStrong`.
         case section
-        /// Trenner **innerhalb** einer Liste: 1px. 2px zwischen jeder Zeile liest sich wie ein
-        /// Tabellengitter.
+        /// Trenner **innerhalb** einer Liste: Haarlinie in `LotHairline`.
         case row
 
         var thickness: CGFloat {
@@ -17,15 +21,22 @@ struct AnkerRule: View {
             case .row: AnkerBorder.hairline
             }
         }
+
+        var defaultColor: Color {
+            switch self {
+            case .section: AnkerColor.divider
+            case .row: AnkerColor.cardDivider
+            }
+        }
     }
 
     var axis: Axis = .horizontal
-    var color: Color = AnkerColor.divider
+    var color: Color?
     var weight: Weight = .section
 
     var body: some View {
         Rectangle()
-            .fill(color)
+            .fill(color ?? weight.defaultColor)
             .frame(
                 width: axis == .vertical ? weight.thickness : nil,
                 height: axis == .horizontal ? weight.thickness : nil
@@ -35,56 +46,65 @@ struct AnkerRule: View {
 }
 
 extension View {
-    /// Eine Flaeche mit Kante. Der Ersatz fuer jedes `.background(.ultraThinMaterial, in:
-    /// RoundedRectangle(...))` samt Schatten: nichts schwebt, die Kante macht die Ebene sichtbar.
-    func ankerPanel(_ fill: Color = AnkerColor.surface) -> some View {
-        background(fill)
-            .overlay(
-                Rectangle()
-                    .stroke(AnkerColor.divider, lineWidth: AnkerBorder.rule)
-            )
+    /// Hoehe nach Rolle. Zwei Lagen: die enge macht die Kante sichtbar, die weite die Ebene.
+    func ankerElevation(_ elevation: AnkerElevation) -> some View {
+        // design-guard: erlaubt — hier *entsteht* die Hoehe des Systems.
+        layers(of: elevation)
     }
 
-    /// Eine **Karte**: die Flaeche, auf der eine Liste sitzt.
+    private func layers(of elevation: AnkerElevation) -> some View {
+        elevation.layers.reduce(AnyView(self)) { view, layer in
+            AnyView(view.shadow(color: layer.color, radius: layer.radius, x: 0, y: layer.y))
+        }
+    }
+
+    /// Eine **Karte**: die Flaeche, auf der Inhalt sitzt. Deckend, gerundet, auf Hoehe 1.
     ///
-    /// Runde 3 nimmt „nichts schwebt" fuer diesen einen Fall zurueck, mit Begruendung aus dem
-    /// Entwurf: eine Liste, in der jede Zeile eine 2px-Kante traegt, liest sich wie ein
-    /// Tabellengitter. Die Karte fasst die Zeilen zusammen, innen genuegen dann Hairlines.
-    ///
-    /// Elevation **statt** Rahmen — deshalb kein `stroke`. Zwei Schattenlagen wie im Entwurf: die
-    /// enge macht die Kante sichtbar, die weite die Ebene. Im Dunkelmodus traegt die hellere
-    /// Kartenflaeche die Ebene, der Schatten bleibt trotzdem und faellt kaum auf.
-    /// `elevated: false` fuer eine **getoente Hinweisflaeche** — leerer Zustand, Merksatz,
-    /// Statusband. Sie ist rund wie eine Karte, aber sie schwebt nicht: sie traegt keinen Inhalt,
-    /// den man anfasst, und der Schatten wuerde ihr ein Gewicht geben, das sie nicht hat.
+    /// „Naehe entsteht durch Material und Hoehe, nicht durch Rahmen" — deshalb kein `stroke`.
+    /// `elevated: false` fuer eine **getoente Hinweisflaeche** (Tempo-Satz, leerer Zustand,
+    /// Statusband): rund wie eine Karte, aber ohne Gewicht, weil sie keinen Inhalt traegt, den
+    /// man anfasst.
     func ankerCard(
         fill: Color = AnkerColor.card,
         radius: CGFloat = AnkerRadius.card,
         elevated: Bool = true
     ) -> some View {
         background(fill, in: RoundedRectangle(cornerRadius: radius, style: .continuous))
-            .shadow(color: elevated ? AnkerColor.elevationNear : .clear, radius: 1, x: 0, y: 1)
-            .shadow(color: elevated ? AnkerColor.elevationFar : .clear, radius: 6, x: 0, y: 4)
+            .ankerElevation(elevated ? .card : .flat)
     }
 
-    /// Ein Eingabefeld: gerundet, mit Innenkante statt Schatten. Ein Feld schwebt nicht, man
-    /// fasst es an — es ist rund, aber flach.
+    /// **Glas.** Chrome, das ueber Inhalt schwebt: Kopfzeile, Erfassungsleiste, Tableiste, Sheets.
+    ///
+    /// Die eine Materialregel des Systems, und die einzige Stelle, an der `Material` vorkommen
+    /// darf: **nie Inhalt, nie hinter Fliesstext** — „Text auf Glas ist auf Fotos und beim
+    /// Scrollen nicht verlaesslich lesbar". Die Lichtkante sitzt innen an der Kante, an der das
+    /// Glas an den Inhalt stoesst.
+    func ankerGlass(_ edge: Edge.Set = .top, radius: CGFloat = 0) -> some View {
+        let shape = RoundedRectangle(cornerRadius: radius, style: .continuous)
+        return background {
+            // design-guard: erlaubt — hier *entsteht* das Glas des Systems.
+            shape.fill(.ultraThinMaterial)
+                .overlay(shape.fill(AnkerColor.glassFill))
+        }
+        .overlay(alignment: edge == .bottom ? .bottom : .top) {
+            Rectangle()
+                .fill(AnkerColor.glassSheen)
+                .frame(height: AnkerBorder.hairline)
+                .accessibilityHidden(true)
+        }
+    }
+
+    /// Ein Eingabefeld: gerundet, eingelassen, mit Haarlinie statt Hoehe. Ein Feld schwebt
+    /// nicht, man fasst es an.
     func ankerField(radius: CGFloat = AnkerRadius.control) -> some View {
-        background(AnkerColor.card, in: RoundedRectangle(cornerRadius: radius, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: radius, style: .continuous)
-                    .stroke(AnkerColor.cardDivider, lineWidth: AnkerBorder.hairline)
-            )
+        let shape = RoundedRectangle(cornerRadius: radius, style: .continuous)
+        return background(AnkerColor.surface, in: shape)
+            .overlay(shape.stroke(AnkerColor.divider, lineWidth: AnkerBorder.hairline))
     }
 
-    /// Ein **Bedienelement** mit eigener Flaeche: Knopf, Auswahlkachel, die Wochenanzeige
-    /// zwischen zwei Schrittpfeilen.
+    /// Ein **Bedienelement** mit eigener Flaeche: Knopf, Auswahlkachel, Schrittschalter-Anzeige.
     ///
-    /// Das Gegenstueck zu `ankerCard()`: eine Karte traegt Inhalt und schwebt, ein Bedienelement
-    /// liegt auf und wird angefasst. Beide sind rund, aber nur die Karte bekommt Elevation — hier
-    /// bleibt die 2px-Kante, denn sie umreisst ein Objekt, sie trennt keine Zeilen.
-    ///
-    /// `stroke: nil` fuer die gefuellte Auswahl: eine Kante um eine Akzentflaeche waere eine
+    /// `stroke: nil` fuer die gefuellte Auswahl: eine Kante um eine Bernsteinflaeche waere eine
     /// zweite Aussage ueber dieselbe Sache.
     func ankerControl(
         fill: Color = AnkerColor.surface,
@@ -95,14 +115,35 @@ extension View {
         return background(fill, in: shape)
             .overlay {
                 if let stroke {
-                    shape.stroke(stroke, lineWidth: AnkerBorder.rule)
+                    shape.stroke(stroke, lineWidth: AnkerBorder.hairline)
                 }
             }
             .contentShape(shape)
     }
 
+    /// Eine **Pille**: Filter, Zaehler, Marke. Der Entwurf fuehrt sie als eigene Radiusrolle —
+    /// sie ist kein Knopf mit viel Radius, sondern eine Form, die sagt „hier steht wenig".
+    func ankerPill(fill: Color = AnkerColor.accentTint, stroke: Color? = nil) -> some View {
+        background(fill, in: Capsule(style: .continuous))
+            .overlay {
+                if let stroke {
+                    Capsule(style: .continuous).stroke(stroke, lineWidth: AnkerBorder.hairline)
+                }
+            }
+            .contentShape(Capsule(style: .continuous))
+    }
+
+    /// Eine Flaeche mit Kante — der Bestandsname des Modernist-Systems.
+    ///
+    /// In Lot ist das eine eingelassene Flaeche mit Haarlinie: der Fensterkopf, der Eingangskorb,
+    /// eine Leiste, die an den Inhalt anschliesst.
+    func ankerPanel(_ fill: Color = AnkerColor.surface) -> some View {
+        background(fill)
+            .overlay(Rectangle().stroke(AnkerColor.divider, lineWidth: AnkerBorder.hairline))
+    }
+
     /// Eine einzelne Kante statt eines Rahmens — fuer Leisten, die an einer Seite anliegen.
-    func ankerEdge(_ edge: Alignment, color: Color = AnkerColor.divider) -> some View {
+    func ankerEdge(_ edge: Alignment, color: Color? = nil) -> some View {
         overlay(alignment: edge) {
             AnkerRule(
                 axis: edge == .leading || edge == .trailing ? .vertical : .horizontal,
@@ -114,15 +155,14 @@ extension View {
 
 /// Fortschritt als Balken, nicht als Ring.
 ///
-/// Ein Ring ist eine gerundete, geschmueckte Form; das Systemblatt laesst keine zu. Der Balken
-/// sagt dasselbe, laesst sich ueber die ganze Breite lesen und braucht keinen zweiten
-/// Zahlenwert daneben.
+/// „Keine Fortschrittsringe." Der Balken ist eines von genau **zwei** Dingen, die in Lot ohne
+/// Radius bleiben: ein rundes Ende luegt ueber den Wert. Das andere ist der Wochenpuls.
 struct AnkerProgressBar: View {
     let progress: Double
-    var tint: Color = AnkerColor.accentMark
-    var track: Color = AnkerColor.neutral[300]
-    /// Vielfache der Regelstaerke: 6 in Listen, 8 als Kennzahl.
-    var thickness: CGFloat = AnkerBorder.rule * 3
+    var tint: Color = AnkerColor.accentFill
+    var track: Color = AnkerColor.ground
+    /// 4 in Listen, 5 in der Matrix, 8 als Kennzahl.
+    var thickness: CGFloat = 4
 
     private var clamped: Double { min(max(progress, 0), 1) }
 
@@ -140,8 +180,10 @@ struct AnkerProgressBar: View {
     }
 }
 
-/// Schaltflaechen des Systems. Beschriftung buendig links, kein Radius, Zustaende aus der
-/// Akzentrampe.
+/// Schaltflaechen des Systems.
+///
+/// Der primaere Knopf ist eine **Bernsteinflaeche mit Tinte darauf** — nicht Papierweiss, das
+/// waeren 2,89:1. Beschriftung mittig: in Lot ist ein Knopf ein Objekt, keine Zeile.
 struct AnkerButtonStyle: ButtonStyle {
     enum Kind { case primary, secondary, quiet }
 
@@ -157,18 +199,19 @@ struct AnkerButtonStyle: ButtonStyle {
         configuration.label
             .ankerType(AnkerType.label)
             .foregroundStyle(foreground(pressed: configuration.isPressed))
-            .padding(.horizontal, AnkerSpacing.s3)
-            .padding(.vertical, AnkerSpacing.s2 + 2)
-            .frame(maxWidth: fillsWidth ? .infinity : nil, alignment: .leading)
-            // 8pt und `.continuous`: ein Knopf ist das, was man anfasst — nach Runde 3 also
-            // rund. Die Struktur um ihn herum bleibt scharf.
+            .padding(.horizontal, AnkerSpacing.s4)
+            .padding(.vertical, AnkerSpacing.s3)
+            .frame(maxWidth: fillsWidth ? .infinity : nil, minHeight: AnkerSpacing.touchTarget)
             .background(background(pressed: configuration.isPressed), in: shape)
             .overlay {
                 if kind == .secondary {
-                    shape.stroke(AnkerColor.dividerStrong, lineWidth: AnkerBorder.rule)
+                    shape.stroke(AnkerColor.divider, lineWidth: AnkerBorder.heavy)
                 }
             }
             .contentShape(shape)
+            // „Bewegung mit Federn." Der Druck ist die kleinste davon.
+            .scaleEffect(configuration.isPressed ? 0.98 : 1)
+            .animation(.spring(response: 0.3, dampingFraction: 0.72), value: configuration.isPressed)
     }
 
     private var shape: RoundedRectangle {
@@ -179,24 +222,24 @@ struct AnkerButtonStyle: ButtonStyle {
         switch kind {
         case .primary: AnkerColor.onAccent
         case .secondary: AnkerColor.ink
-        case .quiet: pressed ? AnkerColor.accent[800] : AnkerColor.accentInk
+        case .quiet: pressed ? AnkerColor.accentMark : AnkerColor.accentInk
         }
     }
 
     private func background(pressed: Bool) -> Color {
         switch kind {
-        case .primary: pressed ? AnkerColor.accent[700] : AnkerColor.accentFill
-        case .secondary: pressed ? AnkerColor.neutral[200] : .clear
-        case .quiet: pressed ? AnkerColor.accent[100] : .clear
+        case .primary: pressed ? AnkerColor.accentMark : AnkerColor.accentFill
+        case .secondary: pressed ? AnkerColor.surface : .clear
+        case .quiet: pressed ? AnkerColor.accentTint : .clear
         }
     }
 }
 
 /// Ein Schalter als Kaestchen statt als Systemkapsel.
 ///
-/// Es ist **dasselbe** Kaestchen wie an einer Aufgabe (`TaskCheckmark`): 4pt fortlaufend gerundet,
-/// 2px Tinte, gefuellt mit Haken. Zwei Formen fuer denselben Ja-Nein-Zustand waeren zwei Aussagen
-/// ueber eine Sache — der Nutzer lernt das Kaestchen einmal.
+/// Es ist **dasselbe** Kaestchen wie an einer Aufgabe (`TaskCheckmark`): 8pt fortlaufend
+/// gerundet, gefuellt mit Haken. Zwei Formen fuer denselben Ja-Nein-Zustand waeren zwei
+/// Aussagen ueber eine Sache — der Nutzer lernt das Kaestchen einmal.
 struct AnkerToggleStyle: ToggleStyle {
     private var shape: RoundedRectangle {
         RoundedRectangle(cornerRadius: AnkerRadius.check, style: .continuous)
@@ -211,15 +254,17 @@ struct AnkerToggleStyle: ToggleStyle {
                 Spacer(minLength: AnkerSpacing.s2)
                 shape
                     .fill(configuration.isOn ? AnkerColor.ink : Color.clear)
-                    .overlay(shape.stroke(AnkerColor.ink, lineWidth: AnkerBorder.rule))
+                    .overlay(shape.stroke(configuration.isOn ? AnkerColor.ink : AnkerColor.divider,
+                                          lineWidth: AnkerBorder.heavy))
                     .overlay {
                         if configuration.isOn {
                             Image(.check)
                                 .ankerIcon(AnkerIconSize.xs)
-                                .foregroundStyle(AnkerColor.onAccent)
+                                .foregroundStyle(AnkerColor.card)
                         }
                     }
                     .frame(width: 22, height: 22)
+                    .animation(.spring(response: 0.3, dampingFraction: 0.72), value: configuration.isOn)
             }
             .contentShape(Rectangle())
         }

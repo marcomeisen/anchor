@@ -127,7 +127,23 @@ struct AnkerRootView: View {
         // nur billiger, er trifft die Absicht genauer: Duplikate entstehen ausschliesslich
         // dadurch, dass ein Import eine Woche einspielt, die lokal schon existiert.
         .task(id: cloudSyncStatus.remoteChangeCount) {
-            StoreMaintenance.normalize(weeks: weeks, modelContext: modelContext)
+            // **Entprellt, und das ist der Kern.** Ein CloudKit-Erstimport kommt in Batches:
+            // der `Week`-Record kann ankommen, bevor seine Tage, Ziele und Aufgaben da sind.
+            // Wer in diesem Moment wiegt, hält die echte Woche für leer — und liess sie
+            // gegen die frisch angelegte Onboarding-Woche verlieren. Ihr Löschen ist das
+            // Löschen eines **synchronisierten** Records und wanderte als Löschung zurück in
+            // die Cloud und auf die anderen Geräte.
+            //
+            // `task(id:)` bricht bei jeder neuen Fremdänderung ab und fängt neu an. Der Schlaf
+            // wird damit zum Wartefenster: aufgeräumt wird erst, wenn der Import zur Ruhe
+            // gekommen ist.
+            try? await Task.sleep(for: .seconds(3))
+            guard !Task.isCancelled else { return }
+
+            // Nach dem Warten neu holen statt die Momentaufnahme von vorhin zu benutzen —
+            // in den drei Sekunden ist genau das angekommen, worauf gewartet wurde.
+            let current = (try? modelContext.fetch(FetchDescriptor<Week>())) ?? weeks
+            StoreMaintenance.normalize(weeks: current, modelContext: modelContext)
         }
         .onChange(of: navigation) { _, newValue in
             storedNavigation = newValue.encoded

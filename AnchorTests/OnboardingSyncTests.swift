@@ -165,6 +165,84 @@ final class OnboardingSyncTests: XCTestCase {
         XCTAssertEqual(GoalOrdering.sorted(survivor.goalList).map(\.order), Array(0..<6))
     }
 
+    /// Der Fehler, der Daten gekostet hat: zusammenführen, **während der Import noch läuft**.
+    ///
+    /// CloudKit liefert `Week`, `Day`, `Goal` und `AnkerTask` als getrennte Records in
+    /// getrennten Batches. Trifft der Wochen-Record ein, bevor seine Kinder da sind, wiegt die
+    /// echte Woche in diesem Moment 0 — und verlor gegen die frisch angelegte
+    /// Onboarding-Woche. Ihr Löschen ist das Löschen eines **synchronisierten** Records und
+    /// wanderte als Löschung in die Cloud und auf alle anderen Geräte.
+    ///
+    /// `testMergingKeepsTheRicherWeekEvenWhenItsUUIDIsHigher` kann das nicht fangen: dort sind
+    /// beide Wochen fertig bestückt. Hier ist die importierte absichtlich noch leer.
+    @MainActor
+    func testHalfImportedWeekIsNeverMergedAway() throws {
+        let container = try makeContainer()
+        let context = container.mainContext
+        let interval = AnkerCalendar.weekInterval(containing: AnkerCalendar.date(year: 2026, month: 8, day: 3))
+
+        let onboarding = Week(id: UUID(uuidString: "00000000-0000-0000-0000-000000000001")!,
+                              isoYear: interval.isoYear, isoWeek: interval.isoWeek,
+                              monday: interval.monday, sunday: interval.sunday)
+        // Die echte Woche, wie sie mitten im Erstimport dasteht: der Record ist da, Tage,
+        // Ziele und Aufgaben noch nicht.
+        let importing = Week(id: UUID(uuidString: "FFFFFFFF-FFFF-FFFF-FFFF-FFFFFFFFFFFF")!,
+                             isoYear: interval.isoYear, isoWeek: interval.isoWeek,
+                             monday: interval.monday, sunday: interval.sunday)
+        context.insert(onboarding)
+        context.insert(importing)
+
+        for (index, title) in ["Onboarding 1", "Onboarding 2"].enumerated() {
+            let goal = Goal(title: title, colorHex: "#B26608", order: index, week: onboarding)
+            context.insert(goal)
+            onboarding.appendGoal(goal)
+        }
+        try context.save()
+
+        let report = StoreMaintenance.merge(weeks: [onboarding, importing], modelContext: context, reporter: nil)
+
+        XCTAssertEqual(report.removedWeeks, 0, "Eine halb importierte Woche darf nicht zusammengeführt werden")
+        let remaining = try context.fetch(FetchDescriptor<Week>()).filter { !$0.isDeleted }
+        XCTAssertEqual(remaining.count, 2, "Beide Wochen müssen stehen bleiben, bis der Import durch ist")
+        XCTAssertTrue(remaining.contains { $0.id == importing.id },
+                      "Ausgerechnet die importierte Woche zu löschen war der Datenverlust")
+    }
+
+    /// Die Gegenprobe: sobald der Import durch ist, wird ganz normal zusammengeführt.
+    @MainActor
+    func testMergeResumesOnceTheImportHasArrived() throws {
+        let container = try makeContainer()
+        let context = container.mainContext
+        let interval = AnkerCalendar.weekInterval(containing: AnkerCalendar.date(year: 2026, month: 8, day: 3))
+
+        let onboarding = Week(id: UUID(uuidString: "00000000-0000-0000-0000-000000000001")!,
+                              isoYear: interval.isoYear, isoWeek: interval.isoWeek,
+                              monday: interval.monday, sunday: interval.sunday)
+        let synced = Week(id: UUID(uuidString: "FFFFFFFF-FFFF-FFFF-FFFF-FFFFFFFFFFFF")!,
+                          isoYear: interval.isoYear, isoWeek: interval.isoWeek,
+                          monday: interval.monday, sunday: interval.sunday)
+        context.insert(onboarding)
+        context.insert(synced)
+
+        let onboardingGoal = Goal(title: "Onboarding 1", colorHex: "#B26608", order: 0, week: onboarding)
+        context.insert(onboardingGoal)
+        onboarding.appendGoal(onboardingGoal)
+
+        // Jetzt sind die Kinder der importierten Woche da.
+        for (index, title) in ["Echt 1", "Echt 2"].enumerated() {
+            let goal = Goal(title: title, colorHex: "#B26608", order: index, week: synced)
+            context.insert(goal)
+            synced.appendGoal(goal)
+        }
+        try context.save()
+
+        StoreMaintenance.merge(weeks: [onboarding, synced], modelContext: context, reporter: nil)
+
+        let remaining = try context.fetch(FetchDescriptor<Week>()).filter { !$0.isDeleted }
+        XCTAssertEqual(remaining.count, 1, "Nach dem Import wird wieder zusammengeführt")
+        XCTAssertEqual(remaining.first?.id, synced.id, "Und die inhaltsreichere überlebt")
+    }
+
     @MainActor
     func testElectionFallsBackToTheUUIDOnEqualContent() throws {
         let container = try makeContainer()

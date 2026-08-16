@@ -110,9 +110,15 @@ enum StoreMaintenance {
 
         let weekGroups = Dictionary(grouping: weeks, by: weekKey).filter { $0.value.count > 1 }
         for (key, group) in weekGroups {
+            guard isDecidable(group) else {
+                cloudSyncLog.notice(
+                    "Zusammenfuehrung \(weekLabel(key), privacy: .public) aufgeschoben: eine der \(group.count, privacy: .public) Wochen ist noch leer — vermutlich laeuft der Import noch"
+                )
+                continue
+            }
             guard let survivor = electSurvivor(group) else { continue }
 
-            let label = "\(key.isoYear)-KW\(String(format: "%02d", key.isoWeek))"
+            let label = weekLabel(key)
             report.affectedWeeks.append(label)
 
             for duplicate in group where duplicate !== survivor {
@@ -176,6 +182,28 @@ enum StoreMaintenance {
             if leftWeight != rightWeight { return leftWeight > rightWeight }
             return left.id.uuidString < right.id.uuidString
         }
+    }
+
+    /// Ist die Gruppe überhaupt entscheidungsreif?
+    ///
+    /// Die Sicherung gegen den Fall, der Daten gekostet hat: steht **eine** Woche der Gruppe auf
+    /// 0 und eine andere auf mehr, ist das fast immer ein halb angekommener Import und keine
+    /// echte Dublette. Wer dann zusammenführt, löscht einen synchronisierten Record — und die
+    /// Löschung wandert in die Cloud und auf alle anderen Geräte. Also aufschieben; beim
+    /// nächsten Durchlauf ist der Import da und die Entscheidung richtig.
+    ///
+    /// Sind **alle** leer, ist nichts zu verlieren und die Gruppe wird normal zusammengeführt.
+    /// Bleibt eine dauerhaft leere Dublette liegen, ist das der bewusst billigere Preis: sie
+    /// trägt keine Information, und die Oberfläche zeigt ohnehin die inhaltsreichere Woche.
+    private static func isDecidable(_ group: [Week]) -> Bool {
+        let weights = group.map(contentWeight)
+        let hasEmpty = weights.contains(0)
+        let hasContent = weights.contains { $0 > 0 }
+        return !(hasEmpty && hasContent)
+    }
+
+    private static func weekLabel(_ key: WeekKey) -> String {
+        "\(key.isoYear)-KW\(String(format: "%02d", key.isoWeek))"
     }
 
     private static func contentWeight(_ week: Week) -> Int {

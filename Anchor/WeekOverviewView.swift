@@ -137,7 +137,7 @@ private struct GoalPill: View {
             AnkerProgressBar(
                 progress: goal.progress,
                 tint: AnkerColor.goalTint(goal.colorHex),
-                thickness: AnkerBorder.rule * 3
+                thickness: 6
             )
         }
         .padding(.horizontal, AnkerSpacing.s3)

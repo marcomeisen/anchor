@@ -87,7 +87,7 @@ struct GoalDetailView: View {
             AnkerProgressBar(
                 progress: goal.progress,
                 tint: AnkerColor.goalTint(goal.colorHex),
-                thickness: AnkerBorder.rule * 4
+                thickness: 8
             )
             .padding(.top, AnkerSpacing.s2)
             .padding(.bottom, AnkerSpacing.s4)
@@ -109,7 +109,7 @@ struct GoalDetailView: View {
 
     private var statsRow: some View {
         VStack(spacing: 0) {
-            AnkerRule(color: AnkerColor.ink)
+            AnkerRule()
 
             HStack(spacing: 0) {
                 DetailStat(
@@ -123,7 +123,7 @@ struct GoalDetailView: View {
                 DetailStat(
                     value: "\(report?.remainingDays ?? 0)",
                     label: "Tage Rest",
-                    isEmphasized: (report?.remainingDays ?? 0) <= 2
+                    isBacklog: (report?.remainingDays ?? 0) <= 2
                 )
             }
             .padding(.horizontal, AnkerSpacing.screenPadding)
@@ -152,7 +152,7 @@ struct GoalDetailView: View {
             .padding(AnkerSpacing.s4)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(
-                AnkerColor.accent[100],
+                AnkerColor.accentTint,
                 in: RoundedRectangle(cornerRadius: AnkerRadius.card, style: .continuous)
             )
             .overlay(alignment: .leading) {
@@ -184,7 +184,7 @@ struct GoalDetailView: View {
             }
             .padding(.bottom, AnkerSpacing.s5)
 
-            AnkerRule(color: AnkerColor.ink)
+            AnkerRule()
         }
         .padding(.horizontal, AnkerSpacing.screenPadding)
     }
@@ -234,14 +234,15 @@ private struct DetailStat: View {
     let value: String
     var total: String?
     let label: String
-    var isEmphasized = false
+    /// Rueckstand — und nur das. Rost ist ausschliesslich Rueckstand und Uebertrag.
+    var isBacklog = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: AnkerSpacing.s1) {
             HStack(alignment: .firstTextBaseline, spacing: 0) {
                 Text(verbatim: value)
                     .ankerType(AnkerType.statValue)
-                    .foregroundStyle(isEmphasized ? AnkerColor.accentInk : AnkerColor.ink)
+                    .foregroundStyle(isBacklog ? AnkerColor.rustInk : AnkerColor.ink)
                 if let total {
                     Text(verbatim: "/\(total)")
                         .ankerType(AnkerType.statValue)
@@ -279,7 +280,7 @@ private struct DayHistoryBar: View {
         VStack(spacing: AnkerSpacing.s2) {
             ZStack(alignment: .bottom) {
                 Rectangle()
-                    .fill(AnkerColor.neutral[300])
+                    .fill(AnkerColor.ground)
                 GeometryReader { proxy in
                     VStack(spacing: 0) {
                         Spacer(minLength: 0)

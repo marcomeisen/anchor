@@ -37,7 +37,15 @@ struct AnkerIcon: Sendable, Hashable {
 
     static let add = AnkerIcon("lucide-plus")
     static let addCircle = AnkerIcon("lucide-circle-plus")
-    static let goal = AnkerIcon("lucide-target")
+    /// Der **Wochenpuls** — die Signaturfigur des Produkts, kein Lucide-Icon.
+    ///
+    /// „Sieben Felder, ein Tag je Feld. Trägt Icon, Menüleiste, Sidebar, Widget und Watch —
+    /// dieselbe Figur in jeder Größe." Ein Zielscheiben-Symbol (`lucide-target`) stand vorher
+    /// hier und sagte nichts über die App; die Balken sind dieselbe Zeichnung wie das App-Icon,
+    /// in der vereinfachten Fassung (vier Balken, dieselben Füllstände — unter 40 px fallen die
+    /// Tagesfugen weg). Geometrie und Füllstände stammen aus
+    /// `Scripts/make-app-icons.swift`, damit Icon und Glyphe nicht auseinanderlaufen.
+    static let goal = AnkerIcon("daivento-wochenpuls")
     static let check = AnkerIcon("lucide-check")
     static let checkCircle = AnkerIcon("lucide-circle-check")
     static let checkCircleLarge = AnkerIcon("lucide-circle-check-big")

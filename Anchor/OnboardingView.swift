@@ -189,7 +189,7 @@ struct OnboardingView: View {
                 .padding(.top, AnkerSpacing.s3)
                 .padding(.bottom, AnkerSpacing.s5)
 
-            AnkerRule(color: AnkerColor.ink)
+            AnkerRule()
 
             ForEach(0..<Self.anchorSlots, id: \.self) { slot in
                 anchorField(slot)
@@ -263,7 +263,7 @@ struct OnboardingView: View {
         HStack(spacing: AnkerSpacing.s1) {
             ForEach(0..<2, id: \.self) { index in
                 Rectangle()
-                    .fill(index == activeIndex ? AnkerColor.accentMark : AnkerColor.neutral[300])
+                    .fill(index == activeIndex ? AnkerColor.accentFill : AnkerColor.ground)
                     .frame(width: index == activeIndex ? 64 : 32, height: AnkerBorder.heavy)
             }
             Spacer(minLength: 0)
