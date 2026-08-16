@@ -293,7 +293,8 @@ struct TaskCard: View {
                 Button {
                     performToggleDone()
                 } label: {
-                    Label(task.isDone ? "Offen" : "Erledigt", ankerIcon: task.isDone ? .undo : .check)
+                    // Zustandspaar, kein Aktionspaar: `.open`/`.check` wie im Mac-Hover.
+                    Label(task.isDone ? "Offen" : "Erledigt", ankerIcon: task.isDone ? .open : .check)
                 }
                 .tint(AnkerColor.ink)
             }
@@ -310,7 +311,8 @@ struct TaskCard: View {
                     iOSImpact(.medium)
                     showingMoveSheet = true
                 } label: {
-                    Label("Verschieben", ankerIcon: AnkerIcon.week)
+                    // Oeffnet dasselbe Blatt wie „Datum waehlen …" im Kontextmenue, also dasselbe Icon.
+                    Label("Verschieben", ankerIcon: AnkerIcon.pickDate)
                 }
                 .tint(AnkerColor.accentInk)
             }
@@ -383,7 +385,8 @@ struct TaskCard: View {
                 performToggleDone()
             }
 
-            hoverAction(ankerIcon: .week, tint: AnkerColor.accentFill, help: "In die nächste Woche verschieben (⌘⇧M)") {
+            // Dieselbe Aktion wie „Nächste Woche" im Kontextmenue (⌘⇧M), also dasselbe Icon.
+            hoverAction(ankerIcon: .nextMonth, tint: AnkerColor.accentFill, help: "In die nächste Woche verschieben (⌘⇧M)") {
                 performMoveByDays(7)
             }
             .keyboardShortcut("m", modifiers: [.command, .shift])
