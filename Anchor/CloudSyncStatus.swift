@@ -96,6 +96,9 @@ final class CloudSyncStatusCenter: ObservableObject {
     /// Getrennt vom `phase`-Text, damit die Diagnose den Accountzustand auch dann zeigt,
     /// wenn der Status gerade einen Import oder Export meldet.
     @Published private(set) var accountSummary = "Wird geprüft"
+    @Published private(set) var remoteNotificationSummary = "Nicht registriert"
+    @Published private(set) var serverProbeSummary = "Nicht geprüft"
+    @Published private(set) var isCheckingServer = false
 
     /// Was `StoreMaintenance` in dieser Sitzung automatisch zusammengefuehrt hat.
     ///
@@ -208,7 +211,57 @@ final class CloudSyncStatusCenter: ObservableObject {
         detail = "Nur auf diesem Gerät"
         tooltip = "Der iCloud-Sync ist in den Einstellungen abgeschaltet. Änderungen bleiben lokal und werden nicht auf andere Geräte übertragen."
         accountSummary = "Sync abgeschaltet"
+        remoteNotificationSummary = "Sync abgeschaltet"
+        serverProbeSummary = "Sync abgeschaltet"
         cloudSyncLog.notice("iCloud-Sync ist per Einstellung abgeschaltet")
+    }
+
+    func markRemoteNotificationsRegistered() {
+        guard !isSyncDisabled else { return }
+        remoteNotificationSummary = "Registriert"
+        cloudSyncLog.notice("Remote Notifications registriert")
+    }
+
+    func markRemoteNotificationsUnavailable(_ error: Error) {
+        guard !isSyncDisabled else { return }
+        remoteNotificationSummary = "Fehler"
+        cloudSyncLog.error("Remote-Notification-Registrierung fehlgeschlagen — \(CloudSyncErrorFormatter.describe(error), privacy: .public)")
+    }
+
+    func markRemoteNotificationReceived() {
+        guard !isSyncDisabled else { return }
+        remoteNotificationSummary = "Empfangen"
+        cloudSyncLog.notice("Remote Notification empfangen")
+    }
+
+    /// Direkte CloudKit-Probe, unabhaengig von SwiftData-Import-Events.
+    ///
+    /// Das ist absichtlich keine "Force Sync"-Funktion: Core Data/SwiftData bietet dafuer keine
+    /// verlaessliche oeffentliche API. Die Probe beantwortet stattdessen die wichtigere Frage,
+    /// ob dieses Geraet denselben privaten CloudKit-Bestand ueberhaupt sieht.
+    func checkServerReachability() async {
+        guard !isSyncDisabled else { return }
+
+        guard CloudSyncConfiguration.usesCloudKit else {
+            serverProbeSummary = "CloudKit in diesem Build abgeschaltet"
+            return
+        }
+
+        isCheckingServer = true
+        defer { isCheckingServer = false }
+
+        do {
+            let result = try await CloudSyncServerProbe.run()
+            serverProbeSummary = result.summary
+            cloudSyncLog.notice("CloudKit-Serverprobe: \(result.logSummary, privacy: .public)")
+        } catch {
+            let description = CloudSyncErrorFormatter.describe(error)
+            serverProbeSummary = "Fehler"
+            phase = .issue
+            detail = "Serverprüfung fehlgeschlagen"
+            tooltip = "Direkte CloudKit-Prüfung: \(description)"
+            cloudSyncLog.error("CloudKit-Serverprobe fehlgeschlagen — \(description, privacy: .public)")
+        }
     }
 
     /// Fragt den iCloud-Account direkt ab, statt das Problem aus einem Core-Data-Fehler
@@ -351,6 +404,36 @@ final class CloudSyncStatusCenter: ObservableObject {
         tooltip = "iCloud hat eine Änderung aus einem anderen Gerät gemeldet."
     }
 
+    func waitForRemoteChange(after baseline: Int, timeout: Duration = .seconds(25)) async -> Bool {
+        if remoteChangeCount > baseline { return true }
+
+        let updates = AsyncStream<Int> { continuation in
+            let cancellable = $remoteChangeCount.sink { value in
+                continuation.yield(value)
+            }
+            continuation.onTermination = { _ in
+                cancellable.cancel()
+            }
+        }
+
+        return await withTaskGroup(of: Bool.self) { group in
+            group.addTask {
+                for await value in updates where value > baseline {
+                    return true
+                }
+                return false
+            }
+            group.addTask {
+                try? await Task.sleep(for: timeout)
+                return false
+            }
+
+            let result = await group.next() ?? false
+            group.cancelAll()
+            return result
+        }
+    }
+
     private func startPendingExportWatchdog() {
         pendingExportWatchdog?.cancel()
         pendingExportWatchdog = Task { [weak self] in
@@ -491,6 +574,10 @@ private struct CloudSyncStatusDetail: View {
             VStack(spacing: 0) {
                 diagnosticRow("iCloud-Account", status.accountSummary)
                 AnkerRule(color: AnkerColor.cardDivider, weight: .row)
+                diagnosticRow("Push", status.remoteNotificationSummary)
+                AnkerRule(color: AnkerColor.cardDivider, weight: .row)
+                diagnosticRow("Server", status.serverProbeSummary)
+                AnkerRule(color: AnkerColor.cardDivider, weight: .row)
                 diagnosticRow("Umgebung", CloudSyncDiagnostics.environmentName)
                 AnkerRule(color: AnkerColor.cardDivider, weight: .row)
                 diagnosticRow("Container", CloudSyncDiagnostics.containerIdentifier)
@@ -508,6 +595,18 @@ private struct CloudSyncStatusDetail: View {
                 .foregroundStyle(AnkerColor.inkSecond)
                 .fixedSize(horizontal: false, vertical: true)
 
+            Button {
+                Task { await status.checkServerReachability() }
+            } label: {
+                Label(
+                    status.isCheckingServer ? "Server wird geprüft" : "Server prüfen",
+                    ankerIcon: AnkerIcon.refresh
+                )
+                .ankerType(AnkerType.caption)
+            }
+            .buttonStyle(.bordered)
+            .disabled(status.isCheckingServer)
+
             Spacer(minLength: 0)
 
             Button("Fertig") { dismiss() }
@@ -516,6 +615,7 @@ private struct CloudSyncStatusDetail: View {
         }
         .task {
             await status.refreshAccountStatus()
+            await status.checkServerReachability()
         }
         .padding(AnkerSpacing.s4)
         .background(AnkerColor.ground)
@@ -558,6 +658,75 @@ private struct CloudSyncStatusIcon: View {
                 .ankerIcon(AnkerIconSize.s)
                 .foregroundStyle(phase.tint)
         }
+    }
+}
+
+private enum CloudSyncServerProbe {
+    /// Standard-Zone, die Core Data / SwiftData fuer CloudKit-Mirroring anlegt.
+    private static let swiftDataZoneID = CKRecordZone.ID(
+        zoneName: "com.apple.coredata.cloudkit.zone",
+        ownerName: CKCurrentUserDefaultName
+    )
+
+    struct Outcome: Sendable {
+        let changedRecords: Int
+        let deletedRecords: Int
+        let moreComing: Bool
+
+        var summary: String {
+            let total = changedRecords + deletedRecords
+            if total == 0 { return "Zone erreichbar, keine Datensätze" }
+
+            var text = "\(changedRecords) Datensätze"
+            if deletedRecords > 0 {
+                text += ", \(deletedRecords) Löschungen"
+            }
+            if moreComing {
+                text += ", weitere vorhanden"
+            }
+            return text
+        }
+
+        var logSummary: String {
+            "Zone erreichbar, changed=\(changedRecords), deleted=\(deletedRecords), moreComing=\(moreComing)"
+        }
+    }
+
+    static func run() async throws -> Outcome {
+        let database = CKContainer(identifier: CloudSyncConfiguration.containerIdentifier).privateCloudDatabase
+
+        let zones = try await database.recordZones(for: [swiftDataZoneID])
+        switch zones[swiftDataZoneID] {
+        case .success:
+            break
+        case .failure(let error):
+            throw error
+        case .none:
+            throw CKError(.zoneNotFound)
+        }
+
+        let changes = try await database.recordZoneChanges(
+            inZoneWith: swiftDataZoneID,
+            since: nil,
+            desiredKeys: [],
+            resultsLimit: 100
+        )
+
+        var changedRecords = 0
+        for result in changes.modificationResultsByID.values {
+            switch result {
+            case .success:
+                changedRecords += 1
+            case .failure(let error):
+                throw error
+            }
+        }
+
+        return Outcome(
+            changedRecords: changedRecords,
+            deletedRecords: changes.deletions.count,
+            moreComing: changes.moreComing
+        )
     }
 }
 

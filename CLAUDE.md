@@ -214,3 +214,11 @@ Für die wiederkehrenden Themen liegen Skills unter [.claude/skills/](.claude/sk
   den Streifen (`AnchorStripView`), ein Modus in `AnkerViewSwitcher`.
 - Nach Modelländerungen muss das CloudKit-Schema in der CloudKit-Konsole von Development nach
   Production deployt werden. Ohne das gilt: läuft in Xcode, tot in TestFlight.
+- **Ein Deploy allein genügt dafür nicht.** CloudKit legt ein Record-Feld erst an, wenn ein
+  Datensatz **mit einem Wert darin** exportiert wird. Ein neuer Optional, der überall `nil`
+  geblieben ist, existiert im Development-Schema deshalb gar nicht und kann folglich auch nicht
+  nach Production deployt werden — genau so fehlten `reflection`, `reviewedAt`, `completedAt` und
+  `carryOverCount` monatelang. Vor dem Deploy also immer erst den Upload laufen lassen:
+  Scheme > Run > Arguments > `-DaiventoInitializeCloudKitSchema`. Er leitet die Felder aus dem
+  Managed Object Model ab statt aus vorhandenen Daten. Ergebnis steht im System-Log
+  (`CloudKit-Schema hochgeladen`), Argument danach wieder entfernen.

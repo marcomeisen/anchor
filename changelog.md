@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-08-16
+
+- CloudKit-Schema-Upload repariert: `initializeCloudKitSchema` lief inline in `App.init` auf dem Main-Thread und scheiterte dort reproduzierbar nach rund 130 Sekunden mit „the requests timed out (a 30s wait failed)". Der Aufruf wartet synchron auf den Setup-Request des Mirroring-Delegate — und den blockierte er selbst, solange die Runloop noch nicht lief. Er laeuft jetzt drei Sekunden nach dem Start auf einem Hintergrund-Thread und ist nach rund elf Sekunden durch.
+- Waehrend des Upload-Laufs oeffnet die App ihren eigenen Store ohne CloudKit. Zwei Stores, die im selben Prozess dieselbe Zone desselben Containers spiegeln, konkurrieren sonst um denselben Setup-Request; das Startargument macht den Lauf ohnehin zum Werkzeug und nicht zum normalen Start.
+- Fehlschlaege des Uploads sind erstmals lesbar: statt `localizedDescription` („Ein Core Data-Fehler ist aufgetreten") laeuft der Fehler durch `CloudSyncErrorFormatter` und landet zusammen mit dem Erfolgsfall im System-Log. `print` allein war ausserhalb von Xcode unsichtbar, weil es in eine Pipe blockgepuffert schreibt.
+- Damit sind `CD_reflection`, `CD_reviewedAt`, `CD_completedAt` und `CD_carryOverCount` erstmals im Development-Schema. Sie fehlten seit der Modellaenderung vom 4. August: CloudKit legt ein Feld faul an, naemlich erst beim Export eines Records mit Wert darin — ein durchgehend `nil` gebliebener Optional bleibt dem Schema deshalb unbekannt. `CD_order` war nur deshalb vorhanden, weil die Ordnungsnormalisierung jeden Goal-Record einmal neu geschrieben hat.
+- **Offen und nicht aus dem Repo machbar:** Deploy des Schemas nach Production in der CloudKit-Konsole. Bis dahin bleibt der Sync in TestFlight tot.
+- TestFlight-Uploads laufen ohne Rueckfrage durch: `ITSAppUsesNonExemptEncryption` steht als `false` in der Info.plist. Bisher blieb jeder Build in App Store Connect liegen, bis die Export-Compliance-Frage von Hand beantwortet war. Die App benutzt ausser HTTPS/CloudKit keine Verschluesselung und faellt damit unter die Ausnahme.
+
 ## 2026-08-04
 
 ### Entwurfsrunde 3 — Objekte werden rund, Struktur bleibt scharf

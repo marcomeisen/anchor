@@ -12,6 +12,7 @@ struct AnkerRootView: View {
 
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
     @AppStorage("onboardingVersion") private var onboardingVersion = 0
+    @AppStorage(AppSettingsKey.startupViewMode) private var startupViewRaw = StartupViewMode.lastView.rawValue
 
     /// Injizierbar, damit Previews und Tests eine stille Instanz einsetzen koennen.
     @ObservedObject var cloudSyncStatus: CloudSyncStatusCenter = .shared
@@ -59,6 +60,10 @@ struct AnkerRootView: View {
         case .pendingExport, .synced, .issue, .disabled:
             return false
         }
+    }
+
+    private var startupViewMode: StartupViewMode {
+        StartupViewMode(rawValue: startupViewRaw) ?? .lastView
     }
 
     var body: some View {
@@ -109,7 +114,7 @@ struct AnkerRootView: View {
             }
         }
         .task {
-            restoreNavigationIfPossible()
+            applyStartupNavigation()
             ensureCurrentWeek()
             ensureSelectedWeek()
             modelContext.saveChanges()
@@ -461,15 +466,14 @@ struct AnkerRootView: View {
         modelContext.saveChanges()
     }
 
-    /// Nur beim Start und nur, wenn wirklich etwas gespeichert war — sonst wuerde der
-    /// Standardzustand die Auswahl ueberschreiben, die ein Deep Link gerade gesetzt hat.
-    private func restoreNavigationIfPossible() {
+    /// Nur beim Start: je nach Einstellung die letzte Ansicht wiederherstellen oder bewusst auf
+    /// heute bzw. die laufende Woche springen.
+    private func applyStartupNavigation() {
 #if DEBUG
         // UI-Tests sollen immer gleich anfangen; `@SceneStorage` ueberlebt sonst den Neustart.
         if UITestMode.isActive { return }
 #endif
-        guard let restored = AnkerNavigationState(encoded: storedNavigation) else { return }
-        navigation = restored
+        navigation = startupViewMode.initialNavigation(storedNavigation: storedNavigation)
     }
 
     @discardableResult

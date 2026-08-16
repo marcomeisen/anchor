@@ -22,7 +22,12 @@ enum UITestMode {
     static func prepare(defaults: UserDefaults = .standard) {
         guard isActive else { return }
 
-        for key in [AppSettingsKey.appearance, "hasCompletedOnboarding", "onboardingVersion"] {
+        for key in [
+            AppSettingsKey.appearance,
+            AppSettingsKey.startupViewMode,
+            "hasCompletedOnboarding",
+            "onboardingVersion",
+        ] {
             defaults.removeObject(forKey: key)
         }
 
@@ -38,8 +43,68 @@ enum UITestMode {
 /// Vorab-Abfrage beim Start nicht auseinanderlaufen.
 enum AppSettingsKey {
     static let appearance = "appearanceMode"
+    static let startupViewMode = "startupViewMode"
     static let cloudSyncEnabled = "cloudSyncEnabled"
     static let hasChosenCloudSync = "hasChosenCloudSync"
+}
+
+/// Welche Ansicht beim Start geoeffnet wird.
+enum StartupViewMode: String, CaseIterable, Identifiable {
+    case currentWeek
+    case currentDay
+    case lastView
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .currentDay: "Aktueller Tag"
+        case .currentWeek: "Aktuelle Woche"
+        case .lastView: "Letzte Ansicht"
+        }
+    }
+
+    var icon: AnkerIcon {
+        switch self {
+        case .currentDay: .today
+        case .currentWeek: .week
+        case .lastView: .refresh
+        }
+    }
+
+    var explanation: String {
+        switch self {
+        case .currentDay:
+            "Daivento öffnet beim Start immer Heute."
+        case .currentWeek:
+            "Daivento öffnet beim Start immer die laufende Woche."
+        case .lastView:
+            "Daivento stellt beim Start wieder her, wo du zuletzt warst."
+        }
+    }
+
+    func initialNavigation(storedNavigation: String?, now: Date = Date()) -> AnkerNavigationState {
+        switch self {
+        case .currentDay:
+            var navigation = AnkerNavigationState(now: now)
+            navigation.moveToToday(now: now)
+            return navigation
+        case .currentWeek:
+            var navigation = AnkerNavigationState(now: now)
+            navigation.select(.week)
+            return navigation
+        case .lastView:
+            return AnkerNavigationState(encoded: storedNavigation) ?? AnkerNavigationState(now: now)
+        }
+    }
+
+    static func stored(in defaults: UserDefaults = .standard) -> StartupViewMode {
+        guard let raw = defaults.string(forKey: AppSettingsKey.startupViewMode),
+              let mode = StartupViewMode(rawValue: raw) else {
+            return .lastView
+        }
+        return mode
+    }
 }
 
 /// Hell, dunkel oder wie das System.

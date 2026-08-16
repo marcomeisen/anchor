@@ -5,6 +5,7 @@ import SwiftUI
 struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
 
+    @AppStorage(AppSettingsKey.startupViewMode) private var startupViewRaw = StartupViewMode.lastView.rawValue
     @AppStorage(AppSettingsKey.appearance) private var appearanceRaw = AppearanceMode.system.rawValue
     @AppStorage(AppSettingsKey.cloudSyncEnabled) private var cloudSyncEnabled = true
 
@@ -19,9 +20,14 @@ struct SettingsView: View {
         AppearanceMode(rawValue: appearanceRaw) ?? .system
     }
 
+    private var startupViewMode: StartupViewMode {
+        StartupViewMode(rawValue: startupViewRaw) ?? .lastView
+    }
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: AnkerSpacing.s4) {
+                startupSection
                 appearanceSection
                 cloudSyncSection
                 dataSection
@@ -42,6 +48,29 @@ struct SettingsView: View {
 #if os(macOS)
             .frame(minWidth: 460, minHeight: 520)
 #endif
+        }
+    }
+
+    // MARK: - Start
+
+    private var startupSection: some View {
+        card {
+            sectionTitle("Start")
+
+            Picker("Startansicht", selection: $startupViewRaw) {
+                ForEach(StartupViewMode.allCases) { mode in
+                    Label(verbatim: mode.title, ankerIcon: mode.icon)
+                        .tag(mode.rawValue)
+                }
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            .accessibilityLabel("Startansicht wählen")
+
+            Text(startupViewMode.explanation)
+                .ankerType(AnkerType.caption)
+                .foregroundStyle(AnkerColor.inkSecond)
+                .fixedSize(horizontal: false, vertical: true)
         }
     }
 
