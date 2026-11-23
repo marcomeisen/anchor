@@ -75,20 +75,20 @@ enum StoreMaintenance {
         var isEmpty: Bool { removedTotal == 0 && reorderedGoalWeeks.isEmpty && adoptedOrphans == 0 }
 
         var summary: String {
-            guard !isEmpty else { return "Keine Duplikate" }
+            guard !isEmpty else { return String(localized: "Keine Duplikate") }
 
             var parts: [String] = []
-            if removedWeeks > 0 { parts.append("\(removedWeeks) doppelte Wochen") }
-            if removedDays > 0 { parts.append("\(removedDays) doppelte Tage") }
-            if adoptedOrphans > 0 { parts.append("\(adoptedOrphans) verwaiste Einträge") }
+            if removedWeeks > 0 { parts.append(String(localized: "\(removedWeeks) doppelte Wochen")) }
+            if removedDays > 0 { parts.append(String(localized: "\(removedDays) doppelte Tage")) }
+            if adoptedOrphans > 0 { parts.append(String(localized: "\(adoptedOrphans) verwaiste Einträge")) }
             if !parts.isEmpty {
-                var text = "\(parts.joined(separator: ", ")) zusammengeführt"
+                let merged = parts.joined(separator: ", ")
                 if !reorderedGoalWeeks.isEmpty {
-                    text += ", Ankerreihenfolge in \(reorderedGoalWeeks.count) Wochen korrigiert"
+                    return String(localized: "\(merged) zusammengeführt, Ankerreihenfolge in \(reorderedGoalWeeks.count) Wochen korrigiert")
                 }
-                return text
+                return String(localized: "\(merged) zusammengeführt")
             }
-            return "Ankerreihenfolge in \(reorderedGoalWeeks.count) Wochen korrigiert"
+            return String(localized: "Ankerreihenfolge in \(reorderedGoalWeeks.count) Wochen korrigiert")
         }
     }
 

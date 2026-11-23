@@ -19,8 +19,10 @@ Der Entwurf ist mehrere Runden durchlaufen (Modernist, Zeitschiene, Glas-Variant
 und hat die verspielte Kartenmetapher und die bunte Palette bewusst verworfen. Was davon geblieben
 ist: das Blatt als Bild, der Punkt pro Aufgabe, „ohne Anker" und „ohne Tag" als eigene Orte.
 
-**Sprache:** Alle sichtbaren UI-Texte, Commits, Changelog-Einträge und Doku sind auf Deutsch.
-Code-Identifier sind Englisch.
+**Sprache:** Die App ist **zweisprachig, Deutsch und Englisch** (Einstellungen → Sprache; „Wie
+das System" heißt Deutsch auf deutschen Geräten, sonst Englisch). Quelltexte und Schlüssel im
+String-Katalog sind Deutsch. Commits, Changelog-Einträge und Doku sind auf Deutsch, Code-Identifier
+Englisch.
 
 ## Struktur
 
@@ -70,6 +72,7 @@ Code-Identifier sind Englisch.
 | [Anchor/TaskCaptureSheets.swift](Anchor/TaskCaptureSheets.swift), [Anchor/TaskEditorSheets.swift](Anchor/TaskEditorSheets.swift) | Schnellerfassung in der Menüleiste, Aufgaben- und Zieleditor |
 | [Anchor/AnkerComponents.swift](Anchor/AnkerComponents.swift) | `TaskCard` (**die** Aufgabenzeile, mit Kontextmenü, Swipe, Undo), `TaskTitleField`, `TaskCheckmark`, `ankerTapTarget` |
 | [Anchor/TaskDropHandling.swift](Anchor/TaskDropHandling.swift), [Anchor/AnkerTabBar.swift](Anchor/AnkerTabBar.swift) | Ziehen und Ablegen von Aufgaben (UUID-Text); die Tableiste des iPhones |
+| [Anchor/LegalScreens.swift](Anchor/LegalScreens.swift) | Datenschutzerklärung und Hilfe in der App, deutsch und englisch; `LegalInfo` (Name, Kontakt) |
 | [Anchor/AppCommands.swift](Anchor/AppCommands.swift) | Mac-Menü „Gehe zu“ (⌘1–3, ⌘[ / ⌘], ⌘F) über `FocusedValue` |
 | [Anchor/AnkerPhoneChrome.swift](Anchor/AnkerPhoneChrome.swift) | Die eigene Kopfzeile des iPhones statt der Systemleiste |
 | [Anchor/CloudSyncStatus.swift](Anchor/CloudSyncStatus.swift) | `CloudSyncStatusCenter` und die Sync-Anzeigen |
@@ -80,8 +83,9 @@ Code-Identifier sind Englisch.
 | [Scripts/make-icon-sources.swift](Scripts/make-icon-sources.swift) | Zeichnet die Icon-Vorlagen nach [assets/icon/](assets/icon/) und das Menüleisten-Glyph |
 | [Scripts/make-app-icons.swift](Scripts/make-app-icons.swift) | Leitet daraus den Katalog ab (iOS randlos ohne Alpha, macOS gerundet mit Haarlinie) |
 | [Scripts/design-guard.swift](Scripts/design-guard.swift) | Grep-Schranken für „Blatt"; `swift Scripts/design-guard.swift` |
+| [Scripts/l10n-guard.swift](Scripts/l10n-guard.swift) | Jeder Katalogschlüssel auf Deutsch und Englisch, Platzhalter gleich; `swift Scripts/l10n-guard.swift` |
 | [AnchorTests/](AnchorTests/) | Unit-Tests (SwiftData in-memory): Kern, Sync-Zusammenführung über zwei Geräte, Zeitzonen, Aufgaben ohne Tag, Kennzahlen, Tokens, Kontrast, Erfassungssyntax |
-| [docs/](docs/) | Öffentliche Seiten für GitHub Pages: Datenschutzerklärung, Hilfe und Kontakt (in `AppLinks` verlinkt) |
+| [docs/](docs/) | Öffentliche Seiten (GitHub Pages) nur für die Pflicht-URLs in App Store Connect; die App zeigt die Texte selbst |
 | [AppStore/](AppStore/) | Texte für App Store Connect ([Metadaten.md](AppStore/Metadaten.md)) und Bildschirmfotos |
 | [AnchorUITests/](AnchorUITests/) | Verankern und Erfassen, beide Wochenansichten, Titel bearbeiten (Mac); `PhoneChromeTests` nur iOS |
 
@@ -163,6 +167,26 @@ Unter [.claude/skills/](.claude/skills/):
   setzen; Startargumente (`-AnchoritTab week`) werden nur gelesen. Ein geschriebener Wert überlebt
   den Testlauf und gilt für jeden späteren echten Start — so wurde schon einmal der Sync dauerhaft
   abgeschaltet.
+
+### Zwei Sprachen
+
+- **Jeder sichtbare Text muss in den Katalog** [Anchor/Localizable.xcstrings](Anchor/Localizable.xcstrings):
+  Literale an `Text`/`Button`/`Label`/`.accessibilityLabel`/`.help` oder `String(localized:)`.
+  `Text(verbatim:)` nur für Nutzerdaten und Zahlen; ein `String`-Parameter, der an `Text` geht,
+  wird **nicht** nachgeschlagen.
+- **Jeder Schlüssel braucht `de` und `en`.** Die Rückfallsprache ist Englisch
+  (`DEVELOPMENT_LANGUAGE = en`, `CFBundleLocalizations = de, en`). Fehlt `de`, sieht ein deutsches
+  Gerät Englisch. Ablauf für neue Texte: macOS **und** iOS-Simulator bauen (manche Texte stehen
+  nur unter einer Plattform), `xcrun xcstringstool sync Anchor/Localizable.xcstrings --stringsdata …`,
+  dann `de` und `en` eintragen und `swift Scripts/l10n-guard.swift` laufen lassen.
+- Ganze Sätze mit Interpolation statt zusammengestückelter Teile; Einzahl und Mehrzahl als zwei
+  Schlüssel. Jahreszahlen als `String(year)` übergeben, sonst druckt Englisch „2,026".
+- Datumsformate über `AnkerDateFormat` (folgt der App-Sprache); „KW" heißt auf Englisch „Week".
+  Erfassungskürzel sind sprachabhängig (`CaptureSyntax.weekdayTokens`; Englisch ohne „do").
+- Die Sprachwahl schreibt `AppleLanguages` in die Defaults der App und gilt nach einem Neustart.
+  Tests laufen auf Deutsch (Scheme → Test → App Language), UI-Tests starten mit `-AppleLanguages (de)`.
+- Datenschutzerklärung und Hilfe stehen als zwei vollständige Fassungen in
+  [Anchor/LegalScreens.swift](Anchor/LegalScreens.swift) (nicht im Katalog), Kontaktdaten in `LegalInfo`.
 
 ### Gestaltung „Blatt"
 

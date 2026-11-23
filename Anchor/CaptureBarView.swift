@@ -15,7 +15,7 @@ struct CaptureBar: View {
     let week: Week?
     let weekStart: Date
     let fallbackDate: Date
-    var placeholder = "Was steht an?  ·  #1–#4 Anker, mo–so Tag"
+    var placeholder = String(localized: "Was steht an?  ·  #1–#4 Anker, mo–so Tag")
     var onCommitted: (AnkerTask) -> Void = { _ in }
 
     @State private var raw = ""

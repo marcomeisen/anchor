@@ -129,7 +129,7 @@ struct BlattBulkActionBar: View {
         }
     }
 
-    private func action(_ icon: AnkerIcon, _ title: String, disabled: Bool, perform: @escaping () -> Void) -> some View {
+    private func action(_ icon: AnkerIcon, _ title: LocalizedStringKey, disabled: Bool, perform: @escaping () -> Void) -> some View {
         Button(action: perform) {
             actionLabel(icon, title, disabled: disabled)
         }
@@ -138,7 +138,7 @@ struct BlattBulkActionBar: View {
         .accessibilityLabel(title)
     }
 
-    private func actionLabel(_ icon: AnkerIcon, _ title: String, disabled: Bool) -> some View {
+    private func actionLabel(_ icon: AnkerIcon, _ title: LocalizedStringKey, disabled: Bool) -> some View {
         VStack(spacing: AnkerSpacing.s0) {
             Image(icon).ankerIcon(AnkerIconSize.s)
             Text(title).ankerType(AnkerType.microLabel).lineLimit(1).fixedSize()
@@ -184,7 +184,20 @@ struct BlattBulkActionBar: View {
     }
 
     /// „1 Aufgabe erledigt", „3 Aufgaben erledigt".
+    ///
+    /// Jeder Satz steht ganz im Katalog, damit eine Übersetzung Zahl, Nomen und Verb umstellen
+    /// kann. Ein unbekanntes Verb fällt auf den zusammengesetzten Satz zurück.
     static func tasksMessage(_ count: Int, _ verb: String) -> String {
-        count == 1 ? "1 Aufgabe \(verb)" : "\(count) Aufgaben \(verb)"
+        let single = count == 1
+        switch verb {
+        case "erledigt":
+            return single ? String(localized: "1 Aufgabe erledigt") : String(localized: "\(count) Aufgaben erledigt")
+        case "verschoben":
+            return single ? String(localized: "1 Aufgabe verschoben") : String(localized: "\(count) Aufgaben verschoben")
+        case "gelöscht":
+            return single ? String(localized: "1 Aufgabe gelöscht") : String(localized: "\(count) Aufgaben gelöscht")
+        default:
+            return single ? "1 Aufgabe \(verb)" : "\(count) Aufgaben \(verb)"
+        }
     }
 }

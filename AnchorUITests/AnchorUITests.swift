@@ -16,7 +16,7 @@ final class AnchorUITests: XCTestCase {
     @MainActor
     private func launchApp() -> XCUIApplication {
         let app = XCUIApplication()
-        app.launchArguments = ["-AnchoritUITest"]
+        app.launchArguments = ["-AnchoritUITest", "-AppleLanguages", "(de)", "-AppleLocale", "de_DE"]
         app.launch()
         return app
     }
@@ -143,7 +143,7 @@ final class AnchorUITests: XCTestCase {
     func testLaunchPerformance() throws {
         measure(metrics: [XCTApplicationLaunchMetric()]) {
             let app = XCUIApplication()
-            app.launchArguments = ["-AnchoritUITest"]
+            app.launchArguments = ["-AnchoritUITest", "-AppleLanguages", "(de)", "-AppleLocale", "de_DE"]
             app.launch()
         }
     }

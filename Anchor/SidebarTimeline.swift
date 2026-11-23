@@ -49,13 +49,14 @@ enum SidebarTimeline {
         let isPast: Bool
         let exists: Bool
 
-        var label: String { "Woche \(String(format: "%02d", isoWeek))" }
+        var label: String { String(localized: "Woche \(String(format: "%02d", isoWeek))") }
 
         var accessibilityLabel: String {
-            var text = "\(label), \(marks.filter { $0 == .done }.count) von 7 Tagen erledigt"
-            if openCount > 0 { text += ", \(openCount) offen" }
-            if isCurrent { text += ", laufende Woche" }
-            return text
+            let done = marks.filter { $0 == .done }.count
+            var parts = [String(localized: "\(label), \(done) von 7 Tagen erledigt")]
+            if openCount > 0 { parts.append(String(localized: "\(openCount) offen")) }
+            if isCurrent { parts.append(String(localized: "laufende Woche")) }
+            return parts.joined(separator: ", ")
         }
     }
 

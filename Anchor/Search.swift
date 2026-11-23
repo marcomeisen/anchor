@@ -19,11 +19,11 @@ enum AnkerSearch {
 
         var title: String {
             switch self {
-            case .task: "Aufgabe"
-            case .goal: "Wochenziel"
-            case .note: "Notiz"
-            case .focus: "Tagesfokus"
-            case .timeBlock: "Zeitblock"
+            case .task: String(localized: "Aufgabe")
+            case .goal: String(localized: "Anker")
+            case .note: String(localized: "Notiz")
+            case .focus: String(localized: "Tagesfokus")
+            case .timeBlock: String(localized: "Zeitblock")
             }
         }
 
@@ -136,7 +136,7 @@ enum AnkerSearch {
                         id: week.id,
                         kind: .note,
                         title: snippet(of: reflection, around: needle),
-                        context: "Rückblick · \(weekLabel(week))",
+                        context: String(localized: "Rückblick · \(weekLabel(week))"),
                         isDone: false,
                         dayID: nil,
                         goalID: nil,
@@ -151,7 +151,7 @@ enum AnkerSearch {
                 func dayLabel() -> String { AnkerDateFormat.weekdayShortWithDayMonth(date) }
 
                 for task in day.taskList where !task.isDeleted && matches(task.title, needle) {
-                    var context = "\(dayLabel()) · Prio \(task.priority.label)"
+                    var context = String(localized: "\(dayLabel()) · Prio \(task.priority.label)")
                     if let goalTitle = task.linkedGoal?.title, !goalTitle.isEmpty {
                         context += " · \(goalTitle)"
                     }
@@ -221,7 +221,7 @@ enum AnkerSearch {
         var seenTasks = Set(results.lazy.filter { $0.kind == .task }.map(\.id))
         for task in unscheduled where !task.isDeleted && task.day == nil && matches(task.title, needle) {
             guard seenTasks.insert(task.id).inserted else { continue }
-            var context = "Ohne Tag · Prio \(task.priority.label)"
+            var context = String(localized: "Ohne Tag · Prio \(task.priority.label)")
             var date = now
             if let goal = task.linkedGoal, !goal.isDeleted {
                 if !goal.title.isEmpty { context += " · \(goal.title)" }
@@ -230,7 +230,7 @@ enum AnkerSearch {
                     date = AnkerCalendar.nominalDate(ofStored: week.monday)
                 }
             } else {
-                context = "Eingang · Prio \(task.priority.label)"
+                context = String(localized: "Eingang · Prio \(task.priority.label)")
             }
             results.append(
                 Result(
@@ -310,7 +310,7 @@ struct SearchResultsList: View {
             if query.trimmingCharacters(in: .whitespacesAndNewlines).count < 2 {
                 hint("Mindestens zwei Zeichen eingeben.")
             } else if results.isEmpty {
-                hint("Keine Treffer in Aufgaben, Zielen, Notizen oder Zeitblöcken.")
+                hint("Keine Treffer in Aufgaben, Ankern, Notizen oder Zeitblöcken.")
             } else {
                 // "Treffer" ist im Deutschen im Singular und Plural gleich — keine Pluralregel nötig.
                 Text("\(results.count) Treffer")
@@ -330,7 +330,7 @@ struct SearchResultsList: View {
         }
     }
 
-    private func hint(_ text: String) -> some View {
+    private func hint(_ text: LocalizedStringKey) -> some View {
         Text(text)
             .ankerType(AnkerType.caption)
             .foregroundStyle(AnkerColor.inkSecond)
@@ -354,7 +354,7 @@ struct SearchResultsList: View {
                     .lineLimit(2)
                     .multilineTextAlignment(.leading)
 
-                Text("\(result.kind.title) · \(result.context)")
+                Text(verbatim: "\(result.kind.title) · \(result.context)")
                     .ankerType(AnkerType.caption)
                     .foregroundStyle(AnkerColor.inkSecond)
                     .lineLimit(1)
@@ -367,7 +367,11 @@ struct SearchResultsList: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .contentShape(Rectangle())
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(result.kind.title): \(result.title), \(result.context)\(result.isDone ? ", erledigt" : "")")
+        .accessibilityLabel(
+            result.isDone
+                ? Text("\(result.kind.title): \(result.title), \(result.context), erledigt")
+                : Text(verbatim: "\(result.kind.title): \(result.title), \(result.context)")
+        )
         .accessibilityAddTraits(.isButton)
     }
 }
@@ -394,7 +398,7 @@ struct SearchSheet: View {
                 .padding(.vertical, AnkerSpacing.s3)
             }
             .background(AnkerColor.ground)
-            .searchable(text: $query, prompt: "Ziele, Aufgaben, Notizen")
+            .searchable(text: $query, prompt: "Anker, Aufgaben, Notizen")
             .ankerSheetChrome("Suchen", cancel: AnkerSheetAction("Fertig") { dismiss() })
         }
     }

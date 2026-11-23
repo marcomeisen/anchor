@@ -59,7 +59,7 @@ struct QuickCapturePopover: View {
                         selectedGoalID = goal.id
                     }
                 }
-                CaptureChip(title: "Ohne Anker", isSelected: selectedGoalID == nil, selectedColor: AnkerColor.accentFill) {
+                CaptureChip(title: String(localized: "Ohne Anker"), isSelected: selectedGoalID == nil, selectedColor: AnkerColor.accentFill) {
                     selectedGoalID = nil
                 }
             }

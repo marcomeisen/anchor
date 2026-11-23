@@ -131,15 +131,15 @@ private struct PersistenceFailureAlert: ViewModifier {
     }
 
     private func message(for failure: PersistenceFailure) -> String {
-        var text = "Anchorit konnte die letzte Änderung nicht auf diesem Gerät sichern. "
-            + "Sie geht verloren, wenn die App beendet wird.\n\n\(failure.message)"
+        // Absatzweise übersetzt; die Fehlermeldung selbst kommt vom System.
+        var text = String(localized: "Anchorit konnte die letzte Änderung nicht auf diesem Gerät sichern. Sie geht verloren, wenn die App beendet wird.")
+            + "\n\n\(failure.message)"
 
         if center.failureCount > 1 {
-            text += "\n\nSeit dem Start sind \(center.failureCount) Speichervorgänge fehlgeschlagen."
+            text += "\n\n" + String(localized: "Seit dem Start sind \(center.failureCount) Speichervorgänge fehlgeschlagen.")
         }
 
-        text += "\n\nPrüfe den freien Speicherplatz. Bleibt der Fehler, sichere deine Daten über "
-            + "Daten und Datenschutz als Export, bevor du die App beendest."
+        text += "\n\n" + String(localized: "Prüfe den freien Speicherplatz. Bleibt der Fehler, sichere deine Daten über Daten und Datenschutz als Export, bevor du die App beendest.")
 
         return text
     }

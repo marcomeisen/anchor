@@ -2,6 +2,19 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<!-- Rückfallsprache für Systeme ohne passende Übersetzung. Die Texte stehen auf Deutsch
+	     im Katalog (Quellsprache), aber wer weder Deutsch noch Englisch eingestellt hat,
+	     bekommt Englisch statt Deutsch. Siehe `AppLanguage`. -->
+	<key>CFBundleDevelopmentRegion</key>
+	<string>en</string>
+	<!-- Deutsch ist die Quellsprache und hat deshalb keine eigene Stringtabelle — ohne diese
+	     Angabe wüsste das System nicht, dass die App Deutsch kann, und gäbe deutschen Nutzern
+	     Englisch. -->
+	<key>CFBundleLocalizations</key>
+	<array>
+		<string>de</string>
+		<string>en</string>
+	</array>
 	<!-- Export-Compliance vorab beantwortet, sonst bleibt jeder TestFlight-Upload in App Store
 	     Connect bis zur Antwort haengen. `false`: ausser HTTPS/CloudKit keine Verschluesselung,
 	     Apples Standardverschluesselung faellt unter die Ausnahme. Kaeme eigene Kryptografie

@@ -64,7 +64,7 @@ struct DayDetailView: View {
                     week: sheet.week,
                     weekStart: sheet.monday,
                     fallbackDate: date,
-                    placeholder: "Was steht an diesem Tag an?  ·  #1–#4 Anker"
+                    placeholder: String(localized: "Was steht an diesem Tag an?  ·  #1–#4 Anker")
                 )
             }
             .padding(.horizontal, AnkerSpacing.screenPadding)
@@ -90,7 +90,7 @@ struct DayDetailView: View {
 
     private var navigationTitle: String {
         let weekday = AnkerDateFormat.weekdayLong(date)
-        return isToday ? "\(weekday) — Heute" : weekday
+        return isToday ? String(localized: "\(weekday) — Heute") : weekday
     }
 
     // MARK: - Kopf
@@ -104,7 +104,7 @@ struct DayDetailView: View {
                         .ankerType(AnkerType.numericSmall)
                         .foregroundStyle(AnkerColor.inkSecond)
 
-                    Text(verbatim: isToday ? "Heute, \(AnkerDateFormat.weekdayLong(date))" : AnkerDateFormat.weekdayLong(date))
+                    Text(verbatim: isToday ? String(localized: "Heute, \(AnkerDateFormat.weekdayLong(date))") : AnkerDateFormat.weekdayLong(date))
                         .ankerType(AnkerType.headline)
                         .foregroundStyle(isToday ? AnkerColor.accentInk : AnkerColor.ink)
                         .accessibilityAddTraits(.isHeader)
@@ -143,9 +143,9 @@ struct DayDetailView: View {
     private func statsRow(tasks: [AnkerTask]) -> some View {
         let done = tasks.filter(\.isDone).count
         return HStack(spacing: AnkerSpacing.s2) {
-            statTile(value: tasks.count - done, label: "Offen", tint: AnkerColor.accentInk)
-            statTile(value: done, label: "Erledigt", tint: AnkerColor.ink)
-            statTile(value: day?.timeBlockList.count ?? 0, label: "Zeitblöcke", tint: AnkerColor.inkTertiary)
+            statTile(value: tasks.count - done, label: String(localized: "Offen"), tint: AnkerColor.accentInk)
+            statTile(value: done, label: String(localized: "Erledigt"), tint: AnkerColor.ink)
+            statTile(value: day?.timeBlockList.count ?? 0, label: String(localized: "Zeitblöcke"), tint: AnkerColor.inkTertiary)
         }
         .padding(.top, AnkerSpacing.s4)
     }
@@ -155,7 +155,7 @@ struct DayDetailView: View {
             Text(verbatim: String(value))
                 .ankerType(AnkerType.headline)
                 .foregroundStyle(tint)
-            Text(label)
+            Text(verbatim: label)
                 .ankerType(AnkerType.caption)
                 .foregroundStyle(AnkerColor.inkSecond)
         }
@@ -164,14 +164,14 @@ struct DayDetailView: View {
         .padding(.vertical, AnkerSpacing.s3)
         .ankerCard()
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(value) \(label)")
+        .accessibilityLabel(Text(verbatim: "\(value) \(label)"))
     }
 
     // MARK: - Tagesfokus
 
     private var focusSection: some View {
         VStack(alignment: .leading, spacing: 0) {
-            SectionLabel(title: "Fokus des Tages")
+            SectionLabel(title: String(localized: "Fokus des Tages"))
 
             TextField("Worauf kommt es heute an?", text: $focusDraft, axis: .vertical)
                 .textFieldStyle(.plain)
@@ -195,7 +195,7 @@ struct DayDetailView: View {
         }
         if !lanes.isEmpty {
             VStack(alignment: .leading, spacing: 0) {
-                SectionLabel(title: "Anker an diesem Tag")
+                SectionLabel(title: String(localized: "Anker an diesem Tag"))
 
                 VStack(spacing: AnkerSpacing.s2) {
                     ForEach(lanes) { lane in
@@ -228,7 +228,7 @@ struct DayDetailView: View {
                         .ankerType(AnkerType.caption)
                         .foregroundStyle(AnkerColor.ink)
                         .lineLimit(1)
-                    Text(verbatim: "\(dayDone) von \(dayTasks.count) an diesem Tag")
+                    Text("\(dayDone) von \(dayTasks.count) an diesem Tag")
                         .ankerType(AnkerType.caption)
                         .foregroundStyle(AnkerColor.inkSecond)
                 }
@@ -254,7 +254,7 @@ struct DayDetailView: View {
 
     private var scheduleSection: some View {
         VStack(alignment: .leading, spacing: 0) {
-            SectionLabel(title: "Zeitplan")
+            SectionLabel(title: String(localized: "Zeitplan"))
 
             let blocks = (day?.timeBlockList ?? []).sorted { $0.startTime < $1.startTime }
             if blocks.isEmpty {
@@ -282,13 +282,13 @@ struct DayDetailView: View {
         let open = tasks.filter { !$0.isDone }
         let done = tasks.filter(\.isDone)
         return VStack(alignment: .leading, spacing: 0) {
-            SectionLabel(title: "Aufgaben")
+            SectionLabel(title: String(localized: "Aufgaben"))
 
             if tasks.isEmpty {
                 emptyHint("Noch keine Aufgaben. Schreib unten, was an diesem Tag ansteht.")
             } else {
-                taskGroup(title: "Offen", tasks: open)
-                taskGroup(title: "Erledigt", tasks: done)
+                taskGroup(title: String(localized: "Offen"), tasks: open)
+                taskGroup(title: String(localized: "Erledigt"), tasks: done)
             }
         }
     }
@@ -323,7 +323,7 @@ struct DayDetailView: View {
 
     private var notesSection: some View {
         VStack(alignment: .leading, spacing: 0) {
-            SectionLabel(title: "Notizen")
+            SectionLabel(title: String(localized: "Notizen"))
 
             TextEditor(text: $notesDraft)
                 .scrollContentBackground(.hidden)
@@ -338,7 +338,7 @@ struct DayDetailView: View {
         }
     }
 
-    private func emptyHint(_ text: String) -> some View {
+    private func emptyHint(_ text: LocalizedStringKey) -> some View {
         Text(text)
             .ankerType(AnkerType.caption)
             .foregroundStyle(AnkerColor.inkSecond)
@@ -358,7 +358,7 @@ struct DayDetailView: View {
             isDropTargeted = false
 
             if let snapshot {
-                undo.present(TaskUndoNotice(message: "Aufgabe verschoben", snapshots: [snapshot]))
+                undo.present(TaskUndoNotice(message: String(localized: "Aufgabe verschoben"), snapshots: [snapshot]))
             }
         }
     }

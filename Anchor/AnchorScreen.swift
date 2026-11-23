@@ -121,7 +121,7 @@ struct AnchorScreen: View {
         let total = lane?.tasks.count ?? 0
         return VStack(alignment: .leading, spacing: AnkerSpacing.s2) {
             AnkerProgressBar(progress: total == 0 ? 0 : Double(done) / Double(total), thickness: 8)
-            Text(verbatim: total == 0 ? "Noch keine Aufgabe an diesem Anker" : "\(done) von \(total) erledigt")
+            Text(verbatim: total == 0 ? String(localized: "Noch keine Aufgabe an diesem Anker") : String(localized: "\(done) von \(total) erledigt"))
                 .ankerType(AnkerType.metaStrong)
                 .foregroundStyle(AnkerColor.inkSecond)
                 .accessibilityIdentifier("anchorProgress")
@@ -134,18 +134,18 @@ struct AnchorScreen: View {
                 let tasks = sheet.tasks(in: lane, on: date)
                 guard !tasks.isEmpty else { return nil }
                 let isToday = BlattDates.isToday(date, now: now)
-                return (isToday ? "Heute" : AnkerDateFormat.weekdayLong(date), isToday, tasks)
-            } + [("Ohne Tag", false, sheet.tasks(in: lane, on: nil))].filter { !$0.tasks.isEmpty }
+                return (isToday ? String(localized: "Heute") : AnkerDateFormat.weekdayLong(date), isToday, tasks)
+            } + [(String(localized: "Ohne Tag"), false, sheet.tasks(in: lane, on: nil))].filter { !$0.tasks.isEmpty }
 
         return VStack(alignment: .leading, spacing: AnkerSpacing.s2) {
             HStack(alignment: .firstTextBaseline, spacing: AnkerSpacing.s3) {
-                BlattSectionLabel(title: "Diese Woche")
+                BlattSectionLabel(title: String(localized: "Diese Woche"))
                 if !groups.isEmpty {
                     BlattSelectButton(selection: selection)
                 }
             }
             if groups.isEmpty {
-                BlattEmptyNote(text: "Leg unten die erste Aufgabe für diesen Anker an.")
+                BlattEmptyNote(text: String(localized: "Leg unten die erste Aufgabe für diesen Anker an."))
             } else {
                 VStack(spacing: 0) {
                     ForEach(Array(groups.enumerated()), id: \.offset) { index, group in

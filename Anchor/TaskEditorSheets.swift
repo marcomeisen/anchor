@@ -138,7 +138,7 @@ struct TaskEditorSheet: View {
                 }
 
                 VStack(spacing: AnkerSpacing.s1) {
-                    Text("\(AnkerDateFormat.calendarWeek(selectedWeekInterval.isoWeek))")
+                    Text(verbatim: AnkerDateFormat.calendarWeek(selectedWeekInterval.isoWeek))
                         .ankerType(AnkerType.metaStrong)
                         .foregroundStyle(AnkerColor.ink)
                     Text(verbatim: TaskSheetFormat.span(selectedWeekInterval))
@@ -170,7 +170,7 @@ struct TaskEditorSheet: View {
                 }
             }
 
-            CaptureChip(title: "Ohne Tag", isSelected: selectedDate == nil, selectedColor: AnkerColor.accentFill) {
+            CaptureChip(title: String(localized: "Ohne Tag"), isSelected: selectedDate == nil, selectedColor: AnkerColor.accentFill) {
                 selectedDate = nil
             }
             .accessibilityAddTraits(selectedDate == nil ? [.isButton, .isSelected] : .isButton)
@@ -189,7 +189,7 @@ struct TaskEditorSheet: View {
                         selectedGoalID = goal.id
                     }
                 }
-                CaptureChip(title: "Ohne Anker", isSelected: selectedGoalID == nil, selectedColor: AnkerColor.accentFill) {
+                CaptureChip(title: String(localized: "Ohne Anker"), isSelected: selectedGoalID == nil, selectedColor: AnkerColor.accentFill) {
                     selectedGoalID = nil
                 }
             }
@@ -216,7 +216,7 @@ struct TaskEditorSheet: View {
         .padding(.top, AnkerSpacing.s2)
     }
 
-    private func iconButton(ankerIcon: AnkerIcon, label: String, action: @escaping () -> Void) -> some View {
+    private func iconButton(ankerIcon: AnkerIcon, label: LocalizedStringKey, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Image(ankerIcon).ankerIcon(AnkerIconSize.s)
                 .frame(width: 36, height: 36)
@@ -367,8 +367,12 @@ struct TaskMoveSheet: View {
 
     private var heading: String {
         let count = movableTasks.count
-        let noun = count == 1 ? "Aufgabe" : "\(count) Aufgaben"
-        return isPlanningOnly ? "\(noun) einplanen" : "\(noun) verschieben"
+        if count == 1 {
+            return isPlanningOnly ? String(localized: "Aufgabe einplanen") : String(localized: "Aufgabe verschieben")
+        }
+        return isPlanningOnly
+            ? String(localized: "\(count) Aufgaben einplanen")
+            : String(localized: "\(count) Aufgaben verschieben")
     }
 
     var body: some View {
@@ -394,7 +398,7 @@ struct TaskMoveSheet: View {
                         }
 
                         VStack(spacing: AnkerSpacing.s1) {
-                            Text("\(AnkerDateFormat.calendarWeek(selectedWeekInterval.isoWeek))")
+                            Text(verbatim: AnkerDateFormat.calendarWeek(selectedWeekInterval.isoWeek))
                                 .ankerType(AnkerType.metaStrong)
                                 .foregroundStyle(AnkerColor.ink)
                             Text(verbatim: TaskSheetFormat.span(selectedWeekInterval))
@@ -476,7 +480,7 @@ struct TaskMoveSheet: View {
         selectedDate = newSelectedDate
     }
 
-    private func moveButton(ankerIcon: AnkerIcon, label: String, action: @escaping () -> Void) -> some View {
+    private func moveButton(ankerIcon: AnkerIcon, label: LocalizedStringKey, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Image(ankerIcon).ankerIcon(AnkerIconSize.s)
                 .frame(width: 38, height: 38)

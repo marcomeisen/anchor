@@ -57,7 +57,7 @@ struct AnkerCommands: Commands {
 
             Divider()
 
-            Button("Woche setzen …") { actions?.startWeek() }
+            Button("Anker setzen …") { actions?.startWeek() }
                 .disabled(actions == nil)
             Button("Rückblick …") { actions?.review() }
                 .disabled(actions == nil)

@@ -8,6 +8,7 @@ struct SettingsView: View {
     @AppStorage(AppSettingsKey.startupViewMode) private var startupViewRaw = StartupViewMode.lastView.rawValue
     @AppStorage(AppSettingsKey.appearance) private var appearanceRaw = AppearanceMode.system.rawValue
     @AppStorage(AppSettingsKey.cloudSyncEnabled) private var cloudSyncEnabled = true
+    @AppStorage(AppSettingsKey.language) private var languageRaw = AppLanguage.system.rawValue
 
     @ObservedObject var cloudSyncStatus: CloudSyncStatusCenter = .shared
     @State private var showingDataPrivacy = false
@@ -29,6 +30,7 @@ struct SettingsView: View {
             VStack(alignment: .leading, spacing: AnkerSpacing.s4) {
                 startupSection
                 appearanceSection
+                languageSection
                 cloudSyncSection
                 dataSection
             }
@@ -41,6 +43,7 @@ struct SettingsView: View {
             // eigenen Schliessen-Knopf, ein zweites „Fertig" waere dort verwirrend.
             cancel: showsDoneButton ? AnkerSheetAction("Fertig") { dismiss() } : nil
         )
+        .navigationDestination(for: LegalDocument.self) { LegalDocumentView(document: $0) }
         .sheet(isPresented: $showingDataPrivacy) {
             NavigationStack {
                 DataPrivacyView()
@@ -91,8 +94,8 @@ struct SettingsView: View {
             .accessibilityLabel("Erscheinungsbild wählen")
 
             Text(appearance == .system
-                 ? "Folgt der Systemeinstellung dieses Geräts."
-                 : "Gilt nur für Anchorit, unabhängig vom System.")
+                 ? String(localized: "Folgt der Systemeinstellung dieses Geräts.")
+                 : String(localized: "Gilt nur für Anchorit, unabhängig vom System."))
                 .ankerType(AnkerType.caption)
                 .foregroundStyle(AnkerColor.inkSecond)
                 .fixedSize(horizontal: false, vertical: true)
@@ -104,6 +107,80 @@ struct SettingsView: View {
         }
     }
 
+    // MARK: - Sprache
+
+    private var languageSection: some View {
+        card {
+            sectionTitle("Sprache")
+
+            Picker("Sprache", selection: Binding(
+                get: { languageRaw },
+                set: { raw in
+                    languageRaw = raw
+                    AppLanguage.select(AppLanguage(rawValue: raw) ?? .system)
+                }
+            )) {
+                ForEach(AppLanguage.allCases) { language in
+                    Text(verbatim: language.title).tag(language.rawValue)
+                }
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            .accessibilityLabel("Sprache wählen")
+
+            Text("Wie das System: Deutsch, wenn dein Gerät Deutsch spricht, sonst Englisch.")
+                .ankerType(AnkerType.caption)
+                .foregroundStyle(AnkerColor.inkSecond)
+                .fixedSize(horizontal: false, vertical: true)
+
+            if AppLanguage.needsRestart(for: AppLanguage(rawValue: languageRaw) ?? .system) {
+                languageRestartNotice
+            }
+        }
+    }
+
+    /// Texte, Datumsformate und Systemdialoge wechseln gemeinsam — deshalb beim Neustart und
+    /// nicht halb im laufenden Fenster. Die Ansage steht in der **gewählten** Sprache, damit
+    /// sie auch versteht, wer die aktuelle nicht liest.
+    private var languageRestartNotice: some View {
+        let chosen = AppLanguage(rawValue: languageRaw) ?? .system
+        let english = AppLanguage.expectedCode(for: chosen) == "en"
+        return VStack(alignment: .leading, spacing: AnkerSpacing.s2) {
+#if os(macOS)
+            Label {
+                Text(verbatim: english
+                     ? "The new language applies after a restart."
+                     : "Die neue Sprache gilt nach einem Neustart.")
+            } icon: {
+                Image(.refresh).ankerIcon(AnkerIconSize.xs)
+            }
+            .ankerType(AnkerType.caption)
+            .foregroundStyle(AnkerColor.inkSecond)
+
+            Button {
+                CloudSyncPreference.relaunch()
+            } label: {
+                Text(verbatim: english ? "Restart now" : "Jetzt neu starten")
+            }
+            .ankerType(AnkerType.caption)
+#else
+            Label {
+                Text(verbatim: english
+                     ? "The new language applies the next time you open Anchorit. Close the app in the app switcher and open it again."
+                     : "Die neue Sprache gilt beim nächsten Öffnen. Schließe Anchorit im App-Umschalter und öffne die App erneut.")
+            } icon: {
+                Image(.refresh).ankerIcon(AnkerIconSize.xs)
+            }
+            .ankerType(AnkerType.caption)
+            .foregroundStyle(AnkerColor.inkSecond)
+            .fixedSize(horizontal: false, vertical: true)
+#endif
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(AnkerSpacing.s3)
+        .ankerCard(fill: AnkerColor.neutral[500].opacity(0.12), elevated: false)
+    }
+
     // MARK: - iCloud
 
     private var cloudSyncSection: some View {
@@ -111,7 +188,10 @@ struct SettingsView: View {
             sectionTitle("iCloud-Sync")
 
             Toggle(isOn: Binding(
-                get: { cloudSyncEnabled },
+                // Über `CloudSyncPreference`, nicht über den Vorgabewert von `@AppStorage`: ein
+                // frisches Gerät ist bis zur Wahl lokal. Das Lesen von `cloudSyncEnabled` hält die
+                // Ansicht an Änderungen gebunden.
+                get: { _ = cloudSyncEnabled; return CloudSyncPreference.isEnabled() },
                 set: { CloudSyncPreference.set($0) }
             )) {
                 Text("Über iCloud synchronisieren")
@@ -120,7 +200,7 @@ struct SettingsView: View {
             }
             .accessibilityLabel("iCloud-Sync ein- oder ausschalten")
 
-            Text("Mit Sync sind Wochen, Ziele, Aufgaben und Notizen auf allen Geräten mit demselben Apple-Account gleich. Ohne Sync bleibt alles auf diesem Gerät.")
+            Text("Mit Sync sind Wochen, Anker, Aufgaben und Notizen auf allen Geräten mit demselben Apple-Account gleich. Ohne Sync bleibt alles auf diesem Gerät.")
                 .ankerType(AnkerType.caption)
                 .foregroundStyle(AnkerColor.inkSecond)
                 .fixedSize(horizontal: false, vertical: true)
@@ -155,9 +235,9 @@ struct SettingsView: View {
     private var restartNotice: some View {
         VStack(alignment: .leading, spacing: AnkerSpacing.s2) {
             Label(
-                CloudSyncPreference.isEnabled()
-                    ? "Der Sync startet beim nächsten Start von Anchorit."
-                    : "Der Sync endet beim nächsten Start von Anchorit.",
+                verbatim: CloudSyncPreference.isEnabled()
+                    ? String(localized: "Der Sync startet beim nächsten Start von Anchorit.")
+                    : String(localized: "Der Sync endet beim nächsten Start von Anchorit."),
                 ankerIcon: AnkerIcon.refresh
             )
             .ankerType(AnkerType.caption)
@@ -208,19 +288,42 @@ struct SettingsView: View {
             .buttonStyle(.plain)
             .accessibilityLabel("Daten und Datenschutz öffnen")
 
-            HStack(spacing: AnkerSpacing.s4) {
-                Link("Datenschutzerklärung", destination: AppLinks.privacyPolicy)
-                Link("Hilfe und Kontakt", destination: AppLinks.support)
-            }
-            .ankerType(AnkerType.caption)
-            .foregroundStyle(AnkerColor.accentInk)
-            .padding(.top, AnkerSpacing.s2)
+            AnkerRule(color: AnkerColor.cardDivider, weight: .row)
+            legalRow(.privacy, icon: .privacy, title: "Datenschutzerklärung", detail: "Was Anchorit speichert und warum")
+            AnkerRule(color: AnkerColor.cardDivider, weight: .row)
+            legalRow(.support, icon: .share, title: "Hilfe und Kontakt", detail: "Fragen, Fehler, Wünsche")
         }
+    }
+
+    /// Öffnet den Text in der App, von rechts hereingeschoben — nicht im Browser.
+    private func legalRow(_ document: LegalDocument, icon: AnkerIcon, title: LocalizedStringKey, detail: LocalizedStringKey) -> some View {
+        NavigationLink(value: document) {
+            HStack(spacing: AnkerSpacing.s3) {
+                Image(icon)
+                    .ankerType(AnkerType.meta)
+                    .foregroundStyle(AnkerColor.accentInk)
+                VStack(alignment: .leading, spacing: AnkerSpacing.s1) {
+                    Text(title)
+                        .ankerType(AnkerType.caption)
+                        .foregroundStyle(AnkerColor.ink)
+                    Text(detail)
+                        .ankerType(AnkerType.caption)
+                        .foregroundStyle(AnkerColor.inkSecond)
+                }
+                Spacer(minLength: 0)
+                Image(.chevronRight)
+                    .ankerType(AnkerType.caption)
+                    .foregroundStyle(AnkerColor.inkSecond)
+            }
+            .frame(minHeight: 44)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
     }
 
     // MARK: - Bausteine
 
-    private func sectionTitle(_ text: String) -> some View {
+    private func sectionTitle(_ text: LocalizedStringKey) -> some View {
         Text(text)
             .ankerType(AnkerType.metaStrong)
             .foregroundStyle(AnkerColor.ink)

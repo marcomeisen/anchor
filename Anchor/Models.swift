@@ -155,9 +155,9 @@ enum GoalVerdict: String, CaseIterable, Identifiable, Sendable {
 
     var label: String {
         switch self {
-        case .held: "Gehalten"
-        case .partial: "Teilweise"
-        case .missed: "Nicht"
+        case .held: String(localized: "Gehalten")
+        case .partial: String(localized: "Teilweise")
+        case .missed: String(localized: "Nicht")
         }
     }
 }

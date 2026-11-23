@@ -5,11 +5,21 @@ import UniformTypeIdentifiers
 import UIKit
 #endif
 
+/// Ein Literal am Aufrufort wird übersetzt, eine `String`-Variable wörtlich gesetzt.
 struct SectionLabel: View {
-    let title: String
+    private let title: Text
+
+    init(title: LocalizedStringKey) {
+        self.title = Text(title)
+    }
+
+    @_disfavoredOverload
+    init<Title: StringProtocol>(title: Title) {
+        self.title = Text(verbatim: String(title))
+    }
 
     var body: some View {
-        Text(title)
+        title
             .ankerType(AnkerType.overline)
             .foregroundStyle(AnkerColor.inkSecond)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -178,12 +188,12 @@ struct TaskCard: View {
 
     /// „Anker 2 · Security-Review" oder „Ohne Anker".
     private var anchorLabel: String {
-        guard let goal = task.linkedGoal else { return "Ohne Anker" }
+        guard let goal = task.linkedGoal else { return String(localized: "Ohne Anker") }
         guard let week = goal.week,
               let number = GoalOrdering.anchorNumber(of: goal, in: week) else {
             return goal.title
         }
-        return "Anker \(number) · \(goal.title)"
+        return String(localized: "Anker \(number) · \(goal.title)")
     }
 
     private var priorityColor: Color {
@@ -409,7 +419,7 @@ struct TaskCard: View {
 
     private func hoverAction(
         ankerIcon: AnkerIcon,
-        help: String,
+        help: LocalizedStringKey,
         action: @escaping () -> Void
     ) -> some View {
         Button(action: action) {
@@ -570,8 +580,8 @@ struct TaskCard: View {
         case .anchor:
             return anchorLabel
         case .day:
-            guard let date = task.day?.date else { return "Ohne Tag" }
-            return AnkerCalendar.isSameDay(date, Date()) ? "Heute" : AnkerDateFormat.weekdayLongWithDayMonth(date)
+            guard let date = task.day?.date else { return String(localized: "Ohne Tag") }
+            return AnkerCalendar.isSameDay(date, Date()) ? String(localized: "Heute") : AnkerDateFormat.weekdayLongWithDayMonth(date)
         }
     }
 
@@ -651,7 +661,7 @@ struct TaskCard: View {
         notifyUndo(message: goal == nil ? "Anker gelöst" : "Anker gesetzt", snapshots: [snapshot])
     }
 
-    private func notifyUndo(message: String, snapshots: [TaskSnapshot]) {
+    private func notifyUndo(message: LocalizedStringResource, snapshots: [TaskSnapshot]) {
         guard !snapshots.isEmpty else { return }
         onUndoableAction?(TaskUndoNotice(message: message, snapshots: snapshots))
     }

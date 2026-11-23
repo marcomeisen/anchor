@@ -143,7 +143,7 @@ private struct GoalDeleteConfirmation: ViewModifier {
 
     func body(content: Content) -> some View {
         content.confirmationDialog(
-            "Wochenziel löschen?",
+            "Anker löschen?",
             isPresented: Binding(
                 get: { goal != nil },
                 set: { isPresented in
@@ -171,11 +171,11 @@ private struct GoalDeleteConfirmation: ViewModifier {
 
         switch count {
         case 0:
-            return "Das Wochenziel \(goal.title) wird dauerhaft entfernt."
+            return String(localized: "Der Anker »\(goal.title)« wird dauerhaft entfernt.")
         case 1:
-            return "Das Wochenziel \(goal.title) wird dauerhaft entfernt. Die zugeordnete Aufgabe bleibt erhalten, hat danach aber kein Wochenziel mehr."
+            return String(localized: "Der Anker »\(goal.title)« wird dauerhaft entfernt. Seine Aufgabe bleibt erhalten und steht danach ohne Anker.")
         default:
-            return "Das Wochenziel \(goal.title) wird dauerhaft entfernt. Die \(count) zugeordneten Aufgaben bleiben erhalten, haben danach aber kein Wochenziel mehr."
+            return String(localized: "Der Anker »\(goal.title)« wird dauerhaft entfernt. Seine \(count) Aufgaben bleiben erhalten und stehen danach ohne Anker.")
         }
     }
 }

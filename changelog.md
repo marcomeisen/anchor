@@ -2,6 +2,18 @@
 
 ## 2026-11-23
 
+### Englisch als zweite Sprache
+
+- **Anchorit spricht Deutsch und Englisch.** Einstellungen → Sprache: *Wie das System* (Deutsch auf deutschen Geräten, sonst Englisch), *Deutsch* oder *English*. Die Wahl gilt nach einem Neustart, auf dem Mac per Knopf „Jetzt neu starten"; der Hinweis steht schon in der gewählten Sprache.
+- Alle rund 460 Texte sind übersetzt: Oberfläche, VoiceOver-Beschriftungen, Hinweise, Rückgängig-Meldungen, Sync-Status und Fehlertexte. Begriffe durchgehend: *anchor*, *Review*, *Carry over / Let go*, *Held / Partly / Missed*, *No day yet*.
+- Datumsangaben folgen der Sprache („Nov 23 – 29, 2026", „Week 48"). Die Erfassungskürzel auch: auf Englisch `mo tu we th fr sa su` (oder `mon`…`sun`), ohne „do", damit „things to do" kein Donnerstag wird.
+- Rückfall: Ein Gerät mit einer anderen Sprache als Deutsch oder Englisch bekommt Englisch.
+- Demodaten für Bildschirmfotos gibt es in beiden Sprachen.
+- **Datenschutzerklärung und Hilfe öffnen sich in der App**, in den Einstellungen von rechts hereingeschoben, in der Sprache der App. Name und Kontakt stehen an einer Stelle (`LegalInfo`). Die Seiten unter `docs/` bleiben nur für die Pflicht-URLs in App Store Connect.
+- „Woche setzen" heißt jetzt überall „Anker setzen". Restliche „Wochenziel"/„Ziele" sind „Anker".
+- Absicherung: `Scripts/l10n-guard.swift` prüft jeden Schlüssel auf Deutsch und Englisch; neue Tests für Sprachtabellen, Rückfall, Sprachwahl und englische Erfassung; iPhone-Oberflächentests öffnen die Rechtstexte auf Deutsch und Englisch. Unit-Tests laufen fest auf Deutsch.
+- Behoben dabei: Jahreszahlen erschienen im Englischen als „2,026".
+
 ### Release-Prüfung vor dem App Store
 
 Fünf Prüfungen (Sync und Daten, Sicherheit und Datenschutz, Architektur und Leistung, UX und Barrierefreiheit, Fachlogik). Die Befunde sind behoben bis auf die unten genannten.

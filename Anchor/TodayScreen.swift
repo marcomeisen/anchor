@@ -33,7 +33,7 @@ struct TodayScreen: View {
             VStack(alignment: .leading, spacing: AnkerSpacing.s4) {
                 BlattHeading(
                     eyebrow: eyebrow(for: sheet),
-                    title: "\(AnkerDateFormat.weekdayLong(now)), \(AnkerDateFormat.dayNumber(now))."
+                    title: String(localized: "\(AnkerDateFormat.weekdayLong(now)), \(AnkerDateFormat.dayNumber(now)).")
                 )
 
                 if sheet.anchorLanes.isEmpty {
@@ -57,15 +57,15 @@ struct TodayScreen: View {
                 VStack(alignment: .leading, spacing: AnkerSpacing.s2) {
                     HStack(alignment: .firstTextBaseline, spacing: AnkerSpacing.s3) {
                         BlattSectionLabel(
-                            title: "Heute",
-                            trailing: today.isEmpty ? nil : "\(today.filter(\.isDone).count) von \(today.count)"
+                            title: String(localized: "Heute"),
+                            trailing: today.isEmpty ? nil : String(localized: "\(today.filter(\.isDone).count) von \(today.count)")
                         )
                         if !today.isEmpty {
                             BlattSelectButton(selection: selection)
                         }
                     }
                     if today.isEmpty {
-                        BlattEmptyNote(text: "Für heute ist nichts geplant. Schreib unten, was ansteht — oder hol dir etwas aus der Woche.")
+                        BlattEmptyNote(text: String(localized: "Für heute ist nichts geplant. Schreib unten, was ansteht — oder hol dir etwas aus der Woche."))
                     } else {
                         VStack(spacing: 0) {
                             ForEach(Array(today.enumerated()), id: \.element.id) { index, task in
@@ -142,9 +142,9 @@ struct TodayScreen: View {
         let week = AnkerDateFormat.calendarWeek(sheet.isoWeek)
         guard let remaining = BlattDates.remainingDays(in: sheet, now: now) else { return week }
         switch remaining {
-        case 0: return "\(week) · letzter Tag"
-        case 1: return "\(week) · noch 1 Tag"
-        default: return "\(week) · noch \(remaining) Tage"
+        case 0: return String(localized: "\(week) · letzter Tag")
+        case 1: return String(localized: "\(week) · noch 1 Tag")
+        default: return String(localized: "\(week) · noch \(remaining) Tage")
         }
     }
 
@@ -161,7 +161,7 @@ struct TodayScreen: View {
             Text("Bis zu vier Anker, jeder mit einem Satz, warum. Aufgaben hängst du daran — oder lässt sie ohne.")
                 .ankerType(AnkerType.body)
                 .foregroundStyle(AnkerColor.inkSecond)
-            Button("Woche setzen", action: onStartWeek)
+            Button("Anker setzen", action: onStartWeek)
                 .buttonStyle(AnkerButtonStyle.primary)
         }
         .padding(AnkerSpacing.s4)
@@ -179,13 +179,13 @@ struct TodayScreen: View {
         return previous
     }
 
-    private func reviewCard(title: String, detail: String, monday: Date) -> some View {
+    private func reviewCard(title: LocalizedStringKey, detail: LocalizedStringKey, monday: Date) -> some View {
         Button { onReview(monday) } label: {
             HStack {
                 VStack(alignment: .leading, spacing: AnkerSpacing.s0) {
-                    Text(verbatim: title)
+                    Text(title)
                         .ankerType(AnkerType.bodyStrong)
-                    Text(verbatim: detail)
+                    Text(detail)
                         .ankerType(AnkerType.meta)
                         .foregroundStyle(AnkerColor.inkSecond)
                 }

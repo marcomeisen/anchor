@@ -55,7 +55,7 @@ struct WeekStartScreen: View {
 #endif
                 BlattHeading(
                     eyebrow: "\(AnkerDateFormat.calendarWeek(interval.isoWeek)) · \(AnkerDateFormat.weekSpan(monday: interval.monday, sunday: interval.sunday))",
-                    title: "Was zählt diese Woche?",
+                    title: String(localized: "Was zählt diese Woche?"),
                     titleStyle: AnkerType.title1
                 )
 
@@ -75,7 +75,7 @@ struct WeekStartScreen: View {
                                     .ankerType(AnkerType.anchorNumber)
                                     .foregroundStyle(AnkerColor.inkTertiary)
                                     .frame(width: 28, alignment: .leading)
-                                Text(drafts.isEmpty ? "Ersten Anker setzen" : "Weiteren Anker setzen")
+                                Text(drafts.isEmpty ? String(localized: "Ersten Anker setzen") : String(localized: "Weiteren Anker setzen"))
                                     .ankerType(AnkerType.bodyStrong)
                                     .foregroundStyle(AnkerColor.inkSecond)
                                 Spacer()
@@ -90,13 +90,13 @@ struct WeekStartScreen: View {
 
                 if !suggestions.isEmpty && drafts.count < 4 {
                     VStack(alignment: .leading, spacing: AnkerSpacing.s2) {
-                        BlattSectionLabel(title: "Letzte Woche nicht gehalten")
+                        BlattSectionLabel(title: String(localized: "Letzte Woche nicht gehalten"))
                         ForEach(suggestions) { goal in
                             HStack(spacing: AnkerSpacing.s3) {
                                 VStack(alignment: .leading, spacing: AnkerSpacing.s0) {
                                     Text(verbatim: goal.title).ankerType(AnkerType.bodyStrong)
                                     let open = goal.taskList.filter { !$0.isDone }.count
-                                    Text(verbatim: "\(goal.taskList.filter(\.isDone).count) von \(goal.taskList.count) erledigt · \(open) offen")
+                                    Text("\(goal.taskList.filter(\.isDone).count) von \(goal.taskList.count) erledigt · \(open) offen")
                                         .ankerType(AnkerType.meta)
                                         .foregroundStyle(AnkerColor.inkSecond)
                                 }
@@ -131,7 +131,7 @@ struct WeekStartScreen: View {
         }
         .background(AnkerColor.ground)
 #if os(iOS)
-        .ankerSheetChrome("Woche setzen", cancel: AnkerSheetAction("Abbrechen") { dismiss() })
+        .ankerSheetChrome("Anker setzen", cancel: AnkerSheetAction("Abbrechen") { dismiss() })
 #endif
         .onAppear(perform: load)
     }

@@ -33,20 +33,33 @@ struct CaptureTarget: Equatable {
 /// wie moeglich" ist kein Sonntag. `#n` und `!x` gelten ueberall, sie sind nie Satzbestandteil.
 enum CaptureSyntax {
     /// Deutsche Wochentagskuerzel. Reihenfolge nach ISO, Montag ist 1.
-    static let weekdayTokens: [String: Int] = [
+    static let germanWeekdayTokens: [String: Int] = [
         "mo": 1, "di": 2, "mi": 3, "do": 4, "fr": 5, "sa": 6, "so": 7,
     ]
 
+    /// Englische Kuerzel, zweistellig wie im Deutschen und dreistellig wie im Kalender.
+    /// „do" fehlt mit Absicht: „things to do" waere sonst ein Donnerstag.
+    static let englishWeekdayTokens: [String: Int] = [
+        "mo": 1, "tu": 2, "we": 3, "th": 4, "fr": 5, "sa": 6, "su": 7,
+        "mon": 1, "tue": 2, "wed": 3, "thu": 4, "fri": 5, "sat": 6, "sun": 7,
+    ]
+
+    /// Die Kuerzel der Sprache, in der die App laeuft. Nie beide zugleich: „so" ist im
+    /// Englischen ein Wort, „we" im Deutschen keins, aber „do" in beiden.
+    static var weekdayTokens: [String: Int] {
+        AppLanguage.isGermanActive ? germanWeekdayTokens : englishWeekdayTokens
+    }
+
     static let defaultPriority: Priority = .b
 
-    static let syntaxHelp = "#1–#4 Anker · mo–so Tag am Ende"
+    static var syntaxHelp: String { String(localized: "#1–#4 Anker · mo–so Tag am Ende") }
 
     /// Zerlegt die Eingabe. Reihenfolge der Kuerzel ist beliebig.
     ///
     /// Bei mehreren Kuerzeln derselben Art gewinnt das **letzte** und alle werden entfernt —
     /// ein Einzeiler wird beim Tippen korrigiert, und „die letzte Angabe gilt" ist dabei die
     /// Erwartung. Die Hinweiszeile zeigt vorher, was gewonnen hat.
-    static func parse(_ raw: String) -> CaptureInput {
+    static func parse(_ raw: String, weekdayTokens: [String: Int] = CaptureSyntax.weekdayTokens) -> CaptureInput {
         var input = CaptureInput()
         var titleParts: [String] = []
 
@@ -133,19 +146,19 @@ enum CaptureSyntax {
 
         guard !raw.trimmingCharacters(in: .whitespaces).isEmpty else { return syntaxHelp }
         guard let target else { return syntaxHelp }
-        guard !input.isEmpty else { return "nur Kürzel — Titel fehlt" }
+        guard !input.isEmpty else { return String(localized: "nur Kürzel — Titel fehlt") }
 
         // „Blatt" zeigt keine Prioritaetsstufen. Die Hinweiszeile nennt sie nur, wenn sie
         // ausdruecklich getippt wurde — sonst verschwaende `!a` spurlos aus dem Titel.
         var parts = [AnkerDateFormat.weekdayShort(target.date)]
         if let priority = input.priority {
-            parts.append(priority == .a ? "wichtig" : "Prio \(priority.label)")
+            parts.append(priority == .a ? String(localized: "wichtig") : String(localized: "Prio \(priority.label)"))
         }
 
         if let anchor = target.anchorNumber {
-            parts.append(anchor <= anchorCount ? "Anker \(anchor)" : "Anker \(anchor) gibt es nicht")
+            parts.append(anchor <= anchorCount ? String(localized: "Anker \(anchor)") : String(localized: "Anker \(anchor) gibt es nicht"))
         } else {
-            parts.append("ohne Anker")
+            parts.append(String(localized: "ohne Anker"))
         }
 
         return "→ " + parts.joined(separator: " · ")

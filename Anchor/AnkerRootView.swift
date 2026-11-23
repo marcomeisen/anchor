@@ -332,9 +332,13 @@ struct AnkerRootView: View {
     private func headerActions(segmentWidth: CGFloat, compactReview: Bool) -> some View {
         HStack(spacing: AnkerSpacing.s3) {
             AnkerSegmented(
-                options: [(AppDestination.today, "Heute"), (.week, "Woche"), (.archive, "Archiv")],
+                options: [
+                    (AppDestination.today, String(localized: "Heute")),
+                    (.week, String(localized: "Woche")),
+                    (.archive, String(localized: "Archiv")),
+                ],
                 selection: topLevelSelection,
-                accessibilityLabel: "Bereich"
+                accessibilityLabel: String(localized: "Bereich")
             )
             .frame(width: segmentWidth)
 
@@ -403,7 +407,7 @@ struct AnkerRootView: View {
             if let goal = weeks.lazy.flatMap(\.goalList).first(where: { $0.id == id }) {
                 AnchorScreen(goal: goal, now: now) { navigation.popToTopLevel() }
             } else {
-                BlattEmptyNote(text: "Dieser Anker ist nicht mehr da — vielleicht auf einem anderen Gerät gelöscht.")
+                BlattEmptyNote(text: String(localized: "Dieser Anker ist nicht mehr da — vielleicht auf einem anderen Gerät gelöscht."))
                     .padding(AnkerSpacing.screenPadding)
             }
         case .day:
@@ -493,6 +497,8 @@ struct AnkerRootView: View {
             case "review":
                 navigation.select(.week)
                 reviewTarget = navigation.weekStart
+            case "settings":
+                showingSettings = true
             case "setzen":
                 navigation.select(.week)
                 weekStartTarget = navigation.weekStart

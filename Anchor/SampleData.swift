@@ -92,11 +92,19 @@ extension SampleData {
     @MainActor
     static func insertDemoWeek(in context: ModelContext, now: Date = Date()) {
         let week = TaskActions.ensureWeek(containing: now, weeks: [], modelContext: context)
-        let anchors: [(String, String)] = [
+        // Demodaten in der Sprache der Oberfläche, damit Bildschirmfotos nicht gemischt sind.
+        // Nutzerinhalte sind keine Katalogtexte — deshalb hier zwei Tabellen statt Übersetzung.
+        let german = AppLanguage.isGermanActive
+        let anchors: [(String, String)] = german ? [
             ("Launch vorbereiten", "Beta geht Freitag raus."),
             ("Dreimal laufen", "Für den Kopf, nicht für die Zeit."),
             ("Zeit für Familie", "Ein Abend ohne Laptop."),
             ("Spanisch lernen", "Zweiter Versuch nach letzter Woche."),
+        ] : [
+            ("Prepare the launch", "Beta ships on Friday."),
+            ("Run three times", "For the head, not the pace."),
+            ("Time for family", "One evening without the laptop."),
+            ("Learn Spanish", "Second attempt after last week."),
         ]
         let goals = anchors.enumerated().map { index, entry in
             let goal = Goal(title: entry.0, colorHex: AnkerColor.goalTintOptions[0], order: index, week: week)
@@ -105,7 +113,7 @@ extension SampleData {
             week.appendGoal(goal)
             return goal
         }
-        let plan: [(String, Int?, Int?, Bool)] = [
+        let plan: [(String, Int?, Int?, Bool)] = german ? [
             ("Angebot an Kunde senden", 0, 0, true), ("Launch-Deck gliedern", 0, 0, false),
             ("Rückmeldung an Design", 0, 0, false), ("Probelauf mit dem Team", 0, 1, false),
             ("Beta veröffentlichen", 0, 4, false), ("Release Notes schreiben", 0, nil, true),
@@ -114,6 +122,15 @@ extension SampleData {
             ("Elternabend", 2, 3, false), ("Oma anrufen", 2, nil, false),
             ("Vokabeln Lektion 4", 3, 0, false), ("Tandem-Gespräch", 3, 2, false),
             ("Steuerunterlagen sortieren", nil, 1, false),
+        ] : [
+            ("Send the proposal", 0, 0, true), ("Outline the launch deck", 0, 0, false),
+            ("Feedback for design", 0, 0, false), ("Dry run with the team", 0, 1, false),
+            ("Publish the beta", 0, 4, false), ("Write release notes", 0, nil, true),
+            ("30 minute run", 1, 0, false), ("Intervals", 1, 2, false), ("Long run", 1, 5, false),
+            ("Buy running shoes", 1, nil, false), ("Order a gift for Lea", 2, 0, false),
+            ("Parents' evening", 2, 3, false), ("Call grandma", 2, nil, false),
+            ("Vocabulary, lesson 4", 3, 0, false), ("Tandem conversation", 3, 2, false),
+            ("Sort tax documents", nil, 1, false),
         ]
         let dates = AnkerCalendar.daysInWeek(starting: week.monday)
         for (title, goalIndex, dayIndex, done) in plan {
@@ -127,7 +144,7 @@ extension SampleData {
             }
             if done, let task { TaskActions.setDone(task, true, modelContext: context) }
         }
-        _ = TaskActions.createUnscheduled(title: "Arzttermin vereinbaren", goal: nil, modelContext: context)
+        _ = TaskActions.createUnscheduled(title: german ? "Arzttermin vereinbaren" : "Book a doctor's appointment", goal: nil, modelContext: context)
         insertDemoHistory(in: context, before: week.monday)
         context.saveChanges()
     }
@@ -135,8 +152,11 @@ extension SampleData {
     /// Abgeschlossene Wochen vor der Demowoche — damit Archiv, Jahresraster und Serie etwas
     /// zeigen. Deterministisch, damit Bildschirmfotos reproduzierbar sind.
     private static func insertDemoHistory(in context: ModelContext, before monday: Date, weeks count: Int = 30) {
-        let titles = ["Launch vorbereiten", "Dreimal laufen", "Zeit für Familie", "Spanisch lernen",
-                      "Steuer erledigen", "Wohnung streichen", "Vortrag üben", "Früher schlafen"]
+        let titles = AppLanguage.isGermanActive
+            ? ["Launch vorbereiten", "Dreimal laufen", "Zeit für Familie", "Spanisch lernen",
+               "Steuer erledigen", "Wohnung streichen", "Vortrag üben", "Früher schlafen"]
+            : ["Prepare the launch", "Run three times", "Time for family", "Learn Spanish",
+               "File the taxes", "Paint the flat", "Rehearse the talk", "Sleep earlier"]
         // Ein Muster aus gehalten (h), teilweise (p) und nicht (m), je Woche bis zu vier Anker.
         let pattern = ["hhhp", "hhph", "hhhh", "hphm", "hhhh", "hhhh", "phhm", "hhhh", "hmhp", "hhhh",
                        "hhp", "hhhh", "hhhh", "hhhh", "phhh", "hmph", "hhhh", "hhh", "hphm", "hhhh",

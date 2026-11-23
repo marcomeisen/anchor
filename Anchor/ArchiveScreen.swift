@@ -115,7 +115,7 @@ enum ArchiveSummary {
 
     /// „1 Woche", „3 Wochen".
     static func weeksText(_ count: Int) -> String {
-        count == 1 ? "1 Woche" : "\(count) Wochen"
+        count == 1 ? String(localized: "1 Woche") : String(localized: "\(count) Wochen")
     }
 }
 
@@ -153,8 +153,10 @@ struct ArchiveScreen: View {
         ScrollView {
             VStack(alignment: .leading, spacing: AnkerSpacing.s4) {
                 BlattHeading(
-                    eyebrow: "Archiv \(isoYear)",
-                    title: yearMarks.isEmpty ? "Noch keine abgeschlossene Woche" : "\(held) von \(yearMarks.count) Ankern gehalten",
+                    eyebrow: String(localized: "Archiv \(String(isoYear))"),
+                    title: yearMarks.isEmpty
+                        ? String(localized: "Noch keine abgeschlossene Woche")
+                        : String(localized: "\(held) von \(yearMarks.count) Ankern gehalten"),
                     titleStyle: AnkerType.title2
                 )
 
@@ -170,7 +172,7 @@ struct ArchiveScreen: View {
                     if let miss = ArchiveSummary.recurringMiss(pastKeys.compactMap { byKey[$0] }) {
                         AnkerRule(weight: .row)
                         statRow("Kommt immer wieder und hält selten",
-                                value: "\(miss.title) · \(miss.set)× gesetzt, \(miss.held)× gehalten")
+                                value: String(localized: "\(miss.title) · \(miss.set)× gesetzt, \(miss.held)× gehalten"))
                     }
                 }
                 .ankerCard()
@@ -198,7 +200,7 @@ struct ArchiveScreen: View {
                 .ankerType(AnkerType.bodyStrong)
                 .monospacedDigit()
                 .foregroundStyle(AnkerColor.ink)
-                .accessibilityLabel("Jahr \(isoYear)")
+                .accessibilityLabel("Jahr \(String(isoYear))")
             if isoYear < last {
                 BlattIconButton(icon: .chevronRight, label: "Nächstes Jahr") { selectedYear = isoYear + 1 }
             } else {
@@ -225,12 +227,12 @@ struct ArchiveScreen: View {
         .accessibilityElement(children: .combine)
     }
 
-    private func legendItem(_ mark: ArchiveSummary.Mark, _ title: String) -> some View {
+    private func legendItem(_ mark: ArchiveSummary.Mark, _ title: LocalizedStringKey) -> some View {
         HStack(spacing: AnkerSpacing.s1) {
             RoundedRectangle(cornerRadius: AnkerRadius.mark, style: .continuous)
                 .fill(color(mark, isFuture: false))
                 .frame(width: 12, height: 8)
-            Text(verbatim: title)
+            Text(title)
                 .ankerType(AnkerType.meta)
                 .foregroundStyle(AnkerColor.inkSecond)
         }
@@ -306,7 +308,7 @@ struct ArchiveScreen: View {
                 ForEach(years, id: \.self) { year in
                     let entries = groups[year] ?? []
                     VStack(alignment: .leading, spacing: AnkerSpacing.s2) {
-                        BlattSectionLabel(title: years.count > 1 ? "Vergangene Wochen \(year)" : "Vergangene Wochen",
+                        BlattSectionLabel(title: years.count > 1 ? String(localized: "Vergangene Wochen \(String(year))") : String(localized: "Vergangene Wochen"),
                                           trailing: ArchiveSummary.weeksText(entries.count))
                         VStack(spacing: 0) {
                             ForEach(Array(entries.enumerated()), id: \.element.value.id) { index, entry in
@@ -336,14 +338,15 @@ struct ArchiveScreen: View {
     }
 
     private func accessibility(number: Int, marks: [ArchiveSummary.Mark]) -> String {
-        guard !marks.isEmpty else { return "KW \(number), keine Anker" }
+        let week = AnkerDateFormat.calendarWeek(number)
+        guard !marks.isEmpty else { return String(localized: "\(week), keine Anker") }
         let held = marks.filter { $0 == .held }.count
-        return "KW \(number), \(held) von \(marks.count) Ankern gehalten"
+        return String(localized: "\(week), \(held) von \(marks.count) Ankern gehalten")
     }
 
-    private func statRow(_ label: String, value: String) -> some View {
+    private func statRow(_ label: LocalizedStringKey, value: String) -> some View {
         VStack(alignment: .leading, spacing: AnkerSpacing.s1) {
-            Text(verbatim: label)
+            Text(label)
                 .ankerType(AnkerType.meta)
                 .foregroundStyle(AnkerColor.inkSecond)
             Text(verbatim: value)

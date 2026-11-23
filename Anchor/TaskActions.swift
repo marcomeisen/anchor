@@ -22,9 +22,26 @@ struct TaskSnapshot: Identifiable {
 
 struct TaskUndoNotice: Identifiable {
     let id = UUID()
+    /// Schon übersetzt — der Hinweis zeigt ihn wörtlich.
     let message: String
     let snapshots: [TaskSnapshot]
     var operation: TaskUndoOperation = .restore
+
+    /// Ein Literal am Aufrufort wird übersetzt (`LocalizedStringResource`).
+    init(message: LocalizedStringResource, snapshots: [TaskSnapshot], operation: TaskUndoOperation = .restore) {
+        self.message = String(localized: message)
+        self.snapshots = snapshots
+        self.operation = operation
+    }
+
+    /// Für bereits übersetzte Texte (`String(localized:)`). Nachrangig, damit ein Literal die
+    /// übersetzbare Variante trifft.
+    @_disfavoredOverload
+    init<Message: StringProtocol>(message: Message, snapshots: [TaskSnapshot], operation: TaskUndoOperation = .restore) {
+        self.message = String(message)
+        self.snapshots = snapshots
+        self.operation = operation
+    }
 }
 
 enum TaskUndoOperation {

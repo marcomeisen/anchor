@@ -69,17 +69,17 @@ struct OnboardingView: View {
         VStack(alignment: .leading, spacing: 0) {
             stepIndicator(activeIndex: 0)
 
-            Text(verbatim: "Schritt 1 von 2")
+            Text("Schritt 1 von 2")
                 .ankerType(AnkerType.eyebrow)
                 .foregroundStyle(AnkerColor.inkSecond)
                 .padding(.top, AnkerSpacing.s5)
                 .padding(.bottom, AnkerSpacing.s3)
 
-            Text(verbatim: "Auf allen Geräten?")
+            Text("Auf allen Geräten?")
                 .ankerType(AnkerType.title2)
                 .foregroundStyle(AnkerColor.ink)
 
-            Text(verbatim: "Anchorit kann deine Wochen, Ziele, Aufgaben und Notizen über deinen iCloud-Account zwischen iPhone, iPad und Mac gleich halten. Die Daten liegen in deiner privaten iCloud-Datenbank. Nur du kommst über deinen Apple-Account daran — der Entwickler von Anchorit nicht.")
+            Text("Anchorit kann deine Wochen, Anker, Aufgaben und Notizen über deinen iCloud-Account zwischen iPhone, iPad und Mac gleich halten. Die Daten liegen in deiner privaten iCloud-Datenbank. Nur du kommst über deinen Apple-Account daran — der Entwickler von Anchorit nicht.")
                 .ankerType(AnkerType.body)
                 .foregroundStyle(AnkerColor.inkSecond)
                 .fixedSize(horizontal: false, vertical: true)
@@ -103,7 +103,7 @@ struct OnboardingView: View {
             .padding(.top, AnkerSpacing.s2)
             .accessibilityLabel("Ohne iCloud, nur auf diesem Gerät speichern")
 
-            Text(verbatim: "Später jederzeit in den Einstellungen änderbar. Bis du wählst, bleibt alles auf diesem Gerät.")
+            Text("Später jederzeit in den Einstellungen änderbar. Bis du wählst, bleibt alles auf diesem Gerät.")
                 .ankerType(AnkerType.caption)
                 .foregroundStyle(AnkerColor.inkTertiary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -122,17 +122,17 @@ struct OnboardingView: View {
         VStack(alignment: .leading, spacing: 0) {
             stepIndicator(activeIndex: 1)
 
-            Text(verbatim: "Schritt 2 von 2")
+            Text("Schritt 2 von 2")
                 .ankerType(AnkerType.eyebrow)
                 .foregroundStyle(AnkerColor.inkSecond)
                 .padding(.top, AnkerSpacing.s5)
                 .padding(.bottom, AnkerSpacing.s3)
 
-            Text(verbatim: "iCloud holt deine Wochen")
+            Text("iCloud holt deine Wochen")
                 .ankerType(AnkerType.title2)
                 .foregroundStyle(AnkerColor.ink)
 
-            Text(verbatim: "Auf diesem Gerät ist noch nichts gespeichert. Wenn du Anchorit schon benutzt, kommen deine Anker und Aufgaben gleich von selbst — dann brauchst du hier nichts einzugeben.")
+            Text("Auf diesem Gerät ist noch nichts gespeichert. Wenn du Anchorit schon benutzt, kommen deine Anker und Aufgaben gleich von selbst — dann brauchst du hier nichts einzugeben.")
                 .ankerType(AnkerType.body)
                 .foregroundStyle(AnkerColor.inkSecond)
                 .fixedSize(horizontal: false, vertical: true)
@@ -174,17 +174,17 @@ struct OnboardingView: View {
         VStack(alignment: .leading, spacing: 0) {
             stepIndicator(activeIndex: 1)
 
-            Text(verbatim: "Schritt 2 von 2 · \(weekIntervalTitle)")
+            Text("Schritt 2 von 2 · \(weekIntervalTitle)")
                 .ankerType(AnkerType.eyebrow)
                 .foregroundStyle(AnkerColor.inkSecond)
                 .padding(.top, AnkerSpacing.s5)
                 .padding(.bottom, AnkerSpacing.s3)
 
-            Text(verbatim: "Was zählt diese Woche?")
+            Text("Was zählt diese Woche?")
                 .ankerType(AnkerType.title2)
                 .foregroundStyle(AnkerColor.ink)
 
-            Text(verbatim: "Bis zu vier. Mehr geht nicht — das ist der Punkt.")
+            Text("Bis zu vier. Mehr geht nicht — das ist der Punkt.")
                 .ankerType(AnkerType.body)
                 .foregroundStyle(AnkerColor.inkSecond)
                 .padding(.top, AnkerSpacing.s3)
@@ -199,14 +199,14 @@ struct OnboardingView: View {
 
             Spacer(minLength: AnkerSpacing.s5)
 
-            Text(verbatim: "Zwei reichen für den Start. Der Rest kommt, wenn du ihn brauchst.")
+            Text("Zwei reichen für den Start. Der Rest kommt, wenn du ihn brauchst.")
                 .ankerType(AnkerType.caption)
                 .foregroundStyle(AnkerColor.inkSecond)
                 .fixedSize(horizontal: false, vertical: true)
                 .padding(.bottom, AnkerSpacing.s3)
 
             Button(action: commit) {
-                Text(verbatim: "Weiter · Woche aufteilen")
+                Text("Weiter · Woche aufteilen")
             }
             .buttonStyle(AnkerButtonStyle.primaryBlock)
             .disabled(cleanTitles.isEmpty)
@@ -251,10 +251,10 @@ struct OnboardingView: View {
     /// Die Platzhalter erzählen dasselbe wie die Prosa, die hier stand — nur beim Tun.
     private func placeholder(_ slot: Int) -> String {
         switch slot {
-        case 0: "Dein erster Anker"
-        case 1: "Zweiter Anker"
-        case 2: "Dritter Anker …"
-        default: "Optional"
+        case 0: String(localized: "Dein erster Anker")
+        case 1: String(localized: "Zweiter Anker")
+        case 2: String(localized: "Dritter Anker …")
+        default: String(localized: "Optional")
         }
     }
 

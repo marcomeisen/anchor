@@ -5,18 +5,47 @@ import UniformTypeIdentifiers
 // MARK: - Kopf eines Bildschirms
 
 /// Kleine Zeile oben, große Zeile darunter — „KW 48 · noch 6 Tage" über „Montag, 23.".
+///
+/// Literale am Aufrufort werden übersetzt (`LocalizedStringKey`); eine `String`-Variable wird
+/// wörtlich gesetzt — sie muss schon übersetzt sein (`String(localized:)`). Wie bei `Text`
+/// ist die `String`-Variante absichtlich nachrangig, sonst träfe ein Literal sie zuerst.
 struct BlattHeading: View {
-    let eyebrow: String
-    let title: String
+    private let eyebrow: Text
+    private let title: Text
     var eyebrowColor: Color = AnkerColor.inkSecond
     var titleStyle: AnkerTextStyle = AnkerType.title2
 
+    init(
+        eyebrow: LocalizedStringKey,
+        title: LocalizedStringKey,
+        eyebrowColor: Color = AnkerColor.inkSecond,
+        titleStyle: AnkerTextStyle = AnkerType.title2
+    ) {
+        self.eyebrow = Text(eyebrow)
+        self.title = Text(title)
+        self.eyebrowColor = eyebrowColor
+        self.titleStyle = titleStyle
+    }
+
+    @_disfavoredOverload
+    init<Eyebrow: StringProtocol, Title: StringProtocol>(
+        eyebrow: Eyebrow,
+        title: Title,
+        eyebrowColor: Color = AnkerColor.inkSecond,
+        titleStyle: AnkerTextStyle = AnkerType.title2
+    ) {
+        self.eyebrow = Text(verbatim: String(eyebrow))
+        self.title = Text(verbatim: String(title))
+        self.eyebrowColor = eyebrowColor
+        self.titleStyle = titleStyle
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: AnkerSpacing.s0) {
-            Text(verbatim: eyebrow)
+            eyebrow
                 .ankerType(AnkerType.overline)
                 .foregroundStyle(eyebrowColor)
-            Text(verbatim: title)
+            title
                 .ankerType(titleStyle)
                 .foregroundStyle(AnkerColor.ink)
                 .lineLimit(2)
@@ -29,13 +58,26 @@ struct BlattHeading: View {
 }
 
 /// Eine Abschnittsbeschriftung mit optionaler Zahl rechts.
+/// `title` wie bei `BlattHeading`: ein Literal wird übersetzt, eine `String`-Variable nicht.
+/// `trailing` ist meist eine Zahl und bleibt wörtlich.
 struct BlattSectionLabel: View {
-    let title: String
+    private let title: Text
     var trailing: String?
+
+    init(title: LocalizedStringKey, trailing: String? = nil) {
+        self.title = Text(title)
+        self.trailing = trailing
+    }
+
+    @_disfavoredOverload
+    init<Title: StringProtocol>(title: Title, trailing: String? = nil) {
+        self.title = Text(verbatim: String(title))
+        self.trailing = trailing
+    }
 
     var body: some View {
         HStack {
-            Text(verbatim: title)
+            title
             Spacer()
             if let trailing {
                 Text(verbatim: trailing).monospacedDigit()
@@ -241,7 +283,7 @@ struct TaskChip: View {
         .accessibilityElement(children: .combine)
         .accessibilityLabel(accessibilityText)
         .accessibilityIdentifier("taskChip")
-        .accessibilityAction(named: task.isDone ? "Als offen markieren" : "Als erledigt markieren", toggle)
+        .accessibilityAction(named: task.isDone ? Text("Als offen markieren") : Text("Als erledigt markieren"), toggle)
         .accessibilityAction(named: "Aufgabe bearbeiten") { showingEditor = true }
         .accessibilityActions {
             ForEach(Array(anchors.enumerated()), id: \.element.id) { index, goal in
@@ -256,8 +298,10 @@ struct TaskChip: View {
     }
 
     private var accessibilityText: String {
-        let anchor = number.map { "Anker \($0)" } ?? "Ohne Anker"
-        return "\(task.title), \(anchor)\(task.isDone ? ", erledigt" : "")"
+        let anchor = number.map { String(localized: "Anker \($0)") } ?? String(localized: "Ohne Anker")
+        return task.isDone
+            ? String(localized: "\(task.title), \(anchor), erledigt")
+            : "\(task.title), \(anchor)"
     }
 
     @ViewBuilder
@@ -397,11 +441,21 @@ struct BlattUndoBar: View {
 
 // MARK: - Leerer Zustand
 
+/// `text` wie bei `BlattHeading`: ein Literal wird übersetzt, eine `String`-Variable nicht.
 struct BlattEmptyNote: View {
-    let text: String
+    private let text: Text
+
+    init(text: LocalizedStringKey) {
+        self.text = Text(text)
+    }
+
+    @_disfavoredOverload
+    init<Content: StringProtocol>(text: Content) {
+        self.text = Text(verbatim: String(text))
+    }
 
     var body: some View {
-        Text(verbatim: text)
+        text
             .ankerType(AnkerType.body)
             .foregroundStyle(AnkerColor.inkSecond)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -413,7 +467,13 @@ struct BlattEmptyNote: View {
 // MARK: - Datum
 
 enum BlattDates {
-    static let weekdayNames = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"]
+    /// Zweistellig in beiden Sprachen, damit die schmalen Spaltenköpfe gleich breit bleiben.
+    /// Die Systemabkürzungen wären im Englischen dreistellig („Mon").
+    static var weekdayNames: [String] {
+        AppLanguage.isGermanActive
+            ? ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"]
+            : ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"]
+    }
 
     static func isToday(_ date: Date, now: Date = Date()) -> Bool {
         AnkerCalendar.isSameDay(date, now)

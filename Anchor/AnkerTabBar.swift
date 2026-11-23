@@ -24,7 +24,7 @@ struct AnkerTabBar: View {
         }
     }
 
-    private func tab(_ destination: AppDestination, title: String) -> some View {
+    private func tab(_ destination: AppDestination, title: LocalizedStringKey) -> some View {
         let isOn = isSelected(destination)
         return Button {
             selection = destination

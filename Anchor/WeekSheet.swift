@@ -18,7 +18,7 @@ struct WeekSheet {
 
         var id: String { goal.map { $0.id.uuidString } ?? "loose" }
         var isLoose: Bool { goal == nil }
-        var title: String { goal?.title ?? "Ohne Anker" }
+        var title: String { goal?.title ?? String(localized: "Ohne Anker") }
         var why: String? { goal?.why?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfBlank }
         var doneCount: Int { tasks.filter(\.isDone).count }
         var numberLabel: String { number.map(String.init) ?? "–" }

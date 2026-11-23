@@ -197,12 +197,22 @@ enum AnkerDateFormat {
 
     /// `KW 32` — zweistellig, damit die Breite in Listen nicht springt.
     static func calendarWeek(_ isoWeek: Int) -> String {
-        "KW \(String(format: "%02d", isoWeek))"
+        let number = String(format: "%02d", isoWeek)
+        // Englisch: „Week 48". Die ISO-Woche ist dort weniger geläufig als „KW" im Deutschen,
+        // aber als Wort verständlich.
+        return String(localized: "KW \(number)", comment: "Kalenderwoche, z. B. „KW 48“")
     }
 
-    /// `03.08. - 09.08.2026`
+    /// `03.08.–09.08.2026`, auf Englisch `Aug 3 – 9, 2026`.
+    ///
+    /// Deutsch bleibt bei der numerischen Schreibweise, die das Blatt von Anfang an trägt.
+    /// Im Englischen ist „08/03–08/09/2026" je nach Region doppeldeutig (Monat oder Tag zuerst),
+    /// deshalb dort die ausgeschriebene Spanne des Systems.
     static func weekSpan(monday: Date, sunday: Date) -> String {
-        "\(dayMonth(monday))–\(dayMonthYear(sunday))"
+        if AppLanguage.isGermanActive {
+            return "\(dayMonth(monday))–\(dayMonthYear(sunday))"
+        }
+        return (monday..<sunday).formatted(.interval.day().month(.abbreviated).year())
     }
 }
 

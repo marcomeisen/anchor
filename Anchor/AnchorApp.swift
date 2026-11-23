@@ -25,9 +25,9 @@ enum CloudSyncConfiguration {
         var errorDescription: String? {
             switch self {
             case .managedObjectModelUnavailable:
-                "Das Datenmodell konnte nicht für CloudKit aufgebaut werden."
+                String(localized: "Das Datenmodell konnte nicht für CloudKit aufgebaut werden.")
             case .cloudKitStoreUnavailable:
-                "Der iCloud-Container konnte nicht geoeffnet werden."
+                String(localized: "Der iCloud-Container konnte nicht geöffnet werden.")
             }
         }
     }
@@ -384,7 +384,8 @@ struct AnchorApp: App {
 #if os(macOS)
         // Eigenes Fenster ueber Command-Komma, wie auf dem Mac erwartet.
         Settings {
-            SettingsView(showsDoneButton: false)
+            // Im eigenen Stapel, damit Datenschutzerklärung und Hilfe von rechts hereinkommen.
+            NavigationStack { SettingsView(showsDoneButton: false) }
                 .frame(width: 460, height: 560)
         }
         .modelContainer(sharedModelContainer)

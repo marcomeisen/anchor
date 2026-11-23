@@ -57,17 +57,13 @@ enum UITestMode {
 enum AppSettingsKey {
     static let appearance = "appearanceMode"
     static let startupViewMode = "startupViewMode"
+    static let language = "appLanguage"
+    /// Der Schlüssel, über den Apple pro App die Sprache wählt — dieselbe Stelle, die auch
+    /// die Systemeinstellung „Sprache" der App beschreibt.
+    static let appleLanguages = "AppleLanguages"
     static let cloudSyncEnabled = "cloudSyncEnabled"
     static let hasChosenCloudSync = "hasChosenCloudSync"
     static let hasCompletedOnboarding = "hasCompletedOnboarding"
-}
-
-/// Öffentliche Seiten zur App. App Store Connect verlangt beide URLs, Richtlinie 5.1.1(i)
-/// zusätzlich den Link zur Datenschutzerklärung in der App selbst. Ein `Link` öffnet den
-/// Browser — die App selbst baut keine Netzwerkverbindung auf.
-enum AppLinks {
-    static let privacyPolicy = URL(string: "https://marcomeisen.github.io/anchor/datenschutz.html")!
-    static let support = URL(string: "https://marcomeisen.github.io/anchor/support.html")!
 }
 
 /// Welche Ansicht beim Start geöffnet wird.
@@ -80,9 +76,9 @@ enum StartupViewMode: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .currentDay: "Heute"
-        case .currentWeek: "Woche"
-        case .lastView: "Zuletzt"
+        case .currentDay: String(localized: "Heute")
+        case .currentWeek: String(localized: "Woche")
+        case .lastView: String(localized: "Zuletzt")
         }
     }
 
@@ -96,9 +92,9 @@ enum StartupViewMode: String, CaseIterable, Identifiable {
 
     var explanation: String {
         switch self {
-        case .currentDay: "Anchorit öffnet beim Start immer Heute."
-        case .currentWeek: "Anchorit öffnet beim Start immer die laufende Woche."
-        case .lastView: "Anchorit öffnet beim Start dort, wo du zuletzt warst."
+        case .currentDay: String(localized: "Anchorit öffnet beim Start immer Heute.")
+        case .currentWeek: String(localized: "Anchorit öffnet beim Start immer die laufende Woche.")
+        case .lastView: String(localized: "Anchorit öffnet beim Start dort, wo du zuletzt warst.")
         }
     }
 
@@ -128,6 +124,84 @@ enum StartupViewMode: String, CaseIterable, Identifiable {
     }
 }
 
+/// Die Sprache der Oberfläche: wie das System, Deutsch oder Englisch.
+///
+/// **Wie das System** heißt: Deutsch, wenn das System Deutsch spricht, sonst Englisch. Das
+/// regelt das Betriebssystem selbst — `CFBundleDevelopmentRegion` ist `en`, also fällt jede
+/// Sprache ohne eigene Übersetzung auf Englisch zurück statt auf die Quellsprache Deutsch.
+///
+/// Eine feste Wahl schreibt `AppleLanguages` in die Defaults der App. Das ist derselbe Weg,
+/// den die Systemeinstellung pro App nutzt, und er gilt für alles gleichzeitig: Texte,
+/// Datumsformate, Systemdialoge. Der Preis ist ein Neustart — ein halb umgeschaltetes
+/// Fenster, in dem Datumsangaben noch Deutsch und Knöpfe schon Englisch sind, wäre schlimmer.
+enum AppLanguage: String, CaseIterable, Identifiable {
+    case system
+    case german
+    case english
+
+    var id: String { rawValue }
+
+    /// Sprachnamen stehen in ihrer eigenen Sprache, damit man sie auch findet, wenn man die
+    /// aktuelle Oberfläche nicht lesen kann.
+    var title: String {
+        switch self {
+        case .system: String(localized: "Wie das System")
+        case .german: "Deutsch"
+        case .english: "English"
+        }
+    }
+
+    var code: String? {
+        switch self {
+        case .system: nil
+        case .german: "de"
+        case .english: "en"
+        }
+    }
+
+    static func stored(in defaults: UserDefaults = .standard) -> AppLanguage {
+        guard let raw = defaults.string(forKey: AppSettingsKey.language),
+              let language = AppLanguage(rawValue: raw) else {
+            return .system
+        }
+        return language
+    }
+
+    /// Speichert die Wahl und setzt die Sprachvorgabe der App. Wirkt ab dem nächsten Start.
+    static func select(_ language: AppLanguage, in defaults: UserDefaults = .standard) {
+        defaults.set(language.rawValue, forKey: AppSettingsKey.language)
+        if let code = language.code {
+            defaults.set([code], forKey: AppSettingsKey.appleLanguages)
+        } else {
+            defaults.removeObject(forKey: AppSettingsKey.appleLanguages)
+        }
+    }
+
+    /// Die Sprache, in der dieser Prozess läuft (`de` oder `en`).
+    static var active: String {
+        let code = Bundle.main.preferredLocalizations.first ?? "en"
+        return code.hasPrefix("de") ? "de" : "en"
+    }
+
+    static var isGermanActive: Bool { active == "de" }
+
+    /// Die Sprache, die ein Start mit dieser Wahl hätte. Für „Wie das System" die erste
+    /// bevorzugte Sprache des Systems.
+    static func expectedCode(for language: AppLanguage, systemLanguages: [String] = Locale.preferredLanguages) -> String {
+        if let code = language.code { return code }
+        return systemLanguages.first?.hasPrefix("de") == true ? "de" : "en"
+    }
+
+    /// Die Wahl, mit der dieser Prozess gestartet ist. Wie bei `CloudSyncPreference.activeAtLaunch`
+    /// zählt der Stand beim Start, nicht der aktuelle.
+    static let atLaunch: AppLanguage = stored()
+
+    /// Weicht die gespeicherte Wahl von der ab, mit der die App läuft?
+    static func needsRestart(for language: AppLanguage) -> Bool {
+        language != atLaunch
+    }
+}
+
 /// Hell, dunkel oder wie das System.
 enum AppearanceMode: String, CaseIterable, Identifiable {
     case system
@@ -138,9 +212,9 @@ enum AppearanceMode: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .system: "System"
-        case .light: "Hell"
-        case .dark: "Dunkel"
+        case .system: String(localized: "System")
+        case .light: String(localized: "Hell")
+        case .dark: String(localized: "Dunkel")
         }
     }
 

@@ -68,6 +68,51 @@ Erste Version.
 
 | Feld | Wert |
 |---|---|
+### Englisch (U.S.) — zweite Lokalisierung in App Store Connect
+
+**Subtitle (30):** `One sheet per week`
+
+**Promotional text (170)**
+
+```
+At most four things that matter this week — each with one sentence on why. Tasks hang on them. On Sunday you say honestly what held.
+```
+
+**Description**
+
+```
+Anchorit is a weekly planner that wants less. One sheet per week, at most four anchors — the things that really matter this week. Every anchor gets one sentence on why. Every task belongs to an anchor or deliberately stands without one.
+
+SET
+On Monday Anchorit asks: what matters this week? Set up to four anchors and carry over what stayed open last week.
+
+DO
+Today shows the day’s tasks with your anchors above them. Every check fills a dot on its anchor — so you see what your day adds up to. Capture new tasks in one line: “#2” links to anchor 2, “fr” puts it on Friday.
+
+THE WEEK AT A GLANCE
+Two views of the same week: by day or by anchor. On Mac and iPad as a grid you drag tasks into — onto a day, an anchor or another week.
+
+REVIEW
+On Sunday you answer for each anchor: held, partly or missed. Anchorit doesn’t calculate it — you say it. Open tasks are carried over or let go.
+
+ARCHIVE
+Your year as a grid of weeks, your longest streak and the anchor that keeps slipping.
+
+CALM BY DESIGN
+Ink on light grey, white cards, a single color for “done” and “today”. Light and dark, with Dynamic Type and VoiceOver.
+
+YOUR DATA IS YOURS
+No sign-up, no ads, no tracking, no analytics. Your data stays on your device and, if you like, in your private iCloud — so iPhone, iPad and Mac stay in step. Export everything as a file or delete it completely at any time.
+
+For iPhone, iPad and Mac. In English and German.
+```
+
+**Keywords (100):** `weekly planner,weekly goals,focus,tasks,todo,planner,weekly review,productivity,habits,anchors`
+
+Englische Bildschirmfotos: wie unten, zusätzlich mit `-AppleLanguages "(en)" -AppleLocale en_US`.
+
+| Feld | Wert |
+|---|---|
 | Support-URL | https://marcomeisen.github.io/anchor/support.html |
 | Marketing-URL | https://marcomeisen.github.io/anchor/ (optional) |
 | Datenschutz-URL | https://marcomeisen.github.io/anchor/datenschutz.html |
@@ -140,6 +185,7 @@ Vorgeschlagene Reihenfolge und Bildunterschriften:
 ## Vor dem Einreichen
 
 - [ ] CloudKit-Schema nach Production deployt ([CloudKit_Schema_Anleitung.md](../CloudKit_Schema_Anleitung.md))
+- [ ] Name, Anschrift und E-Mail in `LegalInfo` ([Anchor/LegalScreens.swift](../Anchor/LegalScreens.swift)) eingetragen — die App zeigt sie in Datenschutzerklärung und Hilfe
 - [ ] Platzhalter in `docs/datenschutz.html` und `docs/support.html` ausgefüllt (Name, Anschrift, E-Mail)
 - [ ] GitHub Pages aktiviert: Repo → Settings → Pages → Branch `main`, Ordner `/docs`
 - [ ] Beide URLs im Browser geprüft

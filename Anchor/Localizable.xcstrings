@@ -1,38 +1,114 @@
 {
   "sourceLanguage" : "de",
   "strings" : {
-    "—" : {
-
-    },
-    "%@" : {
-
-    },
-    "%@ - %@" : {
+    "#1–#4 Anker · mo–so Tag am Ende" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
-            "state" : "new",
-            "value" : "%1$@ - %2$@"
+            "state" : "translated",
+            "value" : "#1–#4 Anker · mo–so Tag am Ende"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "#1–#4 anchor · mo–su day at the end"
           }
         }
       }
     },
-    "%@ · %@" : {
+    "%@\n\nAutomatisch aufgeräumt: %@" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "new",
-            "value" : "%1$@ · %2$@"
+            "value" : "%1$@\n\nAutomatisch aufgeräumt: %2$@"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@\n\nCleaned up automatically: %2$@"
           }
         }
       }
     },
-    "%@ %@" : {
+    "%@ %@, %lld erledigt" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "new",
-            "value" : "%1$@ %2$@"
+            "value" : "%1$@ %2$@, %3$lld erledigt"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ %2$@, %3$lld done"
+          }
+        }
+      }
+    },
+    "%@ Auch die Daten in iCloud sind entfernt; deine anderen Geräte leeren sich beim nächsten Abgleich." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ Auch die Daten in iCloud sind entfernt; deine anderen Geräte leeren sich beim nächsten Abgleich."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ The data in iCloud is gone too; your other devices will clear at their next sync."
+          }
+        }
+      }
+    },
+    "%@ Dieses Gerät ist nicht bei iCloud angemeldet. Liegen dort noch Daten, lösche sie von einem angemeldeten Gerät aus." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ Dieses Gerät ist nicht bei iCloud angemeldet. Liegen dort noch Daten, lösche sie von einem angemeldeten Gerät aus."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ This device isn’t signed in to iCloud. If data remains there, delete it from a signed-in device."
+          }
+        }
+      }
+    },
+    "%@ Losgelassene Aufgaben lassen sich nicht wiederherstellen." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ Losgelassene Aufgaben lassen sich nicht wiederherstellen."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ Tasks you let go can’t be restored."
+          }
+        }
+      }
+    },
+    "%@ abgeschlossen um %@, aber nicht vollständig: %@" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ abgeschlossen um %2$@, aber nicht vollständig: %3$@"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ finished at %2$@, but not completely: %3$@"
           }
         }
       }
@@ -44,11 +120,382 @@
             "state" : "new",
             "value" : "%1$@ auf %2$@ legen"
           }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Move %1$@ to %2$@"
+          }
+        }
+      }
+    },
+    "%@ erfolgreich abgeschlossen um %@." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ erfolgreich abgeschlossen um %2$@."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ finished successfully at %2$@."
+          }
+        }
+      }
+    },
+    "%@ iCloud war nicht erreichbar, dort liegen eventuell noch Daten. Versuche es mit Internetverbindung erneut." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ iCloud war nicht erreichbar, dort liegen eventuell noch Daten. Versuche es mit Internetverbindung erneut."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ iCloud couldn’t be reached, so data may remain there. Try again with an internet connection."
+          }
+        }
+      }
+    },
+    "%@ keine" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ keine"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ none"
+          }
+        }
+      }
+    },
+    "%@ konnte nicht abgeschlossen werden." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ konnte nicht abgeschlossen werden."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ couldn’t be completed."
+          }
+        }
+      }
+    },
+    "%@ läuft seit %@." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ läuft seit %2$@."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ running since %2$@."
+          }
+        }
+      }
+    },
+    "%@ zusammengeführt" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ zusammengeführt"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ merged"
+          }
+        }
+      }
+    },
+    "%@ zusammengeführt, Ankerreihenfolge in %lld Wochen korrigiert" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ zusammengeführt, Ankerreihenfolge in %2$lld Wochen korrigiert"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ merged, anchor order fixed in %2$lld weeks"
+          }
+        }
+      }
+    },
+    "%@ · %@" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ · %2$@"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ · %2$@"
+          }
+        }
+      }
+    },
+    "%@ · %lld× gesetzt, %lld× gehalten" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ · %2$lld× gesetzt, %3$lld× gehalten"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ · set %2$lld×, held %3$lld×"
+          }
+        }
+      }
+    },
+    "%@ · Prio %@" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ · Prio %2$@"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ · priority %2$@"
+          }
+        }
+      }
+    },
+    "%@ · letzter Tag" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ · letzter Tag"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ · last day"
+          }
+        }
+      }
+    },
+    "%@ · noch %lld Tage" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ · noch %2$lld Tage"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ · %2$lld days left"
+          }
+        }
+      }
+    },
+    "%@ · noch 1 Tag" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ · noch 1 Tag"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ · 1 day left"
+          }
+        }
+      }
+    },
+    "%@ · pro Anker eine ehrliche Antwort." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ · pro Anker eine ehrliche Antwort."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ · one honest answer per anchor."
+          }
         }
       }
     },
     "%@ öffnen" : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ öffnen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open %@"
+          }
+        }
+      }
+    },
+    "%@ — Anchorit arbeitet lokal weiter; Änderungen werden nicht synchronisiert. Prüfe, ob du in den Systemeinstellungen bei iCloud angemeldet bist." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ — Anchorit arbeitet lokal weiter; Änderungen werden nicht synchronisiert. Prüfe, ob du in den Systemeinstellungen bei iCloud angemeldet bist."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ — Anchorit keeps working locally; changes aren’t synced. Check that you’re signed in to iCloud in System Settings."
+          }
+        }
+      }
+    },
+    "%@ — Heute" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ — Heute"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ — Today"
+          }
+        }
+      }
+    },
+    "%@, %@, erledigt" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@, %2$@, erledigt"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@, %2$@, done"
+          }
+        }
+      }
+    },
+    "%@, %@." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@, %2$@."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@, %2$@"
+          }
+        }
+      }
+    },
+    "%@, %lld von %lld Ankern gehalten" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@, %2$lld von %3$lld Ankern gehalten"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@, %2$lld of %3$lld anchors held"
+          }
+        }
+      }
+    },
+    "%@, %lld von 7 Tagen erledigt" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@, %2$lld von 7 Tagen erledigt"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@, done on %2$lld of 7 days"
+          }
+        }
+      }
+    },
+    "%@, keine Anker" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@, keine Anker"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@, no anchors"
+          }
+        }
+      }
+    },
+    "%@." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@"
+          }
+        }
+      }
     },
     "%@: %@" : {
       "localizations" : {
@@ -57,49 +504,430 @@
             "state" : "new",
             "value" : "%1$@: %2$@"
           }
-        }
-      }
-    },
-    "%@: %@, %@%@" : {
-      "localizations" : {
-        "de" : {
+        },
+        "en" : {
           "stringUnit" : {
-            "state" : "new",
-            "value" : "%1$@: %2$@, %3$@%4$@"
+            "state" : "translated",
+            "value" : "%1$@: %2$@"
           }
         }
       }
     },
-    "%lld" : {
-
-    },
-    "%lld %@" : {
+    "%@: %@, %@, erledigt" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "new",
-            "value" : "%1$lld %2$@"
+            "value" : "%1$@: %2$@, %3$@, erledigt"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@: %2$@, %3$@, done"
+          }
+        }
+      }
+    },
+    "%@: mitnehmen oder loslassen" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@: mitnehmen oder loslassen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@: carry over or let go"
+          }
+        }
+      }
+    },
+    "%lld Aufgaben" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld Aufgaben"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld tasks"
+          }
+        }
+      }
+    },
+    "%lld Aufgaben einplanen" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld Aufgaben einplanen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Schedule %lld tasks"
+          }
+        }
+      }
+    },
+    "%lld Aufgaben erledigt" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld Aufgaben erledigt"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld tasks done"
+          }
+        }
+      }
+    },
+    "%lld Aufgaben gelöscht" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld Aufgaben gelöscht"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld tasks deleted"
           }
         }
       }
     },
     "%lld Aufgaben löschen" : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld Aufgaben löschen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delete %lld tasks"
+          }
+        }
+      }
     },
     "%lld Aufgaben verschieben" : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld Aufgaben verschieben"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Move %lld tasks"
+          }
+        }
+      }
     },
-    "%lld ausgewählt" : {
-
+    "%lld Aufgaben verschoben" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld Aufgaben verschoben"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld tasks moved"
+          }
+        }
+      }
+    },
+    "%lld Datensätze" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld Datensätze"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld records"
+          }
+        }
+      }
+    },
+    "%lld Datensätze wurden gelöscht." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld Datensätze wurden gelöscht."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld records were deleted."
+          }
+        }
+      }
+    },
+    "%lld Löschungen" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld Löschungen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld deletions"
+          }
+        }
+      }
     },
     "%lld Prozent" : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld Prozent"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld percent"
+          }
+        }
+      }
     },
     "%lld Prozent des Tages erledigt" : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld Prozent des Tages erledigt"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld percent of the day done"
+          }
+        }
+      }
     },
     "%lld Treffer" : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld Treffer"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld results"
+          }
+        }
+      }
+    },
+    "%lld Wochen" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld Wochen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld weeks"
+          }
+        }
+      }
+    },
+    "%lld Wochen, %lld Anker, %lld Aufgaben und %lld Zeitblöcke auf diesem Gerät werden dauerhaft entfernt. Bist du bei iCloud angemeldet, wird auch dort alles gelöscht — auch, was hier noch nicht angekommen ist — und deine anderen Geräte leeren sich. Das lässt sich nicht rückgängig machen. Sichere vorher einen Export, wenn du die Daten behalten willst." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld Wochen, %2$lld Anker, %3$lld Aufgaben und %4$lld Zeitblöcke auf diesem Gerät werden dauerhaft entfernt. Bist du bei iCloud angemeldet, wird auch dort alles gelöscht — auch, was hier noch nicht angekommen ist — und deine anderen Geräte leeren sich. Das lässt sich nicht rückgängig machen. Sichere vorher einen Export, wenn du die Daten behalten willst."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$lld weeks, %2$lld anchors, %3$lld tasks and %4$lld time blocks on this device will be removed permanently. If you’re signed in to iCloud, everything there is deleted too — including what hasn’t arrived here yet — and your other devices will clear. This can’t be undone. Save an export first if you want to keep your data."
+          }
+        }
+      }
+    },
+    "%lld ausgewählt" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld ausgewählt"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld selected"
+          }
+        }
+      }
+    },
+    "%lld doppelte Tage" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld doppelte Tage"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld duplicate days"
+          }
+        }
+      }
+    },
+    "%lld doppelte Wochen" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld doppelte Wochen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld duplicate weeks"
+          }
+        }
+      }
+    },
+    "%lld gehen in den Eingang" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld gehen in den Eingang"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld go to the inbox"
+          }
+        }
+      }
+    },
+    "%lld offen" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld offen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld open"
+          }
+        }
+      }
+    },
+    "%lld seit Start" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld seit Start"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld since launch"
+          }
+        }
+      }
+    },
+    "%lld verwaiste Einträge" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld verwaiste Einträge"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld orphaned entries"
+          }
+        }
+      }
+    },
+    "%lld von %lld" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld von %2$lld"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$lld of %2$lld"
+          }
+        }
+      }
+    },
+    "%lld von %lld Ankern gehalten" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld von %2$lld Ankern gehalten"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$lld of %2$lld anchors held"
+          }
+        }
+      }
     },
     "%lld von %lld an diesem Tag" : {
       "localizations" : {
@@ -107,6 +935,12 @@
           "stringUnit" : {
             "state" : "new",
             "value" : "%1$lld von %2$lld an diesem Tag"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$lld of %2$lld on this day"
           }
         }
       }
@@ -118,50 +952,686 @@
             "state" : "new",
             "value" : "%1$lld von %2$lld erledigt"
           }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$lld of %2$lld done"
+          }
         }
       }
     },
-    "%lld/4 Wochenziele" : {
-
+    "%lld von %lld erledigt · %lld offen" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld von %2$lld erledigt · %3$lld offen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$lld of %2$lld done · %3$lld open"
+          }
+        }
+      }
+    },
+    "%lld von %lld gehalten." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld von %2$lld gehalten."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$lld of %2$lld held."
+          }
+        }
+      }
+    },
+    "%lld wandern in %@" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld wandern in %2$@"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$lld move to %2$@"
+          }
+        }
+      }
+    },
+    "%lld werden gelöscht" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld werden gelöscht"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld will be deleted"
+          }
+        }
+      }
+    },
+    "1 Aufgabe" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1 Aufgabe"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1 task"
+          }
+        }
+      }
+    },
+    "1 Aufgabe erledigt" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1 Aufgabe erledigt"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1 task done"
+          }
+        }
+      }
+    },
+    "1 Aufgabe gelöscht" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1 Aufgabe gelöscht"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1 task deleted"
+          }
+        }
+      }
+    },
+    "1 Aufgabe verschoben" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1 Aufgabe verschoben"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1 task moved"
+          }
+        }
+      }
+    },
+    "1 Datensatz wurde gelöscht." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1 Datensatz wurde gelöscht."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1 record was deleted."
+          }
+        }
+      }
+    },
+    "1 Woche" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1 Woche"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1 week"
+          }
+        }
+      }
+    },
+    "1 geht in den Eingang" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1 geht in den Eingang"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1 goes to the inbox"
+          }
+        }
+      }
+    },
+    "1 wandert in %@" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1 wandert in %@"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1 moves to %@"
+          }
+        }
+      }
+    },
+    "1 wird gelöscht" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1 wird gelöscht"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1 will be deleted"
+          }
+        }
+      }
     },
     "Abbrechen" : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abbrechen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cancel"
+          }
+        }
+      }
+    },
+    "Abgleich angefordert" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abgleich angefordert"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sync requested"
+          }
+        }
+      }
+    },
+    "Abschließen und %lld Aufgaben löschen" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abschließen und %lld Aufgaben löschen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Close and delete %lld tasks"
+          }
+        }
+      }
+    },
+    "Abschließen und 1 Aufgabe löschen" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abschließen und 1 Aufgabe löschen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Close and delete 1 task"
+          }
+        }
+      }
+    },
+    "Aktuell" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aktuell"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Up to date"
+          }
+        }
+      }
     },
     "Alle" : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alle"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "All"
+          }
+        }
+      }
     },
     "Alle Daten als JSON-Datei exportieren" : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alle Daten als JSON-Datei exportieren"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Export all data as a JSON file"
+          }
+        }
+      }
     },
     "Alle Daten löschen" : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alle Daten löschen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delete all data"
+          }
+        }
+      }
     },
     "Alle Daten löschen?" : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alle Daten löschen?"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delete all data?"
+          }
+        }
+      }
     },
     "Alle Daten unwiderruflich löschen" : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alle Daten unwiderruflich löschen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delete all data permanently"
+          }
+        }
+      }
     },
     "Als erledigt markieren" : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Als erledigt markieren"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mark as done"
+          }
+        }
+      }
     },
     "Als offen markieren" : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Als offen markieren"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mark as open"
+          }
+        }
+      }
     },
-    "Anchorit" : {
-
+    "Als wichtig markieren" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Als wichtig markieren"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mark as important"
+          }
+        }
+      }
+    },
+    "Als wichtig markiert" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Als wichtig markiert"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Marked as important"
+          }
+        }
+      }
+    },
+    "An Anker %@ gehängt" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "An Anker %@ gehängt"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Linked to anchor %@"
+          }
+        }
+      }
+    },
+    "Anchorit hat eine lokale Änderung gespeichert und wartet auf den CloudKit-Export." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anchorit hat eine lokale Änderung gespeichert und wartet auf den CloudKit-Export."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anchorit saved a local change and is waiting for the CloudKit export."
+          }
+        }
+      }
     },
     "Anchorit jetzt neu starten, damit die Sync-Einstellung greift" : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anchorit jetzt neu starten, damit die Sync-Einstellung greift"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Restart Anchorit now to apply the sync setting"
+          }
+        }
+      }
     },
-    "Änderung nicht gespeichert" : {
-
+    "Anchorit kann deine Wochen, Anker, Aufgaben und Notizen über deinen iCloud-Account zwischen iPhone, iPad und Mac gleich halten. Die Daten liegen in deiner privaten iCloud-Datenbank. Nur du kommst über deinen Apple-Account daran — der Entwickler von Anchorit nicht." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anchorit kann deine Wochen, Anker, Aufgaben und Notizen über deinen iCloud-Account zwischen iPhone, iPad und Mac gleich halten. Die Daten liegen in deiner privaten iCloud-Datenbank. Nur du kommst über deinen Apple-Account daran — der Entwickler von Anchorit nicht."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anchorit can keep your weeks, anchors, tasks and notes in step across iPhone, iPad and Mac through your iCloud account. The data lives in your private iCloud database. Only you can reach it through your Apple Account — the developer of Anchorit can’t."
+          }
+        }
+      }
+    },
+    "Anchorit konnte die letzte Änderung nicht auf diesem Gerät sichern. Sie geht verloren, wenn die App beendet wird." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anchorit konnte die letzte Änderung nicht auf diesem Gerät sichern. Sie geht verloren, wenn die App beendet wird."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anchorit couldn’t save the last change on this device. It will be lost when the app quits."
+          }
+        }
+      }
+    },
+    "Anchorit prüft den iCloud-Account und wartet auf den nächsten Abgleich." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anchorit prüft den iCloud-Account und wartet auf den nächsten Abgleich."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anchorit is checking the iCloud account and waiting for the next sync."
+          }
+        }
+      }
+    },
+    "Anchorit verbindet sich mit iCloud." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anchorit verbindet sich mit iCloud."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anchorit is connecting to iCloud."
+          }
+        }
+      }
+    },
+    "Anchorit öffnet beim Start dort, wo du zuletzt warst." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anchorit öffnet beim Start dort, wo du zuletzt warst."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anchorit opens where you left off."
+          }
+        }
+      }
+    },
+    "Anchorit öffnet beim Start immer Heute." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anchorit öffnet beim Start immer Heute."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anchorit always opens on Today."
+          }
+        }
+      }
+    },
+    "Anchorit öffnet beim Start immer die laufende Woche." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anchorit öffnet beim Start immer die laufende Woche."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anchorit always opens the current week."
+          }
+        }
+      }
+    },
+    "Anfrage abgebrochen, Setup nie erfolgreich" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anfrage abgebrochen, Setup nie erfolgreich"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Request cancelled, setup never succeeded"
+          }
+        }
+      }
+    },
+    "Angemeldet" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Angemeldet"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Signed in"
+          }
+        }
+      }
     },
     "Anker" : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anker"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anchor"
+          }
+        }
+      }
     },
     "Anker %@" : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anker %@"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anchor %@"
+          }
+        }
+      }
+    },
+    "Anker %@, %@, %lld Prozent der Woche erledigt, %lld von %lld Aufgaben an diesem Tag erledigt" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Anker %1$@, %2$@, %3$lld Prozent der Woche erledigt, %4$lld von %5$lld Aufgaben an diesem Tag erledigt"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anchor %1$@, %2$@, %3$lld percent of the week done, %4$lld of %5$lld tasks done on this day"
+          }
+        }
+      }
     },
     "Anker %@, %@, %lld von %lld erledigt" : {
       "localizations" : {
@@ -169,6 +1639,60 @@
           "stringUnit" : {
             "state" : "new",
             "value" : "Anker %1$@, %2$@, %3$lld von %4$lld erledigt"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anchor %1$@, %2$@, %3$lld of %4$lld done"
+          }
+        }
+      }
+    },
+    "Anker %@, %@: %@" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Anker %1$@, %2$@: %3$@"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anchor %1$@, %2$@: %3$@"
+          }
+        }
+      }
+    },
+    "Anker %lld" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anker %lld"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anchor %lld"
+          }
+        }
+      }
+    },
+    "Anker %lld gibt es nicht" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anker %lld gibt es nicht"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "there’s no anchor %lld"
           }
         }
       }
@@ -180,183 +1704,5423 @@
             "state" : "new",
             "value" : "Anker %1$lld · %2$@"
           }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anchor %1$lld · %2$@"
+          }
         }
       }
     },
-    "Anker %lld, %@, %lld von %lld erledigt" : {
+    "Anker %lld: %@" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "new",
-            "value" : "Anker %1$lld, %2$@, %3$lld von %4$lld erledigt"
+            "value" : "Anker %1$lld: %2$@"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anchor %1$lld: %2$@"
+          }
+        }
+      }
+    },
+    "Anker an diesem Tag" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anker an diesem Tag"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anchors on this day"
           }
         }
       }
     },
     "Anker bearbeiten" : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anker bearbeiten"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Edit anchor"
+          }
+        }
+      }
+    },
+    "Anker gelöst" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anker gelöst"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anchor removed"
+          }
+        }
+      }
+    },
+    "Anker gesetzt" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anker gesetzt"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anchor set"
+          }
+        }
+      }
     },
     "Anker löschen" : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anker löschen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delete anchor"
+          }
+        }
+      }
+    },
+    "Anker löschen?" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anker löschen?"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delete anchor?"
+          }
+        }
+      }
     },
     "Anker setzen" : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anker setzen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Set anchors"
+          }
+        }
+      }
     },
-    "Antippen, um die Aufgabe loszulassen" : {
-
+    "Anker setzen …" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anker setzen …"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Set Anchors…"
+          }
+        }
+      }
     },
-    "Antippen, um sie mitzunehmen" : {
-
+    "Anker wählen" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anker wählen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose anchor"
+          }
+        }
+      }
+    },
+    "Anker öffnen: %@" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anker öffnen: %@"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open anchor: %@"
+          }
+        }
+      }
+    },
+    "Anker, Aufgaben, Notizen" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anker, Aufgaben, Notizen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anchors, tasks, notes"
+          }
+        }
+      }
+    },
+    "Ankeraktionen" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ankeraktionen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anchor actions"
+          }
+        }
+      }
+    },
+    "Ankerreihenfolge in %lld Wochen korrigiert" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ankerreihenfolge in %lld Wochen korrigiert"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anchor order fixed in %lld weeks"
+          }
+        }
+      }
+    },
+    "App-Version" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "App-Version"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "App version"
+          }
+        }
+      }
     },
     "Archiv" : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Archiv"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Archive"
+          }
+        }
+      }
+    },
+    "Archiv %@" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Archiv %@"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Archive %@"
+          }
+        }
+      }
+    },
+    "Auf %@ gelegt" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Auf %@ gelegt"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Moved to %@"
+          }
+        }
+      }
+    },
+    "Auf allen Geräten?" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Auf allen Geräten?"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "On all your devices?"
+          }
+        }
+      }
+    },
+    "Auf dem Gerät bei iCloud anmelden und iCloud Drive aktivieren." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Auf dem Gerät bei iCloud anmelden und iCloud Drive aktivieren."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sign in to iCloud on the device and turn on iCloud Drive."
+          }
+        }
+      }
+    },
+    "Auf diesem Gerät ist kein iCloud-Account angemeldet. Ohne Account kann CloudKit nicht starten und nichts synchronisieren. In den Systemeinstellungen bei iCloud anmelden." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Auf diesem Gerät ist kein iCloud-Account angemeldet. Ohne Account kann CloudKit nicht starten und nichts synchronisieren. In den Systemeinstellungen bei iCloud anmelden."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No iCloud account is signed in on this device. Without one, CloudKit can’t start or sync anything. Sign in to iCloud in System Settings."
+          }
+        }
+      }
+    },
+    "Auf diesem Gerät ist kein iCloud-Account angemeldet. Ohne Account kann CloudKit nicht starten." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Auf diesem Gerät ist kein iCloud-Account angemeldet. Ohne Account kann CloudKit nicht starten."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No iCloud account is signed in on this device. Without one, CloudKit can’t start."
+          }
+        }
+      }
+    },
+    "Auf diesem Gerät ist noch nichts gespeichert. Wenn du Anchorit schon benutzt, kommen deine Anker und Aufgaben gleich von selbst — dann brauchst du hier nichts einzugeben." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Auf diesem Gerät ist noch nichts gespeichert. Wenn du Anchorit schon benutzt, kommen deine Anker und Aufgaben gleich von selbst — dann brauchst du hier nichts einzugeben."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nothing is stored on this device yet. If you already use Anchorit, your anchors and tasks will arrive on their own in a moment — then there’s nothing to enter here."
+          }
+        }
+      }
     },
     "Aufgabe" : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aufgabe"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Task"
+          }
+        }
+      }
     },
     "Aufgabe anlegen" : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aufgabe anlegen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add task"
+          }
+        }
+      }
     },
     "Aufgabe bearbeiten" : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aufgabe bearbeiten"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Edit task"
+          }
+        }
+      }
+    },
+    "Aufgabe dupliziert" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aufgabe dupliziert"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Task duplicated"
+          }
+        }
+      }
+    },
+    "Aufgabe einplanen" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aufgabe einplanen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Schedule task"
+          }
+        }
+      }
     },
     "Aufgabe erfassen" : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aufgabe erfassen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Capture task"
+          }
+        }
+      }
+    },
+    "Aufgabe erledigt" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aufgabe erledigt"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Task done"
+          }
+        }
+      }
+    },
+    "Aufgabe gelöscht" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aufgabe gelöscht"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Task deleted"
+          }
+        }
+      }
+    },
+    "Aufgabe geändert" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aufgabe geändert"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Task changed"
+          }
+        }
+      }
     },
     "Aufgabe löschen" : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aufgabe löschen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delete task"
+          }
+        }
+      }
     },
     "Aufgabe löschen?" : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aufgabe löschen?"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delete task?"
+          }
+        }
+      }
     },
     "Aufgabe verschieben" : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aufgabe verschieben"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Move task"
+          }
+        }
+      }
+    },
+    "Aufgabe verschoben" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aufgabe verschoben"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Task moved"
+          }
+        }
+      }
+    },
+    "Aufgabe wieder offen" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aufgabe wieder offen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Task reopened"
+          }
+        }
+      }
     },
     "Aufgabe zu diesem Anker" : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aufgabe zu diesem Anker"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Task for this anchor"
+          }
+        }
+      }
     },
-    "Aufgabenaktionen" : {
-
+    "Aufgaben" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aufgaben"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tasks"
+          }
+        }
+      }
+    },
+    "Aufgeräumt" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aufgeräumt"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cleaned up"
+          }
+        }
+      }
     },
     "Aus dem Kalender übernommen" : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aus dem Kalender übernommen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "From your calendar"
+          }
+        }
+      }
     },
     "Ausgewählt" : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ausgewählt"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Selected"
+          }
+        }
+      }
     },
     "Ausgewählte Aufgaben löschen?" : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ausgewählte Aufgaben löschen?"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delete selected tasks?"
+          }
+        }
+      }
     },
     "Auswählen" : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Auswählen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Select"
+          }
+        }
+      }
     },
     "Bearbeiten" : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bearbeiten"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Edit"
+          }
+        }
+      }
     },
     "Bearbeiten …" : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bearbeiten …"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Edit…"
+          }
+        }
+      }
     },
     "Beendet die Auswahl" : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Beendet die Auswahl"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ends the selection"
+          }
+        }
+      }
+    },
+    "Beim Abschließen: %@" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Beim Abschließen: %@"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "When you close: %@"
+          }
+        }
+      }
+    },
+    "Bereich" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bereich"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Section"
+          }
+        }
+      }
     },
     "Bis zu vier Anker, jeder mit einem Satz, warum. Aufgaben hängst du daran — oder lässt sie ohne." : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bis zu vier Anker, jeder mit einem Satz, warum. Aufgaben hängst du daran — oder lässt sie ohne."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Up to four anchors, each with one sentence on why. Tasks hang on them — or stand without one."
+          }
+        }
+      }
+    },
+    "Bis zu vier. Mehr geht nicht — das ist der Punkt." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bis zu vier. Mehr geht nicht — das ist der Punkt."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Up to four. No more — that’s the point."
+          }
+        }
+      }
+    },
+    "CKError %lld (%@)" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "CKError %1$lld (%2$@)"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "CKError %1$lld (%2$@)"
+          }
+        }
+      }
+    },
+    "CloudKit in diesem Build abgeschaltet" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "CloudKit in diesem Build abgeschaltet"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "CloudKit is off in this build"
+          }
+        }
+      }
+    },
+    "CloudKit wird vorbereitet" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "CloudKit wird vorbereitet"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Preparing CloudKit"
+          }
+        }
+      }
+    },
+    "CloudKit-Integration nicht möglich" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "CloudKit-Integration nicht möglich"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "CloudKit integration not possible"
+          }
+        }
+      }
+    },
+    "CloudKit-Setup" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "CloudKit-Setup"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "CloudKit setup"
+          }
+        }
+      }
+    },
+    "Container" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Container"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Container"
+          }
+        }
+      }
+    },
+    "Container oder Entitlement falsch" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Container oder Entitlement falsch"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wrong container or entitlement"
+          }
+        }
+      }
+    },
+    "Core Data %lld (%@)" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Core Data %1$lld (%2$@)"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Core Data %1$lld (%2$@)"
+          }
+        }
+      }
+    },
+    "Core-Data-Fehler" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Core-Data-Fehler"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Core Data error"
+          }
+        }
+      }
+    },
+    "Darstellung der Woche" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Darstellung der Woche"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Week layout"
+          }
+        }
+      }
+    },
+    "Das Datenmodell konnte nicht für CloudKit aufgebaut werden." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Das Datenmodell konnte nicht für CloudKit aufgebaut werden."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The data model couldn’t be built for CloudKit."
+          }
+        }
+      }
     },
     "Das lässt sich direkt danach rückgängig machen." : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Das lässt sich direkt danach rückgängig machen."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You can undo this right afterwards."
+          }
+        }
+      }
+    },
+    "Daten" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Daten"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Data"
+          }
+        }
+      }
+    },
+    "Daten exportieren" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Daten exportieren"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Export data"
+          }
+        }
+      }
     },
     "Daten und Datenschutz" : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Daten und Datenschutz"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Data & Privacy"
+          }
+        }
+      }
     },
     "Daten und Datenschutz öffnen" : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Daten und Datenschutz öffnen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open Data & Privacy"
+          }
+        }
+      }
     },
-    "Datum wählen ..." : {
-
+    "Datenschutzerklärung" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Datenschutzerklärung"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Privacy Policy"
+          }
+        }
+      }
+    },
+    "Datum wählen …" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Datum wählen …"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose date…"
+          }
+        }
+      }
+    },
+    "Dein erster Anker" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dein erster Anker"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your first anchor"
+          }
+        }
+      }
     },
     "Deine Anker" : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deine Anker"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your anchors"
+          }
+        }
+      }
+    },
+    "Der Anker »%@« wird dauerhaft entfernt." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Der Anker »%@« wird dauerhaft entfernt."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The anchor “%@” will be removed permanently."
+          }
+        }
+      }
+    },
+    "Der Anker »%@« wird dauerhaft entfernt. Seine %lld Aufgaben bleiben erhalten und stehen danach ohne Anker." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Der Anker »%1$@« wird dauerhaft entfernt. Seine %2$lld Aufgaben bleiben erhalten und stehen danach ohne Anker."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The anchor “%1$@” will be removed permanently. Its %2$lld tasks stay and will have no anchor."
+          }
+        }
+      }
+    },
+    "Der Anker »%@« wird dauerhaft entfernt. Seine Aufgabe bleibt erhalten und steht danach ohne Anker." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Der Anker »%@« wird dauerhaft entfernt. Seine Aufgabe bleibt erhalten und steht danach ohne Anker."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The anchor “%@” will be removed permanently. Its task stays and will have no anchor."
+          }
+        }
+      }
+    },
+    "Der Export konnte nicht erstellt werden: %@" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Der Export konnte nicht erstellt werden: %@"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The export couldn’t be created: %@"
+          }
+        }
+      }
+    },
+    "Der Export konnte nicht gesichert werden: %@" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Der Export konnte nicht gesichert werden: %@"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The export couldn’t be saved: %@"
+          }
+        }
+      }
     },
     "Der Schalter überträgt keine Löschung: bereits in iCloud gespeicherte Daten bleiben dort. Zum Entfernen die vollständige Löschung unter Daten und Datenschutz nutzen." : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Der Schalter überträgt keine Löschung: bereits in iCloud gespeicherte Daten bleiben dort. Zum Entfernen die vollständige Löschung unter Daten und Datenschutz nutzen."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This switch doesn’t delete anything: data already stored in iCloud stays there. To remove it, use the full deletion under Data & Privacy."
+          }
+        }
+      }
     },
     "Der Sync endet beim nächsten Start von Anchorit." : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Der Sync endet beim nächsten Start von Anchorit."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sync stops the next time Anchorit starts."
+          }
+        }
+      }
     },
     "Der Sync startet beim nächsten Start von Anchorit." : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Der Sync startet beim nächsten Start von Anchorit."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sync starts the next time Anchorit starts."
+          }
+        }
+      }
     },
-    "Die Woche wird beim Sichern angelegt. Wochenziele kannst du danach direkt für diese Woche erstellen." : {
-
+    "Der iCloud-Account ist eingeschränkt, etwa durch Bildschirmzeit oder eine Geräteverwaltung." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Der iCloud-Account ist eingeschränkt, etwa durch Bildschirmzeit oder eine Geräteverwaltung."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The iCloud account is restricted, for example by Screen Time or device management."
+          }
+        }
+      }
     },
-    "Die Woche wird beim Sichern angelegt. Ziele kannst du anschließend zuordnen." : {
-
+    "Der iCloud-Account ist erreichbar, und es lag keine Änderung zum Abgleich an." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Der iCloud-Account ist erreichbar, und es lag keine Änderung zum Abgleich an."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The iCloud account is reachable and there was nothing to sync."
+          }
+        }
+      }
+    },
+    "Der iCloud-Account ist gerade nicht verfügbar. Das legt sich meist von selbst." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Der iCloud-Account ist gerade nicht verfügbar. Das legt sich meist von selbst."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The iCloud account is unavailable right now. This usually resolves itself."
+          }
+        }
+      }
+    },
+    "Der iCloud-Container konnte nicht geöffnet werden." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Der iCloud-Container konnte nicht geöffnet werden."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The iCloud container couldn’t be opened."
+          }
+        }
+      }
+    },
+    "Der iCloud-Sync ist in den Einstellungen abgeschaltet. Änderungen bleiben lokal und werden nicht auf andere Geräte übertragen." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Der iCloud-Sync ist in den Einstellungen abgeschaltet. Änderungen bleiben lokal und werden nicht auf andere Geräte übertragen."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud sync is turned off in Settings. Changes stay local and aren’t sent to other devices."
+          }
+        }
+      }
+    },
+    "Derselbe Store wird zweimal im Prozess mit CloudKit verbunden." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Derselbe Store wird zweimal im Prozess mit CloudKit verbunden."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The same store is connected to CloudKit twice in this process."
+          }
+        }
+      }
+    },
+    "Die App zu löschen reicht dafür nicht: Deine Daten bleiben dann in iCloud liegen und werden bei einer Neuinstallation wiederhergestellt." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die App zu löschen reicht dafür nicht: Deine Daten bleiben dann in iCloud liegen und werden bei einer Neuinstallation wiederhergestellt."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deleting the app isn’t enough: your data stays in iCloud and comes back if you reinstall."
+          }
+        }
+      }
+    },
+    "Die Daten konnten nicht gelöscht werden. Es wurde nichts entfernt." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die Daten konnten nicht gelöscht werden. Es wurde nichts entfernt."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The data couldn’t be deleted. Nothing was removed."
+          }
+        }
+      }
     },
     "Die Zahlen sind ein Hinweis. Die Antwort gibst du." : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die Zahlen sind ein Hinweis. Die Antwort gibst du."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The numbers are a hint. The answer is yours."
+          }
+        }
+      }
+    },
+    "Die Änderung ist lokal gespeichert, aber CloudKit hat seit zwei Minuten keinen Export gemeldet. Das kann an fehlender Netzwerkverbindung liegen; sonst in den Systemeinstellungen die iCloud-Anmeldung prüfen." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die Änderung ist lokal gespeichert, aber CloudKit hat seit zwei Minuten keinen Export gemeldet. Das kann an fehlender Netzwerkverbindung liegen; sonst in den Systemeinstellungen die iCloud-Anmeldung prüfen."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The change is saved locally, but CloudKit hasn’t reported an export for two minutes. This may be a missing network connection; otherwise check your iCloud sign-in in System Settings."
+          }
+        }
+      }
+    },
+    "Dienst gerade nicht verfügbar" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dienst gerade nicht verfügbar"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Service unavailable right now"
+          }
+        }
+      }
+    },
+    "Diese App-Version kann iCloud nicht erreichen. Bitte die App aktualisieren oder den Support kontaktieren." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diese App-Version kann iCloud nicht erreichen. Bitte die App aktualisieren oder den Support kontaktieren."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This version of the app can’t reach iCloud. Please update the app or contact support."
+          }
+        }
+      }
     },
     "Diese Aufgabe wird dauerhaft entfernt." : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diese Aufgabe wird dauerhaft entfernt."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This task will be removed permanently."
+          }
+        }
+      }
     },
     "Diese Woche" : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diese Woche"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This week"
+          }
+        }
+      }
+    },
+    "Diese Woche hat noch keine Anker. Setze sie in der Woche, dann kannst du die Aufgabe hier verankern." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diese Woche hat noch keine Anker. Setze sie in der Woche, dann kannst du die Aufgabe hier verankern."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This week has no anchors yet. Set them in the week, then you can anchor the task here."
+          }
+        }
+      }
+    },
+    "Dieser Anker ist nicht mehr da — vielleicht auf einem anderen Gerät gelöscht." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dieser Anker ist nicht mehr da — vielleicht auf einem anderen Gerät gelöscht."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This anchor is gone — perhaps deleted on another device."
+          }
+        }
+      }
+    },
+    "Dieses Jahr" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dieses Jahr"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This year"
+          }
+        }
+      }
+    },
+    "Direkte CloudKit-Prüfung: %@" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Direkte CloudKit-Prüfung: %@"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Direct CloudKit check: %@"
+          }
+        }
+      }
+    },
+    "Dritter Anker …" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dritter Anker …"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Third anchor…"
+          }
+        }
+      }
+    },
+    "Dunkel" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dunkel"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dark"
+          }
+        }
+      }
     },
     "Duplizieren" : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Duplizieren"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Duplicate"
+          }
+        }
+      }
     },
     "Ein Satz genügt" : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ein Satz genügt"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "One sentence is enough"
+          }
+        }
+      }
+    },
+    "Ein Teil der Änderungen wurde von iCloud abgewiesen. Anchorit versucht es später erneut; bleibt der Hinweis, bitte an den Support melden." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ein Teil der Änderungen wurde von iCloud abgewiesen. Anchorit versucht es später erneut; bleibt der Hinweis, bitte an den Support melden."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud rejected some of the changes. Anchorit will try again later; if this message stays, please contact support."
+          }
+        }
+      }
+    },
+    "Eingang · Prio %@" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Eingang · Prio %@"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Inbox · priority %@"
+          }
+        }
+      }
+    },
+    "Eingeschränkt" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Eingeschränkt"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Restricted"
+          }
+        }
+      }
+    },
+    "Einplanen" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Einplanen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Schedule"
+          }
+        }
+      }
     },
     "Einstellungen" : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Einstellungen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Settings"
+          }
+        }
+      }
     },
     "Einstellungen öffnen" : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Einstellungen öffnen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open Settings"
+          }
+        }
+      }
+    },
+    "Empfangen" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Empfangen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Received"
+          }
+        }
+      }
+    },
+    "Empfängt Änderungen" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Empfängt Änderungen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Receiving changes"
+          }
+        }
+      }
+    },
+    "Entfernt alle Wochen, Anker, Aufgaben, Zeitblöcke und Notizen — auf diesem Gerät und, wenn du bei iCloud angemeldet bist, auch in iCloud und damit auf deinen anderen Geräten." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Entfernt alle Wochen, Anker, Aufgaben, Zeitblöcke und Notizen — auf diesem Gerät und, wenn du bei iCloud angemeldet bist, auch in iCloud und damit auf deinen anderen Geräten."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Removes all weeks, anchors, tasks, time blocks and notes — on this device and, if you’re signed in to iCloud, in iCloud and therefore on your other devices."
+          }
+        }
+      }
+    },
+    "Enthaltener Fehler: %@" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enthaltener Fehler: %@"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Underlying error: %@"
+          }
+        }
+      }
     },
     "Erledigt" : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Erledigt"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Done"
+          }
+        }
+      }
     },
     "Erneut sichern" : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Erneut sichern"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Save again"
+          }
+        }
+      }
     },
     "Erscheinungsbild" : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Erscheinungsbild"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Appearance"
+          }
+        }
+      }
     },
     "Erscheinungsbild wählen" : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Erscheinungsbild wählen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose appearance"
+          }
+        }
+      }
     },
     "Ersten Anker setzen" : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ersten Anker setzen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Set your first anchor"
+          }
+        }
+      }
+    },
+    "Export ausstehend" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Export ausstehend"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Export pending"
+          }
+        }
+      }
+    },
+    "Export fehlgeschlagen" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Export fehlgeschlagen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Export failed"
+          }
+        }
+      }
+    },
+    "Export gesichert unter %@." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Export gesichert unter %@."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Export saved as %@."
+          }
+        }
+      }
+    },
+    "Export noch ausstehend" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Export noch ausstehend"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Export still pending"
+          }
+        }
+      }
     },
     "Export sichern" : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Export sichern"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Save export"
+          }
+        }
+      }
     },
     "Exportieren oder vollständig löschen" : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Exportieren oder vollständig löschen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Export or delete everything"
+          }
+        }
+      }
     },
-    "Farbe" : {
-
+    "Fehler" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fehler"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Error"
+          }
+        }
+      }
     },
     "Fertig" : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fertig"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Done"
+          }
+        }
+      }
     },
     "Fokus des Tages" : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fokus des Tages"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Focus of the day"
+          }
+        }
+      }
     },
     "Folgt der Systemeinstellung dieses Geräts." : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Folgt der Systemeinstellung dieses Geräts."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Follows this device’s system setting."
+          }
+        }
+      }
     },
-    "Geräte synchronisieren nur bei gleichem iCloud-Account und gleicher Umgebung. Development und Production sind getrennte Datenbestände." : {
-
+    "Fragen, Fehler, Wünsche" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fragen, Fehler, Wünsche"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Questions, bugs, ideas"
+          }
+        }
+      }
+    },
+    "Fremdänderungen" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fremdänderungen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Changes from other devices"
+          }
+        }
+      }
+    },
+    "Für diese Woche sind keine Anker gesetzt." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Für diese Woche sind keine Anker gesetzt."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No anchors are set for this week."
+          }
+        }
+      }
+    },
+    "Für diesen Tag sind keine Zeitblöcke eingetragen." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Für diesen Tag sind keine Zeitblöcke eingetragen."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No time blocks for this day."
+          }
+        }
+      }
+    },
+    "Für heute ist nichts geplant. Schreib unten, was ansteht — oder hol dir etwas aus der Woche." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Für heute ist nichts geplant. Schreib unten, was ansteht — oder hol dir etwas aus der Woche."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nothing planned for today. Write below what’s next — or pull something in from the week."
+          }
+        }
+      }
+    },
+    "Gehalten" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gehalten"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Held"
+          }
+        }
+      }
+    },
+    "Gehe zu" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gehe zu"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Go"
+          }
+        }
+      }
+    },
+    "Geräte gleichen sich nur ab, wenn sie mit demselben iCloud-Account angemeldet sind." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Geräte gleichen sich nur ab, wenn sie mit demselben iCloud-Account angemeldet sind."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Devices only sync when they’re signed in to the same iCloud account."
+          }
+        }
+      }
+    },
+    "Gespeichert wird auf diesem Gerät und, wenn iCloud aktiv ist, in deiner privaten iCloud-Datenbank. Daran kommst nur du über deinen Apple-Account — der Entwickler von Anchorit hat keinen Zugriff." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gespeichert wird auf diesem Gerät und, wenn iCloud aktiv ist, in deiner privaten iCloud-Datenbank. Daran kommst nur du über deinen Apple-Account — der Entwickler von Anchorit hat keinen Zugriff."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Everything is stored on this device and, if iCloud is on, in your private iCloud database. Only you can reach it through your Apple Account — the developer of Anchorit has no access."
+          }
+        }
+      }
     },
     "Gilt nur für Anchorit, unabhängig vom System." : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gilt nur für Anchorit, unabhängig vom System."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Applies to Anchorit only, regardless of the system."
+          }
+        }
+      }
+    },
+    "Hell" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hell"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Light"
+          }
+        }
+      }
     },
     "Heute" : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Heute"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Today"
+          }
+        }
+      }
+    },
+    "Heute, %@" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Heute, %@"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Today, %@"
+          }
+        }
+      }
     },
     "Hierher" : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hierher"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Here"
+          }
+        }
+      }
+    },
+    "Hilfe und Kontakt" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hilfe und Kontakt"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Help & Contact"
+          }
+        }
+      }
+    },
+    "Import fehlgeschlagen" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Import fehlgeschlagen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Import failed"
+          }
+        }
+      }
+    },
+    "In die nächste Woche" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "In die nächste Woche"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "To next week"
+          }
+        }
+      }
+    },
+    "In die nächste Woche verschieben" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "In die nächste Woche verschieben"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Move to next week"
+          }
+        }
+      }
+    },
+    "In die nächste Woche verschoben" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "In die nächste Woche verschoben"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Moved to next week"
+          }
+        }
+      }
+    },
+    "Jahr %@" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Jahr %@"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Year %@"
+          }
+        }
+      }
+    },
+    "Jetzt einen Tag wählen: %@" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Jetzt einen Tag wählen: %@"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Now choose a day: %@"
+          }
+        }
+      }
+    },
+    "Jetzt neu starten" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Jetzt neu starten"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Restart now"
+          }
+        }
+      }
+    },
+    "KW %@" : {
+      "comment" : "Kalenderwoche, z. B. „KW 48“",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "KW %@"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Week %@"
+          }
+        }
+      }
+    },
+    "Kein iCloud-Account" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kein iCloud-Account"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No iCloud account"
+          }
+        }
+      }
+    },
+    "Keine Berechtigung" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keine Berechtigung"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No permission"
+          }
+        }
+      }
+    },
+    "Keine Duplikate" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keine Duplikate"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No duplicates"
+          }
+        }
+      }
+    },
+    "Keine Treffer in Aufgaben, Ankern, Notizen oder Zeitblöcken." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keine Treffer in Aufgaben, Ankern, Notizen oder Zeitblöcken."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No results in tasks, anchors, notes or time blocks."
+          }
+        }
+      }
+    },
+    "Kommt immer wieder und hält selten" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kommt immer wieder und hält selten"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keeps coming back, rarely held"
+          }
+        }
+      }
+    },
+    "Leg unten die erste Aufgabe für diesen Anker an." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Leg unten die erste Aufgabe für diesen Anker an."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add the first task for this anchor below."
+          }
+        }
+      }
+    },
+    "Legt eine JSON-Datei mit allen gespeicherten Daten an — vollständig und maschinenlesbar, für ein eigenes Backup oder den Umzug in eine andere App." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Legt eine JSON-Datei mit allen gespeicherten Daten an — vollständig und maschinenlesbar, für ein eigenes Backup oder den Umzug in eine andere App."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Creates a JSON file with all stored data — complete and machine-readable, for your own backup or a move to another app."
+          }
+        }
+      }
+    },
+    "Letzte Woche ist noch offen." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Letzte Woche ist noch offen."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Last week is still open."
+          }
+        }
+      }
+    },
+    "Letzte Woche nicht gehalten" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Letzte Woche nicht gehalten"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Not held last week"
+          }
+        }
+      }
+    },
+    "Lokale Änderung gesichert" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lokale Änderung gesichert"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Local change saved"
+          }
+        }
+      }
+    },
+    "Loslassen" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Loslassen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Let go"
+          }
+        }
+      }
+    },
+    "Längste Serie, alles gehalten" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Längste Serie, alles gehalten"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Longest streak, everything held"
+          }
+        }
+      }
+    },
+    "Löschen" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Löschen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delete"
+          }
+        }
+      }
+    },
+    "Mehrere Aufgaben auf einmal bearbeiten" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mehrere Aufgaben auf einmal bearbeiten"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Edit several tasks at once"
+          }
+        }
+      }
+    },
+    "Mindestens zwei Zeichen eingeben." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mindestens zwei Zeichen eingeben."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Type at least two characters."
+          }
+        }
+      }
+    },
+    "Mit Sync sind Wochen, Anker, Aufgaben und Notizen auf allen Geräten mit demselben Apple-Account gleich. Ohne Sync bleibt alles auf diesem Gerät." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mit Sync sind Wochen, Anker, Aufgaben und Notizen auf allen Geräten mit demselben Apple-Account gleich. Ohne Sync bleibt alles auf diesem Gerät."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "With sync, weeks, anchors, tasks and notes are the same on every device with the same Apple Account. Without sync, everything stays on this device."
+          }
+        }
+      }
+    },
+    "Mit iCloud synchronisieren" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mit iCloud synchronisieren"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sync with iCloud"
+          }
+        }
+      }
+    },
+    "Mitnehmen" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mitnehmen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Carry over"
+          }
+        }
+      }
+    },
+    "Morgen" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Morgen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tomorrow"
+          }
+        }
+      }
+    },
+    "Muss sein, zählt nicht zur Woche." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Muss sein, zählt nicht zur Woche."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Has to happen, doesn’t count toward the week."
+          }
+        }
+      }
+    },
+    "Nach %@ verschoben" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nach %@ verschoben"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Moved to %@"
+          }
+        }
+      }
+    },
+    "Nach Anker" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nach Anker"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "By anchor"
+          }
+        }
+      }
+    },
+    "Nach Tag" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nach Tag"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "By day"
+          }
+        }
+      }
+    },
+    "Netzwerk nicht erreichbar" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Netzwerk nicht erreichbar"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Network unreachable"
+          }
+        }
+      }
+    },
+    "Neuen Tag wählen: %@" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Neuen Tag wählen: %@"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose a new day: %@"
+          }
+        }
+      }
+    },
+    "Nicht" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nicht"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Missed"
+          }
+        }
+      }
+    },
+    "Nicht abrufbar" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nicht abrufbar"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unavailable"
+          }
+        }
+      }
+    },
+    "Nicht angemeldet" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nicht angemeldet"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Not signed in"
+          }
+        }
+      }
+    },
+    "Nicht ausgewählt" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nicht ausgewählt"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Not selected"
+          }
+        }
+      }
+    },
+    "Nicht bei iCloud angemeldet" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nicht bei iCloud angemeldet"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Not signed in to iCloud"
+          }
+        }
+      }
+    },
+    "Nicht geprüft" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nicht geprüft"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Not checked"
+          }
+        }
+      }
+    },
+    "Nicht mehr wichtig" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nicht mehr wichtig"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No longer important"
+          }
+        }
+      }
+    },
+    "Nicht registriert" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nicht registriert"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Not registered"
+          }
+        }
+      }
+    },
+    "Nichts zu übertragen" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nichts zu übertragen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nothing to send"
+          }
+        }
+      }
+    },
+    "Noch keine Anker für diese Woche. Tippe hier, um sie zu setzen." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Noch keine Anker für diese Woche. Tippe hier, um sie zu setzen."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No anchors for this week yet. Tap here to set them."
+          }
+        }
+      }
+    },
+    "Noch keine Aufgabe an diesem Anker" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Noch keine Aufgabe an diesem Anker"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No tasks on this anchor yet"
+          }
+        }
+      }
+    },
+    "Noch keine Aufgaben. Schreib unten, was an diesem Tag ansteht." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Noch keine Aufgaben. Schreib unten, was an diesem Tag ansteht."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No tasks yet. Write below what’s on for this day."
+          }
+        }
+      }
+    },
+    "Noch keine abgeschlossene Woche" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Noch keine abgeschlossene Woche"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No closed week yet"
+          }
+        }
+      }
+    },
+    "Noch ohne Tag" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Noch ohne Tag"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No day yet"
+          }
+        }
+      }
+    },
+    "Noch ohne Tag · antippen, dann Tag wählen" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Noch ohne Tag · antippen, dann Tag wählen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No day yet · tap, then choose a day"
+          }
+        }
+      }
+    },
+    "Normal" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Normal"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Normal"
+          }
+        }
+      }
+    },
+    "Notiz" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Notiz"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Note"
+          }
+        }
+      }
+    },
+    "Notizen" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Notizen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Notes"
+          }
+        }
+      }
+    },
+    "Notizen zum Tag" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Notizen zum Tag"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Notes for the day"
+          }
+        }
+      }
+    },
+    "Nur auf diesem Gerät" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nur auf diesem Gerät"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Only on this device"
+          }
+        }
+      }
+    },
+    "Nur lokal gespeichert" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nur lokal gespeichert"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Saved locally only"
+          }
+        }
+      }
+    },
+    "Nächste Woche" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nächste Woche"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Next week"
+          }
+        }
+      }
+    },
+    "Nächstes Jahr" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nächstes Jahr"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Next year"
+          }
+        }
+      }
+    },
+    "Offen" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Offen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open"
+          }
+        }
+      }
+    },
+    "Offen geblieben" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Offen geblieben"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Still open"
+          }
+        }
+      }
+    },
+    "Ohne Anker" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ohne Anker"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No anchor"
+          }
+        }
+      }
+    },
+    "Ohne Anker gelegt" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ohne Anker gelegt"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Moved to no anchor"
+          }
+        }
+      }
+    },
+    "Ohne Anker gibt es nichts zu beantworten. Du kannst die Woche nachträglich setzen oder sie so abschließen." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ohne Anker gibt es nichts zu beantworten. Du kannst die Woche nachträglich setzen oder sie so abschließen."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Without anchors there’s nothing to answer. You can set anchors afterwards or close the week as it is."
+          }
+        }
+      }
+    },
+    "Ohne Tag" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ohne Tag"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No day"
+          }
+        }
+      }
+    },
+    "Ohne Tag gelegt" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ohne Tag gelegt"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Day removed"
+          }
+        }
+      }
+    },
+    "Ohne Tag · Prio %@" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ohne Tag · Prio %@"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No day · priority %@"
+          }
+        }
+      }
+    },
+    "Ohne iCloud, nur auf diesem Gerät speichern" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ohne iCloud, nur auf diesem Gerät speichern"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Without iCloud, store only on this device"
+          }
+        }
+      }
+    },
+    "Optional" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Optional"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Optional"
+          }
+        }
+      }
+    },
+    "Prio %@" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Prio %@"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Priority %@"
+          }
+        }
+      }
+    },
+    "Pro Anker eine ehrliche Antwort." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pro Anker eine ehrliche Antwort."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "One honest answer per anchor."
+          }
+        }
+      }
+    },
+    "Prüfe den freien Speicherplatz. Bleibt der Fehler, sichere deine Daten über Daten und Datenschutz als Export, bevor du die App beendest." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Prüfe den freien Speicherplatz. Bleibt der Fehler, sichere deine Daten über Daten und Datenschutz als Export, bevor du die App beendest."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Check your free storage. If the error persists, save your data as an export under Data & Privacy before you quit the app."
+          }
+        }
+      }
+    },
+    "Push" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Push"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Push"
+          }
+        }
+      }
+    },
+    "Raster" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Raster"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Grid"
+          }
+        }
+      }
+    },
+    "Registriert" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Registriert"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Registered"
+          }
+        }
+      }
+    },
+    "Remote-Änderung empfangen" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Remote-Änderung empfangen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Remote change received"
+          }
+        }
+      }
+    },
+    "Rückblick" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rückblick"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Review"
+          }
+        }
+      }
+    },
+    "Rückblick ansehen" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rückblick ansehen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "View review"
+          }
+        }
+      }
+    },
+    "Rückblick · %@" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rückblick · %@"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Review · %@"
+          }
+        }
+      }
+    },
+    "Rückblick …" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rückblick …"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Review…"
+          }
+        }
+      }
+    },
+    "Rückgängig" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rückgängig"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Undo"
+          }
+        }
+      }
+    },
+    "Schema-Konflikt" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Schema-Konflikt"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Schema conflict"
+          }
+        }
+      }
+    },
+    "Schließen" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Schließen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Close"
+          }
+        }
+      }
+    },
+    "Schnell erfassen" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Schnell erfassen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quick capture"
+          }
+        }
+      }
+    },
+    "Schritt %lld von 2" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Schritt %lld von 2"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Step %lld of 2"
+          }
+        }
+      }
+    },
+    "Schritt 1 von 2" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Schritt 1 von 2"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Step 1 of 2"
+          }
+        }
+      }
+    },
+    "Schritt 2 von 2" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Schritt 2 von 2"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Step 2 of 2"
+          }
+        }
+      }
+    },
+    "Schritt 2 von 2 · %@" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Schritt 2 von 2 · %@"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Step 2 of 2 · %@"
+          }
+        }
+      }
+    },
+    "Seit dem Start sind %lld Speichervorgänge fehlgeschlagen." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Seit dem Start sind %lld Speichervorgänge fehlgeschlagen."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld saves have failed since launch."
+          }
+        }
+      }
+    },
+    "Seitenleiste ausblenden" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Seitenleiste ausblenden"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hide sidebar"
+          }
+        }
+      }
+    },
+    "Seitenleiste einblenden" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Seitenleiste einblenden"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Show sidebar"
+          }
+        }
+      }
+    },
+    "Sendet Änderungen" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sendet Änderungen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sending changes"
+          }
+        }
+      }
+    },
+    "Server" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Server"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Server"
+          }
+        }
+      }
+    },
+    "Server hat abgelehnt" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Server hat abgelehnt"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rejected by server"
+          }
+        }
+      }
+    },
+    "Serverprüfung fehlgeschlagen" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Serverprüfung fehlgeschlagen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Server check failed"
+          }
+        }
+      }
+    },
+    "Setup fehlgeschlagen" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Setup fehlgeschlagen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Setup failed"
+          }
+        }
+      }
+    },
+    "Sichern" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sichern"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Save"
+          }
+        }
+      }
+    },
+    "Sprache" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sprache"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Language"
+          }
+        }
+      }
+    },
+    "Sprache wählen" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sprache wählen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose language"
+          }
+        }
+      }
+    },
+    "Später einrichten" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Später einrichten"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Set up later"
+          }
+        }
+      }
+    },
+    "Später jederzeit in den Einstellungen änderbar. Bis du wählst, bleibt alles auf diesem Gerät." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Später jederzeit in den Einstellungen änderbar. Bis du wählst, bleibt alles auf diesem Gerät."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You can change this any time in Settings. Until you choose, everything stays on this device."
+          }
+        }
+      }
+    },
+    "Start" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Start"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Start"
+          }
+        }
+      }
+    },
+    "Startansicht" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Startansicht"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Start view"
+          }
+        }
+      }
+    },
+    "Startansicht wählen" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Startansicht wählen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose start view"
+          }
+        }
+      }
+    },
+    "Status" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Status"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Status"
+          }
+        }
+      }
+    },
+    "Store nicht für CloudKit konfiguriert" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Store nicht für CloudKit konfiguriert"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Store not configured for CloudKit"
+          }
+        }
+      }
+    },
+    "Store wird bereits synchronisiert" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Store wird bereits synchronisiert"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Store is already syncing"
+          }
+        }
+      }
+    },
+    "Suchen" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Suchen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Search"
+          }
+        }
+      }
+    },
+    "Suchen …" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Suchen …"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Search…"
+          }
+        }
+      }
+    },
+    "Sync abgeschaltet" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sync abgeschaltet"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sync turned off"
+          }
+        }
+      }
+    },
+    "Sync aus" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sync aus"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sync off"
+          }
+        }
+      }
+    },
+    "Sync fehlgeschlagen" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sync fehlgeschlagen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sync failed"
+          }
+        }
+      }
+    },
+    "Sync prüfen" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sync prüfen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Check sync"
+          }
+        }
+      }
+    },
+    "Synchronisiert" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Synchronisiert"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Synced"
+          }
+        }
+      }
+    },
+    "System" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "System"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "System"
+          }
+        }
+      }
+    },
+    "Tag" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tag"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Day"
+          }
+        }
+      }
+    },
+    "Tag wählen" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tag wählen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose day"
+          }
+        }
+      }
+    },
+    "Tag wählen …" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tag wählen …"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose Day…"
+          }
+        }
+      }
+    },
+    "Tagesfokus" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tagesfokus"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Focus of the day"
+          }
+        }
+      }
+    },
+    "Technische Details" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Technische Details"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Technical details"
+          }
+        }
+      }
+    },
+    "Teilfehler: %@" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Teilfehler: %@"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Partial error: %@"
+          }
+        }
+      }
+    },
+    "Teilweise" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Teilweise"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Partly"
+          }
+        }
+      }
+    },
+    "Teilweise fehlgeschlagen" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Teilweise fehlgeschlagen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Partly failed"
+          }
+        }
+      }
+    },
+    "Titel" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Titel"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Title"
+          }
+        }
+      }
+    },
+    "Titel der Aufgabe" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Titel der Aufgabe"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Task title"
+          }
+        }
+      }
+    },
+    "Titel des %lld. Ankers" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Titel des %lld. Ankers"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Title of anchor %lld"
+          }
+        }
+      }
+    },
+    "Titel des Ankers" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Titel des Ankers"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anchor title"
+          }
+        }
+      }
+    },
+    "Titel geändert" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Titel geändert"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Title changed"
+          }
+        }
+      }
+    },
+    "Titel ändern" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Titel ändern"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rename"
+          }
+        }
+      }
+    },
+    "Trotzdem jetzt einrichten" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Trotzdem jetzt einrichten"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Set up now anyway"
+          }
+        }
+      }
+    },
+    "Umgebung" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Umgebung"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Environment"
+          }
+        }
+      }
+    },
+    "Unbekannter Datensatz" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unbekannter Datensatz"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unknown record"
+          }
+        }
+      }
+    },
+    "Unbestimmt" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unbestimmt"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Undetermined"
+          }
+        }
+      }
+    },
+    "Ungültige Anfrage" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ungültige Anfrage"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Invalid request"
+          }
+        }
+      }
+    },
+    "Ursache: %@" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ursache: %@"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cause: %@"
+          }
+        }
+      }
+    },
+    "Verbindung wird geprüft" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verbindung wird geprüft"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Checking connection"
+          }
+        }
+      }
+    },
+    "Verbindung zu iCloud prüfen" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verbindung zu iCloud prüfen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Check connection to iCloud"
+          }
+        }
+      }
+    },
+    "Vergangene Wochen" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vergangene Wochen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Past weeks"
+          }
+        }
+      }
+    },
+    "Vergangene Wochen %@" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vergangene Wochen %@"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Past weeks %@"
+          }
+        }
+      }
+    },
+    "Verschieben" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verschieben"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Move"
+          }
+        }
+      }
+    },
+    "Verschieben …" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verschieben …"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Move…"
+          }
+        }
+      }
+    },
+    "Verwalteter Account eingeschränkt" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verwalteter Account eingeschränkt"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Managed account restricted"
+          }
+        }
+      }
+    },
+    "Vorherige Woche" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vorherige Woche"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Previous week"
+          }
+        }
+      }
+    },
+    "Vorheriges Jahr" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vorheriges Jahr"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Previous year"
+          }
+        }
+      }
+    },
+    "Vorübergehend nicht verfügbar" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vorübergehend nicht verfügbar"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Temporarily unavailable"
+          }
+        }
+      }
+    },
+    "Wartet auf Änderungen" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wartet auf Änderungen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Waiting for changes"
+          }
+        }
+      }
+    },
+    "Warum zählt Anker %lld?" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Warum zählt Anker %lld?"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Why does anchor %lld matter?"
+          }
+        }
+      }
+    },
+    "Warum zählt das diese Woche?" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Warum zählt das diese Woche?"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Why does this matter this week?"
+          }
+        }
+      }
+    },
+    "Was Anchorit speichert" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Was Anchorit speichert"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "What Anchorit stores"
+          }
+        }
+      }
+    },
+    "Was Anchorit speichert und warum" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Was Anchorit speichert und warum"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "What Anchorit stores and why"
+          }
+        }
+      }
+    },
+    "Was hat diese Woche getragen?" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Was hat diese Woche getragen?"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "What carried this week?"
+          }
+        }
+      }
+    },
+    "Was steht an diesem Tag an?  ·  #1–#4 Anker" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Was steht an diesem Tag an?  ·  #1–#4 Anker"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "What’s on for this day?  ·  #1–#4 anchor"
+          }
+        }
+      }
+    },
+    "Was steht an?" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Was steht an?"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "What’s next?"
+          }
+        }
+      }
+    },
+    "Was steht an?  ·  #1–#4 Anker, mo–so Tag" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Was steht an?  ·  #1–#4 Anker, mo–so Tag"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "What’s next?  ·  #1–#4 anchor, mo–su day"
+          }
+        }
+      }
+    },
+    "Was zählt diese Woche?" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Was zählt diese Woche?"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "What matters this week?"
+          }
+        }
+      }
+    },
+    "Weiter · Woche aufteilen" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Weiter · Woche aufteilen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Continue · plan the week"
+          }
+        }
+      }
+    },
+    "Weiteren Anker setzen" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Weiteren Anker setzen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add another anchor"
+          }
+        }
+      }
+    },
+    "Weniger als vier ist erlaubt. Mehr nicht." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Weniger als vier ist erlaubt. Mehr nicht."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fewer than four is fine. More isn’t."
+          }
+        }
+      }
+    },
+    "Wichtig" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wichtig"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Important"
+          }
+        }
+      }
+    },
+    "Wie das System" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wie das System"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "System"
+          }
+        }
+      }
+    },
+    "Wie das System: Deutsch, wenn dein Gerät Deutsch spricht, sonst Englisch." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wie das System: Deutsch, wenn dein Gerät Deutsch spricht, sonst Englisch."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "System: German if your device uses German, otherwise English."
+          }
+        }
+      }
+    },
+    "Wie lief die Woche?" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wie lief die Woche?"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "How did the week go?"
+          }
+        }
+      }
+    },
+    "Wieder offen" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wieder offen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reopened"
+          }
+        }
+      }
+    },
+    "Wird gelöscht …" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wird gelöscht …"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deleting…"
+          }
+        }
+      }
+    },
+    "Wird geprüft" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wird geprüft"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Checking"
+          }
+        }
+      }
+    },
+    "Woche" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Woche"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Week"
+          }
+        }
+      }
+    },
+    "Woche %@" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Woche %@"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Week %@"
+          }
+        }
+      }
+    },
+    "Woche abschließen" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Woche abschließen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Close week"
+          }
+        }
+      }
+    },
+    "Woche abschließen?" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Woche abschließen?"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Close the week?"
+          }
+        }
+      }
+    },
+    "Woche beginnen" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Woche beginnen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Start the week"
+          }
+        }
+      }
+    },
+    "Woche wieder öffnen" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Woche wieder öffnen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reopen week"
+          }
+        }
+      }
+    },
+    "Wochen" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wochen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Weeks"
+          }
+        }
+      }
+    },
+    "Wochen, Anker, Aufgaben, Zeitblöcke, Tagesfokus und Notizen — also nur das, was du selbst eingibst. Es gibt keine Analyse, keine Werbung und keine Weitergabe an Dritte." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wochen, Anker, Aufgaben, Zeitblöcke, Tagesfokus und Notizen — also nur das, was du selbst eingibst. Es gibt keine Analyse, keine Werbung und keine Weitergabe an Dritte."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Weeks, anchors, tasks, time blocks, daily focus and notes — only what you enter yourself. No analytics, no ads, nothing shared with third parties."
+          }
+        }
+      }
+    },
+    "Worauf kommt es heute an?" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Worauf kommt es heute an?"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "What matters today?"
+          }
+        }
+      }
+    },
+    "Wähle Woche und Tag." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wähle Woche und Tag."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose week and day."
+          }
+        }
+      }
+    },
+    "Zeitblock" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zeitblock"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Time block"
+          }
+        }
+      }
+    },
+    "Zeitblöcke" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zeitblöcke"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Time blocks"
+          }
+        }
+      }
+    },
+    "Zeitplan" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zeitplan"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Schedule"
+          }
+        }
+      }
+    },
+    "Zone erreichbar, keine Datensätze" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zone erreichbar, keine Datensätze"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zone reachable, no records"
+          }
+        }
+      }
+    },
+    "Zone fehlt" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zone fehlt"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zone missing"
+          }
+        }
+      }
+    },
+    "Zuletzt" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zuletzt"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Last view"
+          }
+        }
+      }
+    },
+    "Zuletzt %@" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zuletzt %@"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Last at %@"
+          }
+        }
+      }
+    },
+    "Zur laufenden Woche" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zur laufenden Woche"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Go to current week"
+          }
+        }
+      }
+    },
+    "Zurück" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zurück"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Back"
+          }
+        }
+      }
+    },
+    "Zwei reichen für den Start. Der Rest kommt, wenn du ihn brauchst." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zwei reichen für den Start. Der Rest kommt, wenn du ihn brauchst."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Two are enough to start. The rest comes when you need it."
+          }
+        }
+      }
+    },
+    "Zweiter Anker" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zweiter Anker"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Second anchor"
+          }
+        }
+      }
+    },
+    "ab So" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ab So"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "from Sun"
+          }
+        }
+      }
+    },
+    "iCloud bereit" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud bereit"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud ready"
+          }
+        }
+      }
+    },
+    "iCloud eingeschränkt" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud eingeschränkt"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud restricted"
+          }
+        }
+      }
+    },
+    "iCloud hat eine Änderung aus einem anderen Gerät gemeldet." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud hat eine Änderung aus einem anderen Gerät gemeldet."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud reported a change from another device."
+          }
+        }
+      }
+    },
+    "iCloud holt deine Wochen" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud holt deine Wochen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud is fetching your weeks"
+          }
+        }
+      }
+    },
+    "iCloud ist eingerichtet. Sobald CloudKit Import oder Export meldet, wird der Status hier aktualisiert." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud ist eingerichtet. Sobald CloudKit Import oder Export meldet, wird der Status hier aktualisiert."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud is set up. As soon as CloudKit reports an import or export, the status updates here."
+          }
+        }
+      }
+    },
+    "iCloud startet" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud startet"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud is starting"
+          }
+        }
+      }
+    },
+    "iCloud vorübergehend nicht verfügbar" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud vorübergehend nicht verfügbar"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud temporarily unavailable"
+          }
+        }
+      }
+    },
+    "iCloud wird eingerichtet" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud wird eingerichtet"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Setting up iCloud"
+          }
+        }
+      }
+    },
+    "iCloud-Account" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud-Account"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud account"
+          }
+        }
+      }
+    },
+    "iCloud-Account ist angemeldet." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud-Account ist angemeldet."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud account is signed in."
+          }
+        }
+      }
+    },
+    "iCloud-Export" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud-Export"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud export"
+          }
+        }
+      }
+    },
+    "iCloud-Import" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud-Import"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud import"
+          }
+        }
+      }
+    },
+    "iCloud-Speicher voll" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud-Speicher voll"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud storage full"
+          }
+        }
+      }
     },
     "iCloud-Status: %@, %@. Antippen für Details." : {
       "localizations" : {
@@ -365,11 +7129,46 @@
             "state" : "new",
             "value" : "iCloud-Status: %1$@, %2$@. Antippen für Details."
           }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud status: %1$@, %2$@. Tap for details."
+          }
+        }
+      }
+    },
+    "iCloud-Sync" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud-Sync"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud sync"
+          }
         }
       }
     },
     "iCloud-Sync ein- oder ausschalten" : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud-Sync ein- oder ausschalten"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Turn iCloud sync on or off"
+          }
+        }
+      }
     },
     "iCloud: %@, %@" : {
       "localizations" : {
@@ -378,267 +7177,238 @@
             "state" : "new",
             "value" : "iCloud: %1$@, %2$@"
           }
-        }
-      }
-    },
-    "Jetzt neu starten" : {
-
-    },
-    "Kein Ziel" : {
-
-    },
-    "Löschen" : {
-
-    },
-    "Loslassen" : {
-
-    },
-    "Mehrere Aufgaben auf einmal bearbeiten" : {
-
-    },
-    "Mit iCloud synchronisieren" : {
-
-    },
-    "Mit Sync sind Wochen, Ziele, Aufgaben und Notizen auf allen Geräten mit demselben Apple-Account gleich. Ohne Sync bleibt alles auf diesem Gerät." : {
-
-    },
-    "Mit Ziel verknüpfen" : {
-
-    },
-    "Mitnehmen" : {
-
-    },
-    "Morgen" : {
-
-    },
-    "Muss sein, zählt nicht zur Woche." : {
-
-    },
-    "Nächste Woche" : {
-
-    },
-    "Neu" : {
-
-    },
-    "Neue Aufgabe für diesen Tag" : {
-
-    },
-    "Neue Aufgabe für diesen Tag erstellen" : {
-
-    },
-    "Neues Wochenziel" : {
-
-    },
-    "Nicht ausgewählt" : {
-
-    },
-    "Noch ohne Tag" : {
-
-    },
-    "Notizen zum Tag" : {
-
-    },
-    "Nur auf diesem Gerät" : {
-
-    },
-    "Offen" : {
-
-    },
-    "Öffnet die Woche. Aufgaben lassen sich hierher ziehen." : {
-
-    },
-    "Ohne Anker" : {
-
-    },
-    "Ohne iCloud, nur auf diesem Gerät speichern" : {
-
-    },
-    "ohne Tag" : {
-
-    },
-    "Ohne Tag" : {
-
-    },
-    "Planen" : {
-
-    },
-    "Prio %@" : {
-
-    },
-    "Priorität" : {
-
-    },
-    "Priorität %@" : {
-
-    },
-    "Pro Anker eine ehrliche Antwort." : {
-
-    },
-    "Rückblick" : {
-
-    },
-    "Rückgängig" : {
-
-    },
-    "Schließen" : {
-
-    },
-    "Schnell erfassen" : {
-
-    },
-    "Schritt %lld von 2" : {
-
-    },
-    "Seitenleiste ausblenden" : {
-
-    },
-    "Seitenleiste einblenden" : {
-
-    },
-    "Sichern" : {
-
-    },
-    "Später einrichten" : {
-
-    },
-    "Status" : {
-
-    },
-    "Suchen" : {
-
-    },
-    "Tag" : {
-
-    },
-    "Tag wählen" : {
-
-    },
-    "Titel" : {
-
-    },
-    "Titel ändern" : {
-
-    },
-    "Titel der Aufgabe" : {
-
-    },
-    "Titel des %lld. Ankers" : {
-
-    },
-    "Titel des Ankers" : {
-
-    },
-    "Trotzdem jetzt einrichten" : {
-
-    },
-    "Über iCloud synchronisieren" : {
-
-    },
-    "Überblick: vier Anker über sieben Tage" : {
-
-    },
-    "Übernehmen" : {
-
-    },
-    "Verschieben" : {
-
-    },
-    "Vorherige Woche" : {
-
-    },
-    "Wähle Woche und Zieltag." : {
-
-    },
-    "Warum zählt Anker %lld?" : {
-
-    },
-    "Warum zählt das diese Woche?" : {
-
-    },
-    "Was hat diese Woche getragen?" : {
-
-    },
-    "Was ist dein Wochenziel?" : {
-
-    },
-    "Was steht an?" : {
-
-    },
-    "Was zählt diese Woche?" : {
-
-    },
-    "Weiteren Anker setzen" : {
-
-    },
-    "Weniger als vier ist erlaubt. Mehr nicht." : {
-
-    },
-    "Wie lief die Woche?" : {
-
-    },
-    "Woche" : {
-
-    },
-    "Woche abschließen" : {
-
-    },
-    "Woche beginnen" : {
-
-    },
-    "Woche setzen" : {
-
-    },
-    "Woche wieder öffnen" : {
-
-    },
-    "Wochen" : {
-
-    },
-    "Wochenziel" : {
-
-    },
-    "Wochenziel löschen?" : {
-
-    },
-    "Wochenziel zuordnen" : {
-
-    },
-    "Worauf kommt es heute an?" : {
-
-    },
-    "Ziel %@, %lld Prozent erreicht, %lld von %lld Aufgaben an diesem Tag erledigt" : {
-      "localizations" : {
-        "de" : {
+        },
+        "en" : {
           "stringUnit" : {
-            "state" : "new",
-            "value" : "Ziel %1$@, %2$lld Prozent erreicht, %3$lld von %4$lld Aufgaben an diesem Tag erledigt"
+            "state" : "translated",
+            "value" : "iCloud: %1$@, %2$@"
           }
         }
       }
     },
-    "Ziel öffnen: %@" : {
-
+    "laufende Woche" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "laufende Woche"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "current week"
+          }
+        }
+      }
     },
-    "Ziele" : {
-
+    "nichts offen" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "nichts offen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "nothing open"
+          }
+        }
+      }
     },
-    "Ziele, Aufgaben, Notizen" : {
-
+    "nur Kürzel — Titel fehlt" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "nur Kürzel — Titel fehlt"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "only shortcuts — title missing"
+          }
+        }
+      }
     },
-    "Zielfarbe" : {
-
+    "ohne Anker" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ohne Anker"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "no anchor"
+          }
+        }
+      }
     },
-    "Zur laufenden Woche" : {
-
+    "weitere vorhanden" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "weitere vorhanden"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "more available"
+          }
+        }
+      }
     },
-    "Zur Wochenübersicht" : {
-
+    "wichtig" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "wichtig"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "important"
+          }
+        }
+      }
     },
-    "Zurück" : {
-
+    "Änderung nicht gespeichert" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Änderung nicht gespeichert"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Change not saved"
+          }
+        }
+      }
     },
-    "Zurück zur Wochenübersicht" : {
-
+    "Öffnet den Anker" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Öffnet den Anker"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Opens the anchor"
+          }
+        }
+      }
+    },
+    "Öffnet die Datenschutzerklärung" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Öffnet die Datenschutzerklärung"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Opens the privacy policy"
+          }
+        }
+      }
+    },
+    "Öffnet die Woche. Aufgaben lassen sich hierher ziehen." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Öffnet die Woche. Aufgaben lassen sich hierher ziehen."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Opens the week. You can drag tasks here."
+          }
+        }
+      }
+    },
+    "Über iCloud synchronisieren" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Über iCloud synchronisieren"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sync via iCloud"
+          }
+        }
+      }
+    },
+    "Überblick: %lld Anker über sieben Tage" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Überblick: %lld Anker über sieben Tage"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Overview: %lld anchors across seven days"
+          }
+        }
+      }
+    },
+    "Überblick: ein Anker über sieben Tage" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Überblick: ein Anker über sieben Tage"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Overview: one anchor across seven days"
+          }
+        }
+      }
+    },
+    "Übernehmen" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Übernehmen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Take over"
+          }
+        }
+      }
     }
   },
   "version" : "1.0"

@@ -37,9 +37,9 @@ enum WeekActions {
         var meta: String {
             switch self {
             case .quiet:
-                return "ab So"
+                return String(localized: "ab So")
             case .armed(let open):
-                return open == 0 ? "nichts offen" : "\(open) offen"
+                return open == 0 ? String(localized: "nichts offen") : String(localized: "\(open) offen")
             case .closed(let date):
                 return AnkerDateFormat.dayMonth(date)
             }

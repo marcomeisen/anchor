@@ -16,9 +16,10 @@ final class PhoneChromeTests: XCTestCase {
     }
 
     @MainActor
-    private func launchAtTopLevel() -> XCUIApplication {
+    private func launchAtTopLevel(language: String = "de") -> XCUIApplication {
         let app = XCUIApplication()
-        app.launchArguments = ["-AnchoritUITest"]
+        let locale = language == "de" ? "de_DE" : "en_US"
+        app.launchArguments = ["-AnchoritUITest", "-AppleLanguages", "(\(language))", "-AppleLocale", locale]
         app.launch()
 
         // Tolerant: dieser Test prueft die Rahmung, nicht das Onboarding. Ob der Bildschirm
@@ -48,6 +49,58 @@ final class PhoneChromeTests: XCTestCase {
         back.tap()
 
         XCTAssertTrue(week.waitForExistence(timeout: 10), "Der Zurück-Knopf hat nicht navigiert")
+    }
+
+    /// Datenschutzerklärung und Hilfe stehen in der App, nicht im Browser — und in der Sprache
+    /// der App. Geprüft wird der ganze Weg: hinein, Inhalt da, zurück, zweites Dokument.
+    @MainActor
+    func testLegalTextsOpenInsideSettings() throws {
+        try checkLegalTexts(language: "de", settings: "Einstellungen öffnen", privacy: "Datenschutzerklärung",
+                            privacyHeading: "1. Verantwortlicher", back: "Zurück",
+                            support: "Hilfe und Kontakt", supportHeading: "Wie funktioniert Anchorit?")
+    }
+
+    @MainActor
+    func testLegalTextsOpenInEnglish() throws {
+        try checkLegalTexts(language: "en", settings: "Open Settings", privacy: "Privacy Policy",
+                            privacyHeading: "1. Controller", back: "Back",
+                            support: "Help & Contact", supportHeading: "How does Anchorit work?")
+    }
+
+    @MainActor
+    private func checkLegalTexts(language: String, settings: String, privacy: String, privacyHeading: String,
+                                 back: String, support: String, supportHeading: String) throws {
+        let app = launchAtTopLevel(language: language)
+
+        let open = app.buttons[settings].firstMatch
+        XCTAssertTrue(open.waitForExistence(timeout: 10), "Einstellungen-Knopf fehlt (\(language))")
+        open.tap()
+
+        let privacyRow = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", privacy)).firstMatch
+        if !privacyRow.waitForExistence(timeout: 5) { app.swipeUp() }
+        XCTAssertTrue(privacyRow.waitForExistence(timeout: 5), "Zeile »\(privacy)« fehlt")
+        privacyRow.tap()
+        XCTAssertTrue(app.staticTexts[privacyHeading].waitForExistence(timeout: 5), "Datenschutztext fehlt (\(language))")
+
+        let backButton = app.buttons[back].firstMatch
+        XCTAssertTrue(backButton.waitForExistence(timeout: 5))
+        backButton.tap()
+
+        let supportRow = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", support)).firstMatch
+        XCTAssertTrue(supportRow.waitForExistence(timeout: 5), "Zurück hat nicht in die Einstellungen geführt")
+        supportRow.tap()
+        XCTAssertTrue(app.staticTexts[supportHeading].waitForExistence(timeout: 5), "Hilfetext fehlt (\(language))")
+    }
+
+    /// Englisch durchgehend: Tableiste und Heute-Kopf stehen nicht halb auf Deutsch.
+    @MainActor
+    func testEnglishInterfaceHasNoGermanTabs() throws {
+        let app = launchAtTopLevel(language: "en")
+        for title in ["Today", "Week", "Archive"] {
+            XCTAssertTrue(app.buttons[title].firstMatch.waitForExistence(timeout: 10), "Tab »\(title)« fehlt")
+        }
+        XCTAssertFalse(app.buttons["Heute"].exists)
+        XCTAssertFalse(app.buttons["Woche"].exists)
     }
 
     /// Die Tableiste ist der Titel des Bildschirms — deshalb hat die Kopfzeile keinen.

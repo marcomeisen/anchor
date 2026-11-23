@@ -106,7 +106,7 @@ struct BlattSidebar: View {
                         .lineLimit(1)
                     Spacer(minLength: 0)
                     if row.openCount > 0 {
-                        Text(verbatim: "\(row.openCount) offen")
+                        Text("\(row.openCount) offen")
                             .ankerType(AnkerType.microLabel)
                             .foregroundStyle(AnkerColor.inkSecond)
                             .lineLimit(1)
@@ -205,7 +205,7 @@ struct BlattSidebar: View {
         let target = TaskActions.move(task, toWeekStarting: monday, weeks: weeks, modelContext: modelContext)
         TaskDragEvents.end(taskID: taskID)
         undo.present(TaskUndoNotice(
-            message: "Nach \(AnkerDateFormat.calendarWeek(AnkerCalendar.weekKey(containing: target).isoWeek)) verschoben",
+            message: String(localized: "Nach \(AnkerDateFormat.calendarWeek(AnkerCalendar.weekKey(containing: target).isoWeek)) verschoben"),
             snapshots: [snapshot]
         ))
     }

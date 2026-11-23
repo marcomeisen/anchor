@@ -31,9 +31,22 @@ struct ReviewScreen: View {
 
         var sentence: String? {
             var parts: [String] = []
-            if carried > 0 { parts.append("\(carried) \(carried == 1 ? "wandert" : "wandern") in \(AnkerDateFormat.calendarWeek(targetWeek))") }
-            if toInbox > 0 { parts.append("\(toInbox) \(toInbox == 1 ? "geht" : "gehen") in den Eingang") }
-            if deleted > 0 { parts.append("\(deleted) \(deleted == 1 ? "wird" : "werden") gelöscht") }
+            let target = AnkerDateFormat.calendarWeek(targetWeek)
+            if carried > 0 {
+                parts.append(carried == 1
+                    ? String(localized: "1 wandert in \(target)")
+                    : String(localized: "\(carried) wandern in \(target)"))
+            }
+            if toInbox > 0 {
+                parts.append(toInbox == 1
+                    ? String(localized: "1 geht in den Eingang")
+                    : String(localized: "\(toInbox) gehen in den Eingang"))
+            }
+            if deleted > 0 {
+                parts.append(deleted == 1
+                    ? String(localized: "1 wird gelöscht")
+                    : String(localized: "\(deleted) werden gelöscht"))
+            }
             guard !parts.isEmpty else { return nil }
             return parts.joined(separator: ", ") + "."
         }
@@ -61,8 +74,9 @@ struct ReviewScreen: View {
 #endif
                 BlattHeading(
                     eyebrow: "\(AnkerDateFormat.calendarWeek(sheet.isoWeek)) · \(AnkerDateFormat.weekSpan(monday: sheet.monday, sunday: AnkerCalendar.iso.date(byAdding: .day, value: 6, to: sheet.monday) ?? sheet.monday))",
-                    title: lanes.isEmpty ? "Wie lief die Woche?"
-                        : (allAnswered ? "\(held) von \(lanes.count) gehalten." : "Wie lief die Woche?"),
+                    title: !lanes.isEmpty && allAnswered
+                        ? String(localized: "\(held) von \(lanes.count) gehalten.")
+                        : String(localized: "Wie lief die Woche?"),
                     titleStyle: AnkerType.title1
                 )
 
@@ -86,7 +100,7 @@ struct ReviewScreen: View {
 
                 if !open.isEmpty {
                     VStack(spacing: 0) {
-                        BlattSectionLabel(title: "Offen geblieben")
+                        BlattSectionLabel(title: String(localized: "Offen geblieben"))
                             .padding(.horizontal, AnkerSpacing.s3)
                             .padding(.top, AnkerSpacing.s3)
                             .padding(.bottom, AnkerSpacing.s2)
@@ -113,7 +127,7 @@ struct ReviewScreen: View {
                     }
 
                     if let sentence = summary.sentence, !week.isReviewed {
-                        Text(verbatim: "Beim Abschließen: \(sentence)")
+                        Text("Beim Abschließen: \(sentence)")
                             .ankerType(AnkerType.meta)
                             .foregroundStyle(AnkerColor.inkSecond)
                             .accessibilityIdentifier("reviewCloseSummary")
@@ -134,12 +148,12 @@ struct ReviewScreen: View {
                         isPresented: $confirmingClose,
                         titleVisibility: .visible
                     ) {
-                        Button(summary.deleted == 1 ? "Abschließen und 1 Aufgabe löschen" : "Abschließen und \(summary.deleted) Aufgaben löschen", role: .destructive) {
+                        Button(summary.deleted == 1 ? String(localized: "Abschließen und 1 Aufgabe löschen") : String(localized: "Abschließen und \(summary.deleted) Aufgaben löschen"), role: .destructive) {
                             close(open: open)
                         }
                         Button("Abbrechen", role: .cancel) {}
                     } message: {
-                        Text(verbatim: "\(summary.sentence ?? "") Losgelassene Aufgaben lassen sich nicht wiederherstellen.")
+                        Text("\(summary.sentence ?? "") Losgelassene Aufgaben lassen sich nicht wiederherstellen.")
                     }
 
                     if week.isReviewed {
@@ -198,7 +212,7 @@ struct ReviewScreen: View {
             Text("Ohne Anker gibt es nichts zu beantworten. Du kannst die Woche nachträglich setzen oder sie so abschließen.")
                 .ankerType(AnkerType.body)
                 .foregroundStyle(AnkerColor.inkSecond)
-            Button("Woche setzen") { showingWeekStart = true }
+            Button("Anker setzen") { showingWeekStart = true }
                 .buttonStyle(AnkerButtonStyle.secondary)
         }
         .padding(AnkerSpacing.s4)
@@ -216,7 +230,7 @@ struct ReviewScreen: View {
                 Text(verbatim: lane.title)
                     .ankerType(AnkerType.bodyStrong)
                 Spacer()
-                Text(verbatim: "\(lane.doneCount) von \(lane.tasks.count)")
+                Text("\(lane.doneCount) von \(lane.tasks.count)")
                     .ankerType(AnkerType.caption)
                     .monospacedDigit()
                     .foregroundStyle(AnkerColor.inkSecond)
@@ -290,9 +304,9 @@ struct ReviewScreen: View {
 
     private func carryChoice(_ task: AnkerTask, choice: Binding<Carry>) -> some View {
         AnkerSegmented(
-            options: [(Carry.keep, "Mitnehmen"), (Carry.drop, "Loslassen")],
+            options: [(Carry.keep, String(localized: "Mitnehmen")), (Carry.drop, String(localized: "Loslassen"))],
             selection: choice,
-            accessibilityLabel: "\(task.title): mitnehmen oder loslassen"
+            accessibilityLabel: String(localized: "\(task.title): mitnehmen oder loslassen")
         )
     }
 
