@@ -1,6 +1,3 @@
-import SwiftData
-import SwiftUI
-
 import Combine
 import SwiftData
 import SwiftUI
@@ -17,6 +14,10 @@ struct TaskSnapshot: Identifiable {
     let carryOverCount: Int
     let dayID: UUID?
     let goalID: UUID?
+    /// Das gespeicherte Datum des Tages. Rückfall für `restore`, wenn der Tag inzwischen beim
+    /// Zusammenführen von Sync-Duplikaten aufgegangen ist — dann gibt es seine ID nicht mehr,
+    /// den Kalendertag aber schon. Additiv, damit ältere Aufrufer weiter kompilieren.
+    var dayDate: Date? = nil
 }
 
 struct TaskUndoNotice: Identifiable {
@@ -79,25 +80,27 @@ enum TaskActions {
     /// Es gab zwei Stellen, die `task.isDone` direkt zugewiesen haben (Mehrfachauswahl und
     /// Editorblatt). Die haetten den Zeitpunkt still ausgelassen und damit „staerkster
     /// Wochentag" verfaelscht.
-    static func setDone(_ task: AnkerTask, _ isDone: Bool, now: Date = Date(), modelContext: ModelContext) {
+    ///
+    /// `save: false` für Sammelaktionen: der Aufrufer speichert einmal am Ende, statt N-mal.
+    static func setDone(_ task: AnkerTask, _ isDone: Bool, now: Date = Date(), save: Bool = true, modelContext: ModelContext) {
         guard task.isDone != isDone else { return }
         task.isDone = isDone
         task.completedAt = isDone ? now : nil
-        finishToggle(task, modelContext: modelContext)
+        finishToggle(task, save: save, modelContext: modelContext)
     }
 
     /// Erledigtes wandert ans Ende des Tages — der Zustand ist zu dem Zeitpunkt schon gesetzt.
-    private static func finishToggle(_ task: AnkerTask, modelContext: ModelContext) {
+    private static func finishToggle(_ task: AnkerTask, save: Bool = true, modelContext: ModelContext) {
         if task.isDone, let day = task.day {
             task.order = (day.taskList.map(\.order).max() ?? task.order) + 1
             day.tasks = day.taskList.filter { $0.id != task.id } + [task]
             normalizeOrders(in: day)
         }
 
-        modelContext.saveChanges()
+        if save { modelContext.saveChanges() }
     }
 
-    static func delete(_ task: AnkerTask, modelContext: ModelContext) {
+    static func delete(_ task: AnkerTask, save: Bool = true, modelContext: ModelContext) {
         if let day = task.day {
             day.tasks = day.taskList.filter { $0.id != task.id }
             normalizeOrders(in: day)
@@ -108,7 +111,7 @@ enum TaskActions {
         }
 
         modelContext.delete(task)
-        modelContext.saveChanges()
+        if save { modelContext.saveChanges() }
     }
 
     @discardableResult
@@ -225,9 +228,9 @@ enum TaskActions {
         modelContext.saveChanges()
     }
 
-    static func link(_ task: AnkerTask, to goal: Goal?, modelContext: ModelContext) {
+    static func link(_ task: AnkerTask, to goal: Goal?, save: Bool = true, modelContext: ModelContext) {
         task.linkedGoal = goal
-        modelContext.saveChanges()
+        if save { modelContext.saveChanges() }
     }
 
     static func snapshot(_ task: AnkerTask) -> TaskSnapshot {
@@ -240,7 +243,8 @@ enum TaskActions {
             completedAt: task.completedAt,
             carryOverCount: task.carryOverCount,
             dayID: task.day?.id,
-            goalID: task.linkedGoal?.id
+            goalID: task.linkedGoal?.id,
+            dayDate: task.day?.date
         )
     }
 
@@ -254,25 +258,45 @@ enum TaskActions {
     }
 
     static func restore(_ snapshots: [TaskSnapshot], weeks: [Week], modelContext: ModelContext) {
-        let allDays = weeks.flatMap(\.dayList)
-        let allGoals = weeks.flatMap(\.goalList)
+        guard !snapshots.isEmpty else { return }
+
+        // Nachschlagen über Wörterbücher statt `first(where:)` pro Snapshot: eine Sammelaktion
+        // über 30 Aufgaben lief sonst 30-mal über den ganzen Bestand.
+        let daysByID = Dictionary(weeks.flatMap(\.dayList).map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+        let goalsByID = Dictionary(weeks.flatMap(\.goalList).map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
         // Aus dem Store statt aus den Tagen: Aufgaben ohne Tag haengen an keinem Tag.
-        let existingTasks = (try? modelContext.fetch(FetchDescriptor<AnkerTask>())) ?? allDays.flatMap(\.taskList)
+        let ids = snapshots.map(\.id)
+        let fetched = (try? modelContext.fetch(FetchDescriptor<AnkerTask>(predicate: #Predicate { ids.contains($0.id) })))
+            ?? weeks.flatMap(\.dayList).flatMap(\.taskList).filter { ids.contains($0.id) }
+        let existingTasks = Dictionary(fetched.filter { !$0.isDeleted }.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+
+        var knownWeeks = weeks
         var targetDaysByID: [UUID: Day] = [:]
         var touchedOldDays: [UUID: Day] = [:]
         var restoredTasksByID: [UUID: AnkerTask] = [:]
         var snapshotsByTaskID: [UUID: TaskSnapshot] = [:]
+        var targetDayIDByTaskID: [UUID: UUID] = [:]
 
         for snapshot in snapshots {
             // `dayID == nil` heisst „ohne Tag" — das ist ein gueltiger Zustand, kein Fehlerfall.
-            // Nur ein Tag, der nicht mehr existiert, verhindert das Wiederherstellen.
-            let day = snapshot.dayID.flatMap { dayID in allDays.first { $0.id == dayID } }
-            if snapshot.dayID != nil && day == nil { continue }
-            let goal = snapshot.goalID.flatMap { goalID in allGoals.first { $0.id == goalID } }
+            var day = snapshot.dayID.flatMap { daysByID[$0] }
+            if snapshot.dayID != nil && day == nil {
+                // Der Tag ist inzwischen in einem Duplikat aufgegangen. Sein Kalendertag gibt es
+                // weiter: dort wiederherstellen. Das ist ein Schreibvorgang, Anlegen ist erlaubt.
+                guard let stored = snapshot.dayDate else { continue }
+                let date = AnkerCalendar.nominalDate(ofStored: stored)
+                let week = ensureWeek(containing: date, weeks: knownWeeks, modelContext: modelContext)
+                if !knownWeeks.contains(where: { $0 === week }) { knownWeeks.append(week) }
+                day = ensureDay(containing: date, in: week)
+            }
+            let goal = snapshot.goalID.flatMap { goalsByID[$0] ?? fetchGoal(id: $0, modelContext: modelContext) }
             snapshotsByTaskID[snapshot.id] = snapshot
-            if let day { targetDaysByID[day.id] = day }
+            if let day {
+                targetDaysByID[day.id] = day
+                targetDayIDByTaskID[snapshot.id] = day.id
+            }
 
-            if let existingTask = existingTasks.first(where: { $0.id == snapshot.id }) {
+            if let existingTask = existingTasks[snapshot.id] {
                 existingTask.title = snapshot.title
                 existingTask.priority = snapshot.priority
                 existingTask.isDone = snapshot.isDone
@@ -314,11 +338,17 @@ enum TaskActions {
             restoreTaskOrder(
                 in: day,
                 restoredTasks: restoredTasksByID,
-                snapshots: snapshotsByTaskID
+                snapshots: snapshotsByTaskID.filter { targetDayIDByTaskID[$0.key] == day.id }
             )
         }
 
         modelContext.saveChanges()
+    }
+
+    private static func fetchGoal(id: UUID, modelContext: ModelContext) -> Goal? {
+        var descriptor = FetchDescriptor<Goal>(predicate: #Predicate { $0.id == id })
+        descriptor.fetchLimit = 1
+        return (try? modelContext.fetch(descriptor))?.first { !$0.isDeleted }
     }
 
     private static func deleteCreatedTasks(_ snapshots: [TaskSnapshot], weeks: [Week], modelContext: ModelContext) {
@@ -328,7 +358,7 @@ enum TaskActions {
         let tasks = allTasks.filter { createdIDs.contains($0.id) }
 
         for task in tasks {
-            delete(task, modelContext: modelContext)
+            delete(task, save: false, modelContext: modelContext)
         }
 
         modelContext.saveChanges()
@@ -348,8 +378,9 @@ enum TaskActions {
                 return $0.order < $1.order
             }
 
+        // Der Aufrufer reicht nur die Snapshots dieses Tages — auch die, deren ursprünglicher Tag
+        // inzwischen zusammengeführt wurde und deshalb eine andere ID trug.
         let daySnapshots = snapshots.values
-            .filter { $0.dayID == day.id }
             .sorted {
                 if $0.order == $1.order {
                     return $0.title.localizedStandardCompare($1.title) == .orderedAscending
@@ -388,16 +419,19 @@ enum TaskActions {
         return (to.isoYear, to.isoWeek) > (from.isoYear, from.isoWeek)
     }
 
-    static func move(_ task: AnkerTask, to targetDate: Date, weeks: [Week], modelContext: ModelContext) {
+    static func move(_ task: AnkerTask, to targetDate: Date, weeks: [Week], save: Bool = true, modelContext: ModelContext) {
         let targetWeek = ensureWeek(containing: targetDate, weeks: weeks, modelContext: modelContext)
         let targetDay = ensureDay(containing: targetDate, in: targetWeek)
 
         if let currentDay = task.day, currentDay.id == targetDay.id {
-            modelContext.saveChanges()
+            if save { modelContext.saveChanges() }
             return
         }
 
-        if isCarryOver(from: task.day?.date, to: targetDate, isDone: task.isDone) {
+        // Über den gemeinten Kalendertag: ein Sonntag aus einer westlicheren Zone ist hier schon
+        // Montag früh und läge sonst in der falschen Woche.
+        let source = task.day.map { AnkerCalendar.nominalDate(ofStored: $0.date) }
+        if isCarryOver(from: source, to: targetDate, isDone: task.isDone) {
             task.carryOverCount += 1
         }
 
@@ -406,7 +440,9 @@ enum TaskActions {
             normalizeOrders(in: oldDay)
         }
 
-        if task.linkedGoal?.week?.id != targetWeek.id {
+        // Über den ISO-Schlüssel, nicht über die Wochen-ID: vor dem Zusammenführen kann es zwei
+        // Kopien derselben Woche geben, und der Anker hängt vielleicht an der anderen.
+        if !isSameISOWeek(task.linkedGoal?.week, targetWeek) {
             task.linkedGoal = nil
         }
 
@@ -414,7 +450,13 @@ enum TaskActions {
         task.order = targetDay.taskList.count
         targetDay.tasks = targetDay.taskList.filter { $0.id != task.id } + [task]
         normalizeOrders(in: targetDay)
-        modelContext.saveChanges()
+        if save { modelContext.saveChanges() }
+    }
+
+    /// Dieselbe Kalenderwoche — über ISO-Jahr und -Woche, damit Sync-Duplikate gleich zählen.
+    static func isSameISOWeek(_ lhs: Week?, _ rhs: Week?) -> Bool {
+        guard let lhs, let rhs, !lhs.isDeleted, !rhs.isDeleted else { return false }
+        return lhs.isoYear == rhs.isoYear && lhs.isoWeek == rhs.isoWeek
     }
 
     // MARK: - In eine andere Woche
@@ -426,11 +468,9 @@ enum TaskActions {
     static func move(_ task: AnkerTask, toWeekStarting monday: Date, weeks: [Week], modelContext: ModelContext) -> Date {
         var weekday = 0
         if let stored = task.day?.date {
-            let nominal = AnkerCalendar.nominalDay(ofStored: stored)
-            if let date = AnkerCalendar.iso.date(from: nominal) {
-                let sourceMonday = AnkerCalendar.weekInterval(containing: date).monday
-                weekday = AnkerCalendar.iso.dateComponents([.day], from: sourceMonday, to: date).day ?? 0
-            }
+            let date = AnkerCalendar.nominalDate(ofStored: stored)
+            let sourceMonday = AnkerCalendar.weekInterval(containing: date).monday
+            weekday = AnkerCalendar.iso.dateComponents([.day], from: sourceMonday, to: date).day ?? 0
         }
         let targetMonday = AnkerCalendar.weekInterval(containing: monday).monday
         let target = AnkerCalendar.iso.date(byAdding: .day, value: max(0, min(6, weekday)), to: targetMonday) ?? targetMonday
@@ -497,22 +537,30 @@ enum TaskActions {
         on targetDate: Date,
         goalID: UUID?,
         weeks: [Week],
+        save: Bool = true,
         modelContext: ModelContext
     ) {
-        move(task, to: targetDate, weeks: weeks, modelContext: modelContext)
+        move(task, to: targetDate, weeks: weeks, save: false, modelContext: modelContext)
 
+        // Erst in der Zielwoche, dann im Store — der Anker kann an einer Sync-Kopie derselben
+        // ISO-Woche hängen. Ein Anker einer anderen Woche wird nicht gesetzt.
+        let targetWeek = task.day?.week
         let goal = goalID.flatMap { id in
-            task.day?.week?.goalList.first { $0.id == id }
+            targetWeek?.goalList.first { $0.id == id }
+                ?? fetchGoal(id: id, modelContext: modelContext).flatMap { isSameISOWeek($0.week, targetWeek) ? $0 : nil }
         }
         if task.linkedGoal?.id != goal?.id {
             task.linkedGoal = goal
-            modelContext.saveChanges()
         }
+        if save { modelContext.saveChanges() }
     }
 
+    /// Um `offset` Tage — ab dem **gemeinten** Kalendertag, nicht ab dem rohen `Day.date`,
+    /// das Mitternacht in der Zone des anlegenden Geräts ist.
     static func move(_ task: AnkerTask, byDays offset: Int, weeks: [Week], modelContext: ModelContext) {
-        guard let sourceDate = task.day?.date,
-              let targetDate = AnkerCalendar.iso.date(byAdding: .day, value: offset, to: sourceDate) else { return }
+        guard let stored = task.day?.date else { return }
+        let sourceDate = AnkerCalendar.nominalDate(ofStored: stored)
+        guard let targetDate = AnkerCalendar.iso.date(byAdding: .day, value: offset, to: sourceDate) else { return }
         move(task, to: targetDate, weeks: weeks, modelContext: modelContext)
     }
 
@@ -548,6 +596,13 @@ enum TaskActions {
         return week
     }
 
+    /// Die vorhandene Woche zu `date`, ohne etwas anzulegen — für Lesepfade.
+    static func existingWeek(containing date: Date, weeks: [Week], modelContext: ModelContext) -> Week? {
+        let interval = AnkerCalendar.weekInterval(containing: date)
+        return WeekPlanning.week(startingAt: interval.monday, in: weeks)
+            ?? fetchWeek(isoYear: interval.isoYear, isoWeek: interval.isoWeek, modelContext: modelContext)
+    }
+
     private static func fetchWeek(isoYear: Int, isoWeek: Int, modelContext: ModelContext) -> Week? {
         let descriptor = FetchDescriptor<Week>(
             predicate: #Predicate { $0.isoYear == isoYear && $0.isoWeek == isoWeek }
@@ -575,18 +630,29 @@ enum TaskActions {
         return day
     }
 
-    static func normalizeOrders(in day: Day) {
-        let orderedTasks = day.taskList.sorted {
+    /// Vergibt `order` lückenlos ab 0. Schreibt **nur, was sich ändert** — jede Zuweisung
+    /// markiert den Datensatz als geändert und wird über CloudKit exportiert, auch wenn der
+    /// Wert gleich bleibt. Gibt zurück, ob sich etwas geändert hat.
+    @discardableResult
+    static func normalizeOrders(in day: Day) -> Bool {
+        let current = day.taskList
+        let orderedTasks = current.sorted {
             if $0.order == $1.order {
                 return $0.title.localizedStandardCompare($1.title) == .orderedAscending
             }
             return $0.order < $1.order
         }
 
-        for (index, task) in orderedTasks.enumerated() {
+        var didChange = false
+        for (index, task) in orderedTasks.enumerated() where task.order != index {
             task.order = index
+            didChange = true
         }
 
-        day.tasks = orderedTasks
+        if didChange || !current.elementsEqual(orderedTasks, by: { $0 === $1 }) {
+            day.tasks = orderedTasks
+            didChange = true
+        }
+        return didChange
     }
 }

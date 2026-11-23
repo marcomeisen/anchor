@@ -52,7 +52,7 @@ final class CloudSyncStatusCenter: ObservableObject {
             case .synced:
                 "Aktuell"
             case .issue:
-                "Sync pruefen"
+                "Sync prüfen"
             case .disabled:
                 "Sync aus"
             }
@@ -114,6 +114,13 @@ final class CloudSyncStatusCenter: ObservableObject {
     /// erste `task(id:)` auch ohne Import einmal durchlaeuft — ein Store kann Duplikate aus
     /// einer frueheren Sitzung mitbringen.
     @Published private(set) var remoteChangeCount = 0
+
+    /// Ist in dieser Sitzung schon ein Import erfolgreich zu Ende gelaufen?
+    ///
+    /// Vorher gilt der Bestand als unvollständig: `.starting` und `.ready` stehen noch **vor**
+    /// dem ersten Import. `StoreMaintenance` wartet darauf, sonst sähe es nach einem
+    /// abgebrochenen Import Tage ohne ihre Woche und hielte sie für Waisen.
+    @Published private(set) var hasCompletedImportThisSession = false
 
     private var observers: [NSObjectProtocol] = []
     private var pendingExportWatchdog: Task<Void, Never>?
@@ -212,6 +219,18 @@ final class CloudSyncStatusCenter: ObservableObject {
         phase = .ready
         detail = "Wartet auf Änderungen"
         tooltip = "iCloud ist eingerichtet. Sobald CloudKit Import oder Export meldet, wird der Status hier aktualisiert."
+    }
+
+    /// Der Sync wurde in diesem Prozess eingeschaltet (Onboarding auf einem frischen Gerät).
+    func markCloudSyncEnabledAtRuntime() {
+        isSyncDisabled = false
+        isCloudUnavailable = false
+        phase = .starting
+        accountSummary = "Wird geprüft"
+        remoteNotificationSummary = "Nicht registriert"
+        serverProbeSummary = "Nicht geprüft"
+        markReady()
+        cloudSyncLog.notice("iCloud-Sync im Onboarding eingeschaltet")
     }
 
     /// Der Nutzer hat den Sync abgeschaltet.
@@ -420,7 +439,7 @@ final class CloudSyncStatusCenter: ObservableObject {
         isCloudUnavailable = true
         phase = .issue
         detail = "Nur lokal gespeichert"
-        tooltip = "\(CloudSyncErrorFormatter.describe(error)) — Anchorit arbeitet lokal weiter; Änderungen werden nicht synchronisiert. Prüfe iCloud-Account, Entitlements und Provisioning."
+        tooltip = "\(CloudSyncErrorFormatter.describe(error)) — Anchorit arbeitet lokal weiter; Änderungen werden nicht synchronisiert. Prüfe, ob du in den Systemeinstellungen bei iCloud angemeldet bist."
         cloudSyncLog.error("CloudKit-Store nicht verfuegbar — \(CloudSyncErrorFormatter.describe(error), privacy: .public)")
     }
 
@@ -449,6 +468,9 @@ final class CloudSyncStatusCenter: ObservableObject {
         phase = update.phase
         detail = update.detail
         tooltip = update.tooltip
+        if update.completedImport && !hasCompletedImportThisSession {
+            hasCompletedImportThisSession = true
+        }
     }
 
     private func markLocalChangeSaved() {
@@ -517,7 +539,7 @@ final class CloudSyncStatusCenter: ObservableObject {
                 guard let self, self.phase == .pendingExport else { return }
                 self.phase = .issue
                 self.detail = "Export noch ausstehend"
-                self.tooltip = "Die Änderung ist lokal gespeichert, aber CloudKit hat seit zwei Minuten keinen Export gemeldet. Das kann an fehlender Netzwerkverbindung liegen; sonst iCloud-Account, Provisioning und die CloudKit-Konsole prüfen."
+                self.tooltip = "Die Änderung ist lokal gespeichert, aber CloudKit hat seit zwei Minuten keinen Export gemeldet. Das kann an fehlender Netzwerkverbindung liegen; sonst in den Systemeinstellungen die iCloud-Anmeldung prüfen."
             }
         }
     }
@@ -645,21 +667,6 @@ private struct CloudSyncStatusDetail: View {
             VStack(spacing: 0) {
                 diagnosticRow("iCloud-Account", status.accountSummary)
                 AnkerRule(color: AnkerColor.cardDivider, weight: .row)
-                diagnosticRow("Push", status.remoteNotificationSummary)
-                AnkerRule(color: AnkerColor.cardDivider, weight: .row)
-                diagnosticRow("Server", status.serverProbeSummary)
-                AnkerRule(color: AnkerColor.cardDivider, weight: .row)
-                // Die aussagekräftigste Zahl, wenn ein Gerät nichts vom anderen mitbekommt:
-                // wie oft dieses Gerät seit dem Start überhaupt eine Fremdänderung empfangen
-                // hat. Steht hier 0, während das andere Gerät exportiert, ist nicht der Export
-                // das Problem, sondern der **Import** auf diesem Gerät — das trennt die beiden
-                // Seiten, ohne dass jemand ein Gerätelog mitlesen muss.
-                diagnosticRow("Fremdänderungen", "\(status.remoteChangeCount) seit Start")
-                AnkerRule(color: AnkerColor.cardDivider, weight: .row)
-                diagnosticRow("Umgebung", CloudSyncDiagnostics.environmentName)
-                AnkerRule(color: AnkerColor.cardDivider, weight: .row)
-                diagnosticRow("Container", CloudSyncDiagnostics.containerIdentifier)
-                AnkerRule(color: AnkerColor.cardDivider, weight: .row)
                 diagnosticRow("App-Version", CloudSyncDiagnostics.appVersion)
                 if let maintenanceSummary = status.maintenanceSummary {
                     AnkerRule(color: AnkerColor.cardDivider, weight: .row)
@@ -668,16 +675,39 @@ private struct CloudSyncStatusDetail: View {
             }
             .ankerCard()
 
-            Text("Geräte synchronisieren nur bei gleichem iCloud-Account und gleicher Umgebung. Development und Production sind getrennte Datenbestände.")
+            Text("Geräte gleichen sich nur ab, wenn sie mit demselben iCloud-Account angemeldet sind.")
                 .ankerType(AnkerType.caption)
                 .foregroundStyle(AnkerColor.inkSecond)
                 .fixedSize(horizontal: false, vertical: true)
+
+            // Für Rückfragen beim Support, nicht für den Alltag — deshalb eingeklappt.
+            DisclosureGroup("Technische Details") {
+                VStack(spacing: 0) {
+                    diagnosticRow("Push", status.remoteNotificationSummary)
+                    AnkerRule(color: AnkerColor.cardDivider, weight: .row)
+                    diagnosticRow("Server", status.serverProbeSummary)
+                    AnkerRule(color: AnkerColor.cardDivider, weight: .row)
+                    // Die aussagekräftigste Zahl, wenn ein Gerät nichts vom anderen mitbekommt:
+                    // Steht hier 0, während das andere Gerät exportiert, liegt das Problem beim
+                    // **Import** auf diesem Gerät.
+                    diagnosticRow("Fremdänderungen", "\(status.remoteChangeCount) seit Start")
+                    AnkerRule(color: AnkerColor.cardDivider, weight: .row)
+                    diagnosticRow("Umgebung", CloudSyncDiagnostics.environmentName)
+                    AnkerRule(color: AnkerColor.cardDivider, weight: .row)
+                    diagnosticRow("Container", CloudSyncDiagnostics.containerIdentifier)
+                }
+                .ankerCard()
+                .padding(.top, AnkerSpacing.s2)
+            }
+            .ankerType(AnkerType.caption)
+            .foregroundStyle(AnkerColor.inkSecond)
+            .tint(AnkerColor.inkSecond)
 
             Button {
                 Task { await status.checkServerReachability() }
             } label: {
                 Label(
-                    status.isCheckingServer ? "Server wird geprüft" : "Server prüfen",
+                    status.isCheckingServer ? "Verbindung wird geprüft" : "Verbindung zu iCloud prüfen",
                     ankerIcon: AnkerIcon.refresh
                 )
                 .ankerType(AnkerType.caption)
@@ -860,7 +890,7 @@ enum CloudSyncErrorFormatter {
 
     private static func coreDataCloudKitName(for code: Int) -> String? {
         switch code {
-        case 134_400: "CloudKit-Integration nicht moeglich"
+        case 134_400: "CloudKit-Integration nicht möglich"
         case 134_405: "Store nicht für CloudKit konfiguriert"
         case 134_406: "Anfrage abgebrochen, Setup nie erfolgreich"
         case 134_410: "Schema-Konflikt"
@@ -875,7 +905,7 @@ enum CloudSyncErrorFormatter {
 
         switch error.code {
         case 134_400 where error.localizedFailureReason?.contains("CKAccountStatusNoAccount") == true:
-            return "Auf diesem Geraet ist kein iCloud-Account angemeldet. Ohne Account kann CloudKit nicht starten."
+            return "Auf diesem Gerät ist kein iCloud-Account angemeldet. Ohne Account kann CloudKit nicht starten."
         case 134_422:
             return "Derselbe Store wird zweimal im Prozess mit CloudKit verbunden."
         default:
@@ -892,11 +922,11 @@ enum CloudSyncErrorFormatter {
         case .badContainer, .missingEntitlement: "Container oder Entitlement falsch"
         case .partialFailure: "Teilweise fehlgeschlagen"
         case .unknownItem: "Unbekannter Datensatz"
-        case .invalidArguments: "Ungueltige Anfrage"
+        case .invalidArguments: "Ungültige Anfrage"
         case .serverRejectedRequest: "Server hat abgelehnt"
         case .zoneNotFound, .userDeletedZone: "Zone fehlt"
-        case .managedAccountRestricted: "Verwalteter Account eingeschraenkt"
-        case .serviceUnavailable, .requestRateLimited: "Dienst gerade nicht verfuegbar"
+        case .managedAccountRestricted: "Verwalteter Account eingeschränkt"
+        case .serviceUnavailable, .requestRateLimited: "Dienst gerade nicht verfügbar"
         default: "\(code)"
         }
     }
@@ -905,11 +935,11 @@ enum CloudSyncErrorFormatter {
     private static func hint(for code: CKError.Code) -> String? {
         switch code {
         case .unknownItem, .invalidArguments, .serverRejectedRequest:
-            "Haeufigste Ursache in TestFlight: Das Schema ist nur in Development vorhanden. In der CloudKit-Konsole nach Production deployen."
+            "Ein Teil der Änderungen wurde von iCloud abgewiesen. Anchorit versucht es später erneut; bleibt der Hinweis, bitte an den Support melden."
         case .missingEntitlement, .badContainer:
-            "Container-Identifier oder iCloud-Entitlements pruefen."
+            "Diese App-Version kann iCloud nicht erreichen. Bitte die App aktualisieren oder den Support kontaktieren."
         case .notAuthenticated:
-            "Auf dem Geraet bei iCloud anmelden und iCloud Drive aktivieren."
+            "Auf dem Gerät bei iCloud anmelden und iCloud Drive aktivieren."
         default:
             nil
         }
@@ -920,12 +950,14 @@ private struct CloudSyncEventUpdate: Sendable {
     let phase: CloudSyncStatusCenter.Phase
     let detail: String
     let tooltip: String
+    let completedImport: Bool
 
     init(event: NSPersistentCloudKitContainer.Event) {
+        completedImport = event.type == .import && event.endDate != nil && event.succeeded
         if event.endDate == nil {
             phase = .syncing
             detail = event.type.inProgressTitle
-            tooltip = "\(event.type.detailTitle) laeuft seit \(AnkerDateFormat.clock(event.startDate))."
+            tooltip = "\(event.type.detailTitle) läuft seit \(AnkerDateFormat.clock(event.startDate))."
             return
         }
 
@@ -944,7 +976,7 @@ private struct CloudSyncEventUpdate: Sendable {
             if let error = event.error {
                 let description = CloudSyncErrorFormatter.describe(error)
                 tooltip = "\(event.type.detailTitle) abgeschlossen um \(AnkerDateFormat.clock(endDate)), "
-                    + "aber nicht vollstaendig: \(description)"
+                    + "aber nicht vollständig: \(description)"
                 cloudSyncLog.warning("\(event.type.detailTitle, privacy: .public) abgeschlossen, aber mit Fehler — \(description, privacy: .public)")
             } else {
                 tooltip = "\(event.type.detailTitle) erfolgreich abgeschlossen um \(AnkerDateFormat.clock(endDate))."
@@ -972,9 +1004,9 @@ private extension NSPersistentCloudKitContainer.EventType {
         case .setup:
             "iCloud wird eingerichtet"
         case .import:
-            "Empfaengt Aenderungen"
+            "Empfängt Änderungen"
         case .export:
-            "Sendet Aenderungen"
+            "Sendet Änderungen"
         @unknown default:
             "Synchronisiert"
         }

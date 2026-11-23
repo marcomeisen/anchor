@@ -79,7 +79,7 @@ struct OnboardingView: View {
                 .ankerType(AnkerType.title2)
                 .foregroundStyle(AnkerColor.ink)
 
-            Text(verbatim: "Anchorit kann deine Wochen, Ziele, Aufgaben und Notizen über deinen iCloud-Account zwischen iPhone, iPad und Mac gleich halten. Die Daten liegen in deiner privaten iCloud-Datenbank; niemand sonst hat Zugriff darauf.")
+            Text(verbatim: "Anchorit kann deine Wochen, Ziele, Aufgaben und Notizen über deinen iCloud-Account zwischen iPhone, iPad und Mac gleich halten. Die Daten liegen in deiner privaten iCloud-Datenbank. Nur du kommst über deinen Apple-Account daran — der Entwickler von Anchorit nicht.")
                 .ankerType(AnkerType.body)
                 .foregroundStyle(AnkerColor.inkSecond)
                 .fixedSize(horizontal: false, vertical: true)
@@ -89,6 +89,7 @@ struct OnboardingView: View {
 
             Button("Mit iCloud synchronisieren") {
                 CloudSyncPreference.set(true)
+                AnkerStoreHolder.shared.enableCloudSyncNow()
                 step = .anchors
             }
             .buttonStyle(AnkerButtonStyle.primaryBlock)
@@ -102,7 +103,7 @@ struct OnboardingView: View {
             .padding(.top, AnkerSpacing.s2)
             .accessibilityLabel("Ohne iCloud, nur auf diesem Gerät speichern")
 
-            Text(verbatim: "Später jederzeit in den Einstellungen änderbar. Ein Wechsel greift beim nächsten Start.")
+            Text(verbatim: "Später jederzeit in den Einstellungen änderbar. Bis du wählst, bleibt alles auf diesem Gerät.")
                 .ankerType(AnkerType.caption)
                 .foregroundStyle(AnkerColor.inkTertiary)
                 .fixedSize(horizontal: false, vertical: true)

@@ -109,7 +109,7 @@ struct BlattBulkActionBar: View {
 #endif
         .sheet(isPresented: $showingMove) {
             TaskMoveSheet(tasks: selected) { snapshots in
-                undo.present(TaskUndoNotice(message: "\(snapshots.count) Aufgaben verschoben", snapshots: snapshots))
+                undo.present(TaskUndoNotice(message: Self.tasksMessage(snapshots.count, "verschoben"), snapshots: snapshots))
                 selection.finish()
             }
             .presentationDetents([.medium])
@@ -149,11 +149,17 @@ struct BlattBulkActionBar: View {
         .contentShape(Rectangle())
     }
 
+    // Jede Sammelaktion speichert **einmal** am Ende statt pro Aufgabe: bei 30 Aufgaben
+    // waren das 30 Saves und 30 CloudKit-Exporte. Die Snapshots vor der Aktion, über eine
+    // Closure statt `map(TaskActions.snapshot)` — die Funktionsreferenz eines
+    // Hauptakteur-Typs warnt in Swift 6.
+
     private func markDone() {
         let tasks = selected
-        let snapshots = tasks.map(TaskActions.snapshot)
-        for task in tasks { TaskActions.setDone(task, true, modelContext: modelContext) }
-        undo.present(TaskUndoNotice(message: "\(tasks.count) Aufgaben erledigt", snapshots: snapshots))
+        let snapshots = tasks.map { TaskActions.snapshot($0) }
+        for task in tasks { TaskActions.setDone(task, true, save: false, modelContext: modelContext) }
+        modelContext.saveChanges()
+        undo.present(TaskUndoNotice(message: Self.tasksMessage(tasks.count, "erledigt"), snapshots: snapshots))
         selection.finish()
     }
 
@@ -161,17 +167,24 @@ struct BlattBulkActionBar: View {
     /// ohne ihn — `TaskActions.link` hängt sie trotzdem an, die Woche entscheidet die Ansicht.
     private func link(to goal: Goal?) {
         let tasks = selected
-        let snapshots = tasks.map(TaskActions.snapshot)
-        for task in tasks { TaskActions.link(task, to: goal, modelContext: modelContext) }
+        let snapshots = tasks.map { TaskActions.snapshot($0) }
+        for task in tasks { TaskActions.link(task, to: goal, save: false, modelContext: modelContext) }
+        modelContext.saveChanges()
         undo.present(TaskUndoNotice(message: goal == nil ? "Anker gelöst" : "Anker gesetzt", snapshots: snapshots))
         selection.finish()
     }
 
     private func delete() {
         let tasks = selected
-        let snapshots = tasks.map(TaskActions.snapshot)
-        for task in tasks { TaskActions.delete(task, modelContext: modelContext) }
-        undo.present(TaskUndoNotice(message: "\(tasks.count) Aufgaben gelöscht", snapshots: snapshots))
+        let snapshots = tasks.map { TaskActions.snapshot($0) }
+        for task in tasks { TaskActions.delete(task, save: false, modelContext: modelContext) }
+        modelContext.saveChanges()
+        undo.present(TaskUndoNotice(message: Self.tasksMessage(tasks.count, "gelöscht"), snapshots: snapshots))
         selection.finish()
+    }
+
+    /// „1 Aufgabe erledigt", „3 Aufgaben erledigt".
+    static func tasksMessage(_ count: Int, _ verb: String) -> String {
+        count == 1 ? "1 Aufgabe \(verb)" : "\(count) Aufgaben \(verb)"
     }
 }

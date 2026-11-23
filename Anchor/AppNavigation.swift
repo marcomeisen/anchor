@@ -1,6 +1,8 @@
 import Foundation
 
-enum AppDestination: Hashable, Codable {
+/// `nonisolated`: ein reiner Wert ohne Zustand — sonst wären Vergleiche außerhalb des
+/// Hauptakteurs (Tests, `@SceneStorage`-Dekodierung) in Swift 6 ein Fehler.
+nonisolated enum AppDestination: Hashable, Codable {
     case today
     case year
     case week
@@ -31,7 +33,7 @@ enum AppDestination: Hashable, Codable {
 /// drei einzelne `@State`-Variablen in `AnkerRootView`, zusammen mit der Logik, die sie
 /// verschiebt — nur ueber die Oberflaeche testbar, nicht wiederherstellbar und nicht per URL
 /// ansprechbar. Hier ist alles davon eine reine Funktion.
-struct AnkerNavigationState: Codable, Equatable {
+nonisolated struct AnkerNavigationState: Codable, Equatable {
     var destination: AppDestination
     /// Wohin ein Zurueck aus `.day` oder `.goal` fuehrt.
     var topLevel: AppDestination
@@ -130,14 +132,31 @@ struct AnkerNavigationState: Codable, Equatable {
     /// die Ziele der ausgewaehlten Woche auf und wuerde sonst auf die Wochenuebersicht
     /// zurueckfallen. Fuer alles andere ist der Tag das Ziel; sein Datum kommt vom Aufrufer,
     /// weil nur der die geladenen Tage kennt.
+    ///
+    /// Jeder Treffer hat ein Ziel. Ohne Tag (Rückblick einer Woche, Aufgabe ohne Tag) fällt der
+    /// Sprung auf den Anker zurück, sonst auf die Woche von `result.date` — vorher passierte
+    /// bei diesen Treffern beim Antippen schlicht nichts.
+    @MainActor
     mutating func open(_ result: AnkerSearch.Result, dayDate: Date?) {
         if result.kind == .goal, let goalID = result.goalID {
             openGoal(goalID, inWeekContaining: result.date)
             return
         }
 
-        guard let dayDate else { return }
-        openDay(on: dayDate)
+        if let dayDate {
+            openDay(on: dayDate)
+            return
+        }
+
+        // Aufgabe ohne Tag mit Anker: zum Anker in seiner Woche.
+        if result.kind == .task, let goalID = result.goalID {
+            openGoal(goalID, inWeekContaining: result.date)
+            return
+        }
+
+        // Rückblick, Eingang, oder ein Tag, den es nicht mehr gibt: die Woche.
+        focus(on: result.date)
+        select(.week)
     }
 
     // MARK: - Wiederherstellung
@@ -171,12 +190,16 @@ struct AnkerNavigationState: Codable, Equatable {
     /// `anchorit://goal/<UUID>`.
     ///
     /// Gibt zurueck, ob die URL verstanden wurde — eine unbekannte URL darf den Zustand nicht
-    /// anfassen, sonst landet der Nutzer nach einem Tippfehler im Link irgendwo.
+    /// anfassen, sonst landet der Nutzer nach einem Tippfehler im Link irgendwo. Das gilt auch
+    /// für ein ungültiges Argument: `week/murks` und `day/2026-02-30` sind kein Sprung.
+    ///
+    /// `review` setzt nur `.review`. Den Rückblick öffnet `AnkerRootView` als Blatt über einen
+    /// eigenen Zustand; wer den Link auswertet, muss das dort tun.
     @discardableResult
     mutating func apply(_ url: URL) -> Bool {
         guard let scheme = url.scheme?.lowercased(),
               scheme == Self.urlScheme || Self.legacyURLSchemes.contains(scheme),
-              let host = url.host else { return false }
+              let host = url.host?.lowercased() else { return false }
 
         let argument = url.pathComponents.first { $0 != "/" }
 
@@ -190,7 +213,8 @@ struct AnkerNavigationState: Codable, Equatable {
         case "archive":
             select(.archive)
         case "week":
-            if let date = Self.date(from: argument) {
+            if let argument {
+                guard let date = Self.date(from: argument) else { return false }
                 moveToWeek(startingAt: date)
             }
             select(.week)
@@ -210,10 +234,21 @@ struct AnkerNavigationState: Codable, Equatable {
 
     /// `2026-08-05` — bewusst ISO und nicht das Anzeigeformat: ein Link muss unabhaengig von
     /// der Regionseinstellung des Empfaengers funktionieren.
+    ///
+    /// Strikt: genau `JJJJ-MM-TT`, Jahr 2000–2100, und das Datum muss es geben. `DateComponents`
+    /// rollt sonst über — `2026-02-30` wurde still zum 2. März, `2026-13-45` zu einem Tag 2027.
     static func date(from text: String?) -> Date? {
         guard let text else { return nil }
-        let parts = text.split(separator: "-").compactMap { Int($0) }
-        guard parts.count == 3 else { return nil }
-        return AnkerCalendar.date(year: parts[0], month: parts[1], day: parts[2], hour: 12, minute: 0)
+        let fields = text.split(separator: "-", omittingEmptySubsequences: false)
+        guard fields.count == 3,
+              fields[0].count == 4, (1...2).contains(fields[1].count), (1...2).contains(fields[2].count),
+              fields.allSatisfy({ $0.allSatisfy(\.isASCII) && $0.allSatisfy(\.isNumber) }),
+              let year = Int(fields[0]), let month = Int(fields[1]), let day = Int(fields[2]),
+              (2000...2100).contains(year), (1...12).contains(month), (1...31).contains(day) else { return nil }
+
+        let date = AnkerCalendar.date(year: year, month: month, day: day, hour: 12, minute: 0)
+        let roundTrip = AnkerCalendar.iso.dateComponents([.year, .month, .day], from: date)
+        guard roundTrip.year == year, roundTrip.month == month, roundTrip.day == day else { return nil }
+        return date
     }
 }

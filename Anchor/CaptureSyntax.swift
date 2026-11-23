@@ -27,6 +27,10 @@ struct CaptureTarget: Equatable {
 ///
 /// Zerlegt wird an Leerzeichen, nicht per Mustersuche im ganzen Text. Das ist der Grund, warum
 /// „Somit" und „Modul" keinen Wochentag ergeben: ein Kuerzel muss ein **ganzes** Wort sein.
+///
+/// Wochentage zaehlen zudem nur **am Ende** der Zeile — als letztes Wort oder nur noch von
+/// Kuerzeln gefolgt (`Bericht mi #2`). „so", „da" und „mo" sind auch Woerter; „Mach das so gut
+/// wie moeglich" ist kein Sonntag. `#n` und `!x` gelten ueberall, sie sind nie Satzbestandteil.
 enum CaptureSyntax {
     /// Deutsche Wochentagskuerzel. Reihenfolge nach ISO, Montag ist 1.
     static let weekdayTokens: [String: Int] = [
@@ -35,7 +39,7 @@ enum CaptureSyntax {
 
     static let defaultPriority: Priority = .b
 
-    static let syntaxHelp = "!a Prio · #1 Anker · mo–so Tag"
+    static let syntaxHelp = "#1–#4 Anker · mo–so Tag am Ende"
 
     /// Zerlegt die Eingabe. Reihenfolge der Kuerzel ist beliebig.
     ///
@@ -46,9 +50,22 @@ enum CaptureSyntax {
         var input = CaptureInput()
         var titleParts: [String] = []
 
-        for rawToken in raw.split(whereSeparator: \.isWhitespace) {
-            // Ein nachgestellter Punkt gehoert zur Abkuerzung („Mi."), nicht zum Kuerzel.
-            let token = rawToken.lowercased().trimmingCharacters(in: CharacterSet(charactersIn: "."))
+        let rawTokens = raw.split(whereSeparator: \.isWhitespace)
+        // Ein nachgestellter Punkt gehoert zur Abkuerzung („Mi."), nicht zum Kuerzel.
+        let tokens = rawTokens.map { $0.lowercased().trimmingCharacters(in: CharacterSet(charactersIn: ".")) }
+
+        // Beginn des Kuerzelschwanzes: ab hier stehen nur noch Kuerzel. Nur darin zaehlt ein
+        // Wochentag.
+        var tailStart = tokens.count
+        while tailStart > 0 {
+            let token = tokens[tailStart - 1]
+            guard priority(from: token) != nil || anchorNumber(from: token) != nil
+                    || weekdayTokens[token] != nil else { break }
+            tailStart -= 1
+        }
+
+        for (index, rawToken) in rawTokens.enumerated() {
+            let token = tokens[index]
 
             if let priority = priority(from: token) {
                 input.priority = priority
@@ -58,7 +75,7 @@ enum CaptureSyntax {
                 input.anchorNumber = anchor
                 continue
             }
-            if let weekday = weekdayTokens[token] {
+            if index >= tailStart, let weekday = weekdayTokens[token] {
                 input.weekdayIndex = weekday
                 continue
             }
@@ -118,10 +135,12 @@ enum CaptureSyntax {
         guard let target else { return syntaxHelp }
         guard !input.isEmpty else { return "nur Kürzel — Titel fehlt" }
 
-        var parts = [
-            AnkerDateFormat.weekdayShort(target.date),
-            "Prio \(target.priority.label)",
-        ]
+        // „Blatt" zeigt keine Prioritaetsstufen. Die Hinweiszeile nennt sie nur, wenn sie
+        // ausdruecklich getippt wurde — sonst verschwaende `!a` spurlos aus dem Titel.
+        var parts = [AnkerDateFormat.weekdayShort(target.date)]
+        if let priority = input.priority {
+            parts.append(priority == .a ? "wichtig" : "Prio \(priority.label)")
+        }
 
         if let anchor = target.anchorNumber {
             parts.append(anchor <= anchorCount ? "Anker \(anchor)" : "Anker \(anchor) gibt es nicht")

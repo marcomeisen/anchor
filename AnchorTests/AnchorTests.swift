@@ -358,13 +358,16 @@ final class AnchorTests: XCTestCase {
         let container = try makeContainer()
         let context = container.mainContext
         let week = SampleData.insertReferenceWeek(in: context)
+        let firstGoal = try XCTUnwrap(GoalOrdering.sorted(week.goalList).first)
+        firstGoal.why = "Weil es diese Woche zählt"
+        firstGoal.verdict = .held
         try context.save()
 
         let snapshot = try decodedExport(from: context)
 
-        // Version 2: der Export traegt jetzt Ankerordnung, Erledigungszeitpunkt,
-        // Uebertragungszaehler, Rueckblicktext und Abschlusszeitpunkt mit.
-        XCTAssertEqual(snapshot.formatVersion, 2)
+        // Version 2: Ankerordnung, Erledigungszeitpunkt, Uebertragungszaehler, Rueckblicktext
+        // und Abschlusszeitpunkt. Version 3: Warum-Satz und Rueckblickantwort je Anker.
+        XCTAssertEqual(snapshot.formatVersion, 3)
         XCTAssertEqual(snapshot.weeks.count, 1)
 
         let exportedWeek = try XCTUnwrap(snapshot.weeks.first)
@@ -383,6 +386,11 @@ final class AnchorTests: XCTestCase {
         XCTAssertEqual(exportedWeek.reviewedAt, week.reviewedAt)
         XCTAssertEqual(exportedWeek.goals.map(\.order), Array(0..<exportedWeek.goals.count),
                        "Ziele muessen sortiert und lueckenlos numeriert exportiert werden")
+        for goal in week.goalList {
+            let exported = try XCTUnwrap(exportedWeek.goals.first { $0.id == goal.id })
+            XCTAssertEqual(exported.why, goal.why, "Warum-Satz fehlt im Export")
+            XCTAssertEqual(exported.verdict, goal.verdictRaw, "Rückblickantwort fehlt im Export")
+        }
         XCTAssertTrue(exportedTasks.contains { $0.completedAt != nil }, "Erledigungszeitpunkt fehlt")
         XCTAssertTrue(exportedTasks.contains { $0.carryOverCount > 0 }, "Uebertragungszaehler fehlt")
 
@@ -773,12 +781,17 @@ final class AnchorTests: XCTestCase {
     }
 
     @MainActor
-    func testCloudSyncPreferenceDefaultsToEnabledUntilChosen() throws {
+    func testCloudSyncPreferenceStaysLocalUntilChosenOnFreshDevices() throws {
         let defaults = try XCTUnwrap(UserDefaults(suiteName: "AnchorTests.\(#function)"))
         defer { defaults.removePersistentDomain(forName: "AnchorTests.\(#function)") }
 
-        // Standard eingeschaltet: bestehende Installationen synchronisieren bereits, ein
-        // stiller Wechsel auf "aus" waere aus Nutzersicht Datenverlust.
+        // Ein frisches Gerät überträgt nichts, bevor gefragt wurde.
+        XCTAssertFalse(CloudSyncPreference.isEnabled(in: defaults))
+        XCTAssertFalse(CloudSyncPreference.hasBeenChosen(in: defaults))
+
+        // Bestehende Installationen (Onboarding fertig, nie gefragt) synchronisierten bisher —
+        // ein stiller Wechsel auf "aus" wäre aus Nutzersicht Datenverlust.
+        defaults.set(true, forKey: AppSettingsKey.hasCompletedOnboarding)
         XCTAssertTrue(CloudSyncPreference.isEnabled(in: defaults))
         XCTAssertFalse(CloudSyncPreference.hasBeenChosen(in: defaults))
 
@@ -822,7 +835,8 @@ final class AnchorTests: XCTestCase {
             XCTAssertNil(defaults.object(forKey: key), "\(key) wurde gesetzt statt zurueckgestellt")
         }
 
-        XCTAssertTrue(CloudSyncPreference.isEnabled(in: defaults))
+        XCTAssertFalse(CloudSyncPreference.isEnabled(in: defaults),
+                       "Ohne Wahl und ohne Onboarding bleibt ein Gerät lokal")
 #endif
     }
 

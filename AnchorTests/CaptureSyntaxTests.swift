@@ -13,7 +13,7 @@ final class CaptureSyntaxTests: XCTestCase {
         for raw in [
             "Angebot prüfen !a #2 mi",
             "!a Angebot #2 prüfen mi",
-            "mi #2 !a Angebot prüfen",
+            "#2 !a Angebot prüfen mi",
             "Angebot !a prüfen mi #2",
         ] {
             let input = CaptureSyntax.parse(raw)
@@ -42,8 +42,9 @@ final class CaptureSyntaxTests: XCTestCase {
     }
 
     func testStandaloneWeekdayWordIsATokenEvenWhenAmbiguous() {
-        // „so" ist auch ein deutsches Wort. Bewusste Grenze: das Kuerzel gewinnt, und die
-        // Hinweiszeile zeigt es **vor** dem Anlegen. Kein Rateverhalten.
+        // „so" ist auch ein deutsches Wort. Bewusste Grenze: als **letztes** Wort gewinnt das
+        // Kuerzel, und die Hinweiszeile zeigt es **vor** dem Anlegen. Mitten im Satz nicht —
+        // siehe ComponentReleaseTests.
         let input = CaptureSyntax.parse("Mach es so")
         XCTAssertEqual(input.weekdayIndex, 7)
         XCTAssertEqual(input.title, "Mach es")
@@ -131,9 +132,8 @@ final class CaptureSyntaxTests: XCTestCase {
         let hint = CaptureSyntax.hint(raw: "Bericht mi", target: target, anchorCount: 4)
 
         XCTAssertTrue(hint.hasPrefix("→ "), hint)
-        // Prioritaet steht da, obwohl sie nicht getippt wurde — sonst waere nicht erkennbar,
-        // wo die Aufgabe landet.
-        XCTAssertTrue(hint.contains("Prio B"), hint)
+        // „Blatt" zeigt keine Prioritaetsstufen: ohne getipptes `!x` steht keine da.
+        XCTAssertFalse(hint.contains("Prio"), hint)
         XCTAssertTrue(hint.contains("ohne Anker"), hint)
     }
 

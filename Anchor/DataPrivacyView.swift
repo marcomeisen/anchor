@@ -32,16 +32,20 @@ struct DataPrivacyView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
 
-    @Query private var weeks: [Week]
-    @Query private var goals: [Goal]
-    @Query private var tasks: [AnkerTask]
-    @Query private var timeBlocks: [TimeBlock]
+    // Nur Zählwerte — `fetchCount` statt vier `@Query`, die den ganzen Bestand laden.
+    @State private var counts = RecordCounts()
+    @State private var isDeleting = false
 
     @State private var exportDocument: DataExportDocument?
     @State private var showsExporter = false
     @State private var exportFileName = DataPortability.exportFileName()
     @State private var statusMessage: StatusMessage?
     @State private var showsDeleteConfirmation = false
+
+    private struct RecordCounts {
+        var weeks = 0, goals = 0, days = 0, tasks = 0, timeBlocks = 0
+        var total: Int { weeks + goals + days + tasks + timeBlocks }
+    }
 
     private struct StatusMessage: Identifiable {
         let id = UUID()
@@ -68,6 +72,7 @@ struct DataPrivacyView: View {
             .padding(AnkerSpacing.screenPadding)
         }
         .background(AnkerColor.ground)
+        .onAppear(perform: refreshCounts)
         .ankerSheetChrome("Daten und Datenschutz", cancel: AnkerSheetAction("Fertig") { dismiss() })
         .fileExporter(
             isPresented: $showsExporter,
@@ -97,7 +102,7 @@ struct DataPrivacyView: View {
         card {
             sectionTitle("Was Anchorit speichert")
 
-            Text("Wochen, Wochenziele, Aufgaben, Zeitblöcke, Tagesfokus und Notizen — also nur das, "
+            Text("Wochen, Anker, Aufgaben, Zeitblöcke, Tagesfokus und Notizen — also nur das, "
                  + "was du selbst eingibst. Es gibt keine Analyse, keine Werbung und keine Weitergabe "
                  + "an Dritte.")
                 .ankerType(AnkerType.body)
@@ -105,21 +110,29 @@ struct DataPrivacyView: View {
                 .fixedSize(horizontal: false, vertical: true)
 
             Text("Gespeichert wird auf diesem Gerät und, wenn iCloud aktiv ist, in deiner privaten "
-                 + "iCloud-Datenbank. Auf diese hat nur dein Apple-Account Zugriff.")
+                 + "iCloud-Datenbank. Daran kommst nur du über deinen Apple-Account — der Entwickler von "
+                 + "Anchorit hat keinen Zugriff.")
                 .ankerType(AnkerType.caption)
                 .foregroundStyle(AnkerColor.inkSecond)
                 .fixedSize(horizontal: false, vertical: true)
 
             countRow
+
+            Link(destination: AppLinks.privacyPolicy) {
+                Label("Datenschutzerklärung", ankerIcon: AnkerIcon.privacy)
+                    .ankerType(AnkerType.caption)
+                    .foregroundStyle(AnkerColor.accentInk)
+            }
+            .accessibilityHint("Öffnet die Datenschutzerklärung im Browser")
         }
     }
 
     private var countRow: some View {
         HStack(spacing: AnkerSpacing.s4) {
-            countItem(weeks.count, "Wochen")
-            countItem(goals.count, "Ziele")
-            countItem(tasks.count, "Aufgaben")
-            countItem(timeBlocks.count, "Zeitblöcke")
+            countItem(counts.weeks, "Wochen")
+            countItem(counts.goals, "Anker")
+            countItem(counts.tasks, "Aufgaben")
+            countItem(counts.timeBlocks, "Zeitblöcke")
             Spacer(minLength: 0)
         }
         .padding(.top, AnkerSpacing.s1)
@@ -153,7 +166,7 @@ struct DataPrivacyView: View {
                 Label("Export sichern", ankerIcon: AnkerIcon.share)
                     .ankerType(AnkerType.caption)
             }
-            .buttonStyle(.borderedProminent)
+            .buttonStyle(AnkerButtonStyle.primary)
             .accessibilityLabel("Alle Daten als JSON-Datei exportieren")
         }
     }
@@ -162,8 +175,9 @@ struct DataPrivacyView: View {
         card {
             sectionTitle("Alle Daten löschen")
 
-            Text("Entfernt alle Wochen, Ziele, Aufgaben, Zeitblöcke und Notizen — auf diesem Gerät "
-                 + "und in iCloud, damit sie nicht auf anderen Geräten zurückkommen.")
+            Text("Entfernt alle Wochen, Anker, Aufgaben, Zeitblöcke und Notizen — auf diesem Gerät "
+                 + "und, wenn du bei iCloud angemeldet bist, auch in iCloud und damit auf deinen "
+                 + "anderen Geräten.")
                 .ankerType(AnkerType.body)
                 .foregroundStyle(AnkerColor.ink)
                 .fixedSize(horizontal: false, vertical: true)
@@ -181,12 +195,13 @@ struct DataPrivacyView: View {
             Button(role: .destructive) {
                 showsDeleteConfirmation = true
             } label: {
-                Label("Alle Daten löschen", ankerIcon: AnkerIcon.delete)
+                Label(isDeleting ? "Wird gelöscht …" : "Alle Daten löschen", ankerIcon: AnkerIcon.delete)
                     .ankerType(AnkerType.caption)
             }
-            .buttonStyle(.bordered)
-            .tint(AnkerColor.accentMark)
-            .disabled(totalRecordCount == 0)
+            .buttonStyle(AnkerButtonStyle.secondary)
+            // Nicht an die lokale Zahl gebunden: auf einem frischen Gerät kann iCloud Daten
+            // halten, die hier noch nicht angekommen sind.
+            .disabled(isDeleting)
             .accessibilityLabel("Alle Daten unwiderruflich löschen")
         }
     }
@@ -230,8 +245,7 @@ struct DataPrivacyView: View {
         let report = DataPortability.deleteAllData(in: modelContext)
 
         guard report.didSave else {
-            // `saveChanges` hat den Fehler bereits gemeldet; hier nur klarstellen, dass
-            // nichts geloescht wurde.
+            // `saveChanges` hat den Fehler bereits gemeldet, die Löschung ist zurückgerollt.
             statusMessage = StatusMessage(
                 text: "Die Daten konnten nicht gelöscht werden. Es wurde nichts entfernt.",
                 isError: true
@@ -240,23 +254,45 @@ struct DataPrivacyView: View {
         }
 
         DataPortability.resetStoredPreferences()
-        statusMessage = StatusMessage(
-            text: "\(report.total) Datensätze wurden gelöscht. Die Löschung wird an iCloud übertragen, sobald eine Verbindung besteht.",
-            isError: false
+        refreshCounts()
+        isDeleting = true
+        Task {
+            let cloud = await DataPortability.deleteCloudData()
+            isDeleting = false
+            statusMessage = deletionMessage(local: report.total, cloud: cloud)
+        }
+    }
+
+    private func deletionMessage(local: Int, cloud: DataPortability.CloudDeletionResult) -> StatusMessage {
+        let localText = local == 1 ? "1 Datensatz wurde gelöscht." : "\(local) Datensätze wurden gelöscht."
+        switch cloud {
+        case .deleted:
+            return StatusMessage(text: "\(localText) Auch die Daten in iCloud sind entfernt; deine anderen Geräte leeren sich beim nächsten Abgleich.", isError: false)
+        case .noAccount, .notApplicable:
+            return StatusMessage(text: "\(localText) Dieses Gerät ist nicht bei iCloud angemeldet. Liegen dort noch Daten, lösche sie von einem angemeldeten Gerät aus.", isError: false)
+        case .failed:
+            return StatusMessage(text: "\(localText) iCloud war nicht erreichbar, dort liegen eventuell noch Daten. Versuche es mit Internetverbindung erneut.", isError: true)
+        }
+    }
+
+    private func refreshCounts() {
+        counts = RecordCounts(
+            weeks: (try? modelContext.fetchCount(FetchDescriptor<Week>())) ?? 0,
+            goals: (try? modelContext.fetchCount(FetchDescriptor<Goal>())) ?? 0,
+            days: (try? modelContext.fetchCount(FetchDescriptor<Day>())) ?? 0,
+            tasks: (try? modelContext.fetchCount(FetchDescriptor<AnkerTask>())) ?? 0,
+            timeBlocks: (try? modelContext.fetchCount(FetchDescriptor<TimeBlock>())) ?? 0
         )
     }
 
     // MARK: - Texte
 
-    private var totalRecordCount: Int {
-        weeks.count + goals.count + tasks.count + timeBlocks.count
-    }
-
     private var deleteConfirmationMessage: String {
-        "\(weeks.count) Wochen, \(goals.count) Wochenziele, \(tasks.count) Aufgaben und "
-            + "\(timeBlocks.count) Zeitblöcke werden dauerhaft entfernt — auch in iCloud und damit "
-            + "auf allen Geräten. Das lässt sich nicht rückgängig machen. Sichere vorher einen Export, "
-            + "wenn du die Daten behalten willst."
+        "\(counts.weeks) Wochen, \(counts.goals) Anker, \(counts.tasks) Aufgaben und "
+            + "\(counts.timeBlocks) Zeitblöcke auf diesem Gerät werden dauerhaft entfernt. Bist du bei "
+            + "iCloud angemeldet, wird auch dort alles gelöscht — auch, was hier noch nicht angekommen "
+            + "ist — und deine anderen Geräte leeren sich. Das lässt sich nicht rückgängig machen. "
+            + "Sichere vorher einen Export, wenn du die Daten behalten willst."
     }
 
     // MARK: - Bausteine

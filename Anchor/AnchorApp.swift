@@ -5,6 +5,7 @@
 //  Created by Marco Meisen on 31.07.26.
 //
 
+import Combine
 import SwiftUI
 import SwiftData
 import CoreData
@@ -47,6 +48,7 @@ enum CloudSyncConfiguration {
     /// CloudKit-Store und brach im unsignierten Lauf ab („test runner crashed before
     /// establishing connection"). Gezählt wird jedes Zeichen der Testeinspritzung.
     static var isRunningTests: Bool {
+#if DEBUG
         let environment = ProcessInfo.processInfo.environment
         if environment["XCTestConfigurationFilePath"] != nil { return true }
         if environment.keys.contains(where: { $0.hasPrefix("XCTest") || $0.hasPrefix("XCInject") }) {
@@ -56,6 +58,11 @@ enum CloudSyncConfiguration {
             return true
         }
         return false
+#else
+        // Unit-Tests laufen gegen Debug. Im Release kann eine Umgebungsvariable die App so
+        // nicht in einen flüchtigen Speicher-Store schicken.
+        return false
+#endif
     }
 
     /// Trägt dieses Programm die iCloud-Berechtigung überhaupt?
@@ -274,7 +281,7 @@ struct AnkerStore {
 #endif
             return AnkerStore(container: container, cloudKitError: nil)
         } catch {
-            print("CloudKit store unavailable, falling back to local store: \(error)")
+            cloudSyncLog.error("CloudKit-Store nicht verfügbar, lokaler Rückfall — \(CloudSyncErrorFormatter.describe(error), privacy: .private)")
         }
 
         do {
@@ -289,6 +296,43 @@ struct AnkerStore {
     }
 }
 
+/// Hält den Store und baut ihn genau einmal neu auf: wenn ein frisches Gerät im Onboarding
+/// „Mit iCloud synchronisieren" wählt.
+///
+/// Bis zu dieser Wahl läuft der Store ohne CloudKit (siehe `CloudSyncPreference.isEnabled`).
+/// Der Neuaufbau öffnet dieselbe Datei mit CloudKit. Das ist kein zweites Spiegeln — der lokale
+/// Container hat keinen Mirroring-Delegate, also auch kein 134422. In der Wartezeit vor der
+/// Wahl ist noch nichts geschrieben worden.
+@MainActor
+final class AnkerStoreHolder: ObservableObject {
+    static let shared = AnkerStoreHolder()
+
+    @Published private(set) var store: AnkerStore
+
+    private init() {
+        store = AnkerStore.make()
+    }
+
+    func enableCloudSyncNow() {
+        guard !CloudSyncConfiguration.usesCloudKit else { return }
+        CloudSyncPreference.markEnabledAtRuntime()
+        guard CloudSyncConfiguration.usesCloudKit else { return }
+
+        let schema = Schema(AnkerSchema.models)
+        let configuration = CloudSyncConfiguration.modelConfiguration(schema: schema)
+        do {
+            let container = try ModelContainer(for: schema, configurations: [configuration])
+            store = AnkerStore(container: container, cloudKitError: nil)
+            CloudSyncStatusCenter.shared.markCloudSyncEnabledAtRuntime()
+            CloudSyncConfiguration.registerForRemoteNotifications()
+            Task { await CloudSyncStatusCenter.shared.refreshAccountStatus() }
+        } catch {
+            cloudSyncLog.error("iCloud-Store ließ sich nicht öffnen — \(CloudSyncErrorFormatter.describe(error), privacy: .public)")
+            CloudSyncStatusCenter.shared.markCloudUnavailable(CloudSyncConfiguration.SyncError.cloudKitStoreUnavailable)
+        }
+    }
+}
+
 @main
 @MainActor
 struct AnchorApp: App {
@@ -298,8 +342,9 @@ struct AnchorApp: App {
     @UIApplicationDelegateAdaptor(AnchorIOSAppDelegate.self) private var appDelegate
 #endif
 
-    private let store = AnkerStore.make()
+    @StateObject private var holder = AnkerStoreHolder.shared
 
+    private var store: AnkerStore { holder.store }
     private var sharedModelContainer: ModelContainer { store.container }
 
     var body: some Scene {
@@ -321,9 +366,13 @@ struct AnchorApp: App {
                 .onAppear {
                     appDelegate.configure(modelContainer: sharedModelContainer)
                 }
+                .onChange(of: ObjectIdentifier(sharedModelContainer)) { _, _ in
+                    appDelegate.configure(modelContainer: sharedModelContainer)
+                }
 #endif
         }
         .modelContainer(sharedModelContainer)
+        .commands { AnkerCommands() }
 #if os(macOS)
         // „Blatt" zeichnet seinen eigenen Fensterkopf; die Ampelknöpfe liegen darüber.
         .windowStyle(.hiddenTitleBar)
@@ -415,9 +464,18 @@ final class AnchorAppDelegate: NSObject, NSApplicationDelegate {
         CloudSyncStatusCenter.shared.markRemoteNotificationReceived()
     }
 
+    private weak var configuredContainer: ModelContainer?
+
+    /// Erneut aufgerufen, wenn `AnkerStoreHolder` den Store neu aufbaut — die Schnellerfassung
+    /// in der Menüleiste schreibt sonst in den alten Container.
     func configure(modelContainer: ModelContainer) {
-        guard statusItemController == nil else { return }
-        statusItemController = AnchorStatusItemController(modelContainer: modelContainer)
+        guard configuredContainer !== modelContainer else { return }
+        configuredContainer = modelContainer
+        if let statusItemController {
+            statusItemController.update(modelContainer: modelContainer)
+        } else {
+            statusItemController = AnchorStatusItemController(modelContainer: modelContainer)
+        }
     }
 }
 
@@ -439,17 +497,25 @@ private final class AnchorStatusItemController: NSObject {
                 button.image = image
                 button.imagePosition = .imageOnly
             } else {
-                button.title = "F"
+                button.title = "A"
             }
             button.action = #selector(togglePopover(_:))
             button.target = self
         }
 
-        let rootView = QuickCapturePopover()
-            .modelContainer(modelContainer)
         popover.behavior = .transient
         popover.contentSize = NSSize(width: 300, height: 252)
+        update(modelContainer: modelContainer)
+    }
+
+    func update(modelContainer: ModelContainer) {
+        let rootView = QuickCapturePopover(onClose: { [weak self] in self?.closePopover() })
+            .modelContainer(modelContainer)
         popover.contentViewController = NSHostingController(rootView: rootView)
+    }
+
+    private func closePopover() {
+        popover.performClose(nil)
     }
 
     @objc

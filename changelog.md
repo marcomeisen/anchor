@@ -2,6 +2,58 @@
 
 ## 2026-11-23
 
+### Release-Prüfung vor dem App Store
+
+Fünf Prüfungen (Sync und Daten, Sicherheit und Datenschutz, Architektur und Leistung, UX und Barrierefreiheit, Fachlogik). Die Befunde sind behoben bis auf die unten genannten.
+
+**Datenschutz und Daten**
+- **Ein frisches Gerät überträgt nichts, bevor gefragt wurde.** Vorher lief der Speicher schon vor der Frage mit iCloud, und wer „Nur auf diesem Gerät“ wählte, hatte seine ersten Anker trotzdem in iCloud. Jetzt startet ein neues Gerät lokal; „Mit iCloud synchronisieren“ baut den Speicher sofort mit CloudKit neu auf. Bestehende Installationen synchronisieren unverändert weiter.
+- **„Alle Daten löschen“ erreicht iCloud wirklich:** Zusätzlich zur lokalen Löschung wird die CloudKit-Zone entfernt, auch was hier noch nicht angekommen ist und auch bei abgeschaltetem Sync. Ein fehlgeschlagenes Speichern rollt zurück, statt die Löschung beim nächsten Speichern ohne Bestätigung nachzuholen. Die Texte sagen ehrlich, was passiert.
+- Der Export enthält Warum-Satz und Rückblickantwort (Format 3).
+- Datenschutzerklärung und Hilfe liegen unter `docs/` für GitHub Pages und sind in der App verlinkt (Richtlinie 5.1.1).
+- Texte zu iCloud versprechen nichts mehr, was ohne erweiterten Datenschutz nicht stimmt.
+
+**Sync**
+- Aufgeräumt wird erst nach dem ersten Import der Sitzung. Verwaiste Tage und Anker werden nur noch an **vorhandene** Wochen gehängt; vorher legte das Aufräumen nach einem abgebrochenen Import neue Wochen an.
+- Die Reihenfolge zusammengeführter Anker hängt nur noch an Feldern des Ankers selbst, nicht an lokal sichtbaren Aufgaben, und ist damit auf allen Geräten gleich.
+- Das Tagesdetail legt Woche und Tag erst beim Schreiben an, nicht mehr beim Öffnen (Startansicht „Zuletzt“, Deep Link).
+- Anker werden beim Verschieben über den ISO-Schlüssel verglichen; Rückgängig stellt auch nach einem Zusammenführen wieder her.
+- Übertrag und „um n Tage verschieben“ treffen bei Tagen aus anderen Zeitzonen den richtigen Wochentag.
+
+**Abläufe**
+- Rückblick auf dem iPhone über die Wochenansicht erreichbar, für jede Woche, auch zum Wiederöffnen; „Heute“ erinnert an eine ungeprüfte Vorwoche.
+- „Woche setzen“ und „Rückblick“ lassen sich abbrechen (Escape auf dem Mac). Eine Woche ohne Anker lässt sich schließen. Loslassen fragt nach, die Zusammenfassung sagt vorher, was wohin geht, und die Reflexion wird beim Tippen gesichert.
+- „Mitnehmen“ behält den Anker, wenn die Folgewoche einen gleichnamigen hat; Aufgaben ohne Tag werden mit abgeschlossen.
+- Das Tagesdetail hat eine Erfassungszeile (der Knopf „Neu“ tat nichts).
+- Aufgaben ohne Tag haben dieselben Aktionen wie andere. Der Editor plant sie beim Umbenennen nicht mehr still auf heute ein.
+- Chips im Raster: Bearbeiten und Anker im Kontextmenü, Rückgängig nach dem Ablegen.
+- Das Menüleisten-Popover startet leer (vorher mit Beispieltext), schließt mit Abbrechen, sichert mit Enter.
+- Mac-Menü „Gehe zu“ (⌘1–3, ⌘[ / ⌘], ⌘F); ⌘N öffnet kein zweites Fenster mehr. Das mehrdeutige ⌘⇧M an jeder Zeile ist entfernt.
+- „Heute“ rückt über Nacht auf den neuen Tag vor.
+- Archiv über alle Jahre mit Jahresschalter und Legende; die Serie bricht bei fehlenden Wochen.
+- Suche findet Aufgaben ohne Tag und den Warum-Satz; jeder Treffer führt irgendwohin.
+- `anchorit://review` öffnet den Rückblick; ungültige Daten in Deep Links werden abgewiesen.
+- Erfassung: der Hinweis nennt `#1–#4` richtig, Wochentagskürzel gelten nur am Ende („Mach das so gut wie möglich“ landet nicht mehr am Sonntag).
+- Wer bewusst lokal arbeitet, sieht keinen Dauerbanner „Sync aus“ mehr.
+
+**Gestaltung und Barrierefreiheit**
+- Tippflächen auf iOS mindestens 44 pt bei gleicher Optik.
+- Begriffe einheitlich „Anker“, Pluralformen, echte Umlaute und Halbgeviertstriche. Entwicklertexte der Sync-Anzeige stehen unter „Technische Details“.
+- Wochenraster ohne Querscroll ab 960 pt Inhalt; Chiptitel bekommen in schmalen Spalten die volle Breite, der Tag steht in „Nach Anker“ über dem Chip.
+- VoiceOver liest den Wochenüberblick pro Anker vor.
+
+**Leistung und Aufräumen**
+- Keine `@Query` mehr in jeder Aufgabenzeile, ein Speichern pro Sammelaktion, Aufräumen mit Prädikaten statt Vollscan, Datenschutzseite zählt per `fetchCount`.
+- Entfernt: `AnkerMatrix`, `AnkerArchive`, `AnkerStatistics` (nur noch von Tests benutzt), `NewTaskSheet`, `NewGoalSheet` und vier ungenutzte Icons. `AnkerComponents` ist aufgeteilt.
+- Repo: `.gitignore`, Xcode-Benutzerdaten, Profildaten und ein ZIP sind nicht mehr eingecheckt.
+- Test-Erkennung nur noch im Debug-Build; Speicherfehler gehen ins Log statt auf die Konsole.
+- 118 Unit-Tests (neu: `ReleaseLogicTests`, `ComponentReleaseTests`), `design-guard` mit Schranke gegen `Color(hex:)`.
+
+**Bewusst offen**
+- Lange zusammengesetzte Wörter brechen in sehr schmalen Rasterspalten weiter um; SwiftUI trennt keine Silben.
+- `Priority` bleibt als Codable-Enum gespeichert; das Schema steht schon in Production.
+- Mitgenommene Aufgaben bekommen einen Anker, der erst nach dem Schließen gesetzt wird, nicht nachträglich.
+
 ### Zusammengeführt mit main: „Blatt" bleibt, die iCloud-Korrekturen von „Lot" kommen dazu
 
 - **Gestaltung:** „Blatt" ersetzt „Lot" (Bernstein, Glas, Instrument Serif). Lot-Schrift, Wochenpuls-Icon und Glasflächen sind entfernt.

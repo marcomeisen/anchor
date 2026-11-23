@@ -141,6 +141,7 @@ struct TaskChip: View {
     var onUndoableAction: ((TaskUndoNotice) -> Void)?
 
     @State private var showingMove = false
+    @State private var showingEditor = false
 
     var body: some View {
         chip
@@ -150,30 +151,71 @@ struct TaskChip: View {
                 }
                 .presentationDetents([.medium, .large])
             }
+            .sheet(isPresented: $showingEditor) {
+                TaskEditorSheet(task: task, onUndoableAction: onUndoableAction)
+                    .presentationDetents([.medium, .large])
+            }
+    }
+
+    /// Die Anker der Woche, zu der die Aufgabe gehört — über den Tag, sonst über den Anker.
+    private var anchors: [Goal] {
+        guard let week = task.day?.week ?? task.linkedGoal?.week else { return [] }
+        return GoalOrdering.anchors(in: week)
+    }
+
+    @ViewBuilder
+    private var chipMarks: some View {
+        if showsCheckbox {
+            Button(action: toggle) {
+                TaskCheckmark(isDone: task.isDone, size: 14)
+                    .ankerTapTarget(14)
+            }
+            .buttonStyle(.plain)
+        }
+        if let number {
+            Text(verbatim: number)
+                .ankerType(AnkerType.caption)
+                .fontWeight(.heavy)
+                .monospacedDigit()
+                .foregroundStyle(task.isDone ? AnkerColor.inkTertiary : AnkerColor.accentInk)
+        }
+    }
+
+    private func chipTitle(lines: Int) -> some View {
+        Text(verbatim: task.title)
+            .ankerType(compact ? AnkerType.caption : AnkerType.meta)
+            .foregroundStyle(task.isDone ? AnkerColor.inkTertiary : AnkerColor.ink)
+            .strikethrough(task.isDone, color: AnkerColor.inkTertiary)
+            .lineLimit(lines)
+            .multilineTextAlignment(.leading)
+    }
+
+    @ViewBuilder
+    private var chipContent: some View {
+        if compact {
+            // In schmalen Rasterspalten brach der Titel neben dem Kästchen mitten im Wort um
+            // („Launc|h-Deck"). Passt er nicht in eine Zeile, steht er unter dem Kästchen und
+            // bekommt die volle Chipbreite.
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: AnkerSpacing.s1 + 2) {
+                    chipMarks
+                    chipTitle(lines: 1).fixedSize()
+                }
+                VStack(alignment: .leading, spacing: AnkerSpacing.s1) {
+                    HStack(spacing: AnkerSpacing.s1 + 2) { chipMarks }
+                    chipTitle(lines: 3)
+                }
+            }
+        } else {
+            HStack(spacing: AnkerSpacing.s1 + 2) {
+                chipMarks
+                chipTitle(lines: 2)
+            }
+        }
     }
 
     private var chip: some View {
-        HStack(spacing: AnkerSpacing.s1 + 2) {
-            if showsCheckbox {
-                Button(action: toggle) {
-                    TaskCheckmark(isDone: task.isDone, size: 14)
-                }
-                .buttonStyle(.plain)
-            }
-            if let number {
-                Text(verbatim: number)
-                    .ankerType(AnkerType.caption)
-                    .fontWeight(.heavy)
-                    .monospacedDigit()
-                    .foregroundStyle(task.isDone ? AnkerColor.inkTertiary : AnkerColor.accentInk)
-            }
-            Text(verbatim: task.title)
-                .ankerType(compact ? AnkerType.caption : AnkerType.meta)
-                .foregroundStyle(task.isDone ? AnkerColor.inkTertiary : AnkerColor.ink)
-                .strikethrough(task.isDone, color: AnkerColor.inkTertiary)
-                .lineLimit(2)
-                .multilineTextAlignment(.leading)
-        }
+        chipContent
         .padding(.horizontal, AnkerSpacing.s2 - 1)
         .padding(.vertical, compact ? 4 : 5)
         .frame(maxWidth: compact ? .infinity : nil, alignment: .leading)
@@ -200,8 +242,15 @@ struct TaskChip: View {
         .accessibilityLabel(accessibilityText)
         .accessibilityIdentifier("taskChip")
         .accessibilityAction(named: task.isDone ? "Als offen markieren" : "Als erledigt markieren", toggle)
+        .accessibilityAction(named: "Aufgabe bearbeiten") { showingEditor = true }
+        .accessibilityActions {
+            ForEach(Array(anchors.enumerated()), id: \.element.id) { index, goal in
+                Button("Anker \(index + 1): \(goal.title)") { link(goal) }
+            }
+        }
         .accessibilityAction(named: "Ohne Tag") { unschedule() }
         .accessibilityAction(named: "Verschieben") { showingMove = true }
+        .accessibilityAction(named: "Ohne Anker") { link(nil) }
         .accessibilityAction(named: "In die nächste Woche") { moveToNextWeek() }
         .accessibilityAction(named: "Aufgabe löschen") { delete() }
     }
@@ -214,6 +263,24 @@ struct TaskChip: View {
     @ViewBuilder
     private var menu: some View {
         Button(task.isDone ? "Als offen markieren" : "Als erledigt markieren", action: toggle)
+        Button("Bearbeiten …") { showingEditor = true }
+        Menu("Anker") {
+            ForEach(Array(anchors.enumerated()), id: \.element.id) { index, goal in
+                Button {
+                    link(goal)
+                } label: {
+                    Label(verbatim: "\(index + 1) · \(goal.title)", ankerIcon: task.linkedGoal?.id == goal.id ? .check : .goal)
+                }
+            }
+            if !anchors.isEmpty {
+                Divider()
+            }
+            Button {
+                link(nil)
+            } label: {
+                Label("Ohne Anker", ankerIcon: task.linkedGoal == nil ? .check : .clear)
+            }
+        }
         Button("Verschieben …") { showingMove = true }
         Button("In die nächste Woche", action: moveToNextWeek)
         if task.day != nil {
@@ -250,29 +317,49 @@ struct TaskChip: View {
         TaskActions.delete(task, modelContext: modelContext)
         onUndoableAction?(TaskUndoNotice(message: "Aufgabe gelöscht", snapshots: [snapshot]))
     }
+
+    private func link(_ goal: Goal?) {
+        guard task.linkedGoal?.id != goal?.id else { return }
+        let snapshot = TaskActions.snapshot(task)
+        TaskActions.link(task, to: goal, modelContext: modelContext)
+        onUndoableAction?(TaskUndoNotice(message: goal == nil ? "Anker gelöst" : "Anker gesetzt", snapshots: [snapshot]))
+    }
 }
 
 // MARK: - Ablegen
 
 enum BlattDrop {
     /// Legt die gezogene Aufgabe auf Tag und Anker — `date == nil` heißt „ohne Tag".
+    ///
+    /// Vor dem Ändern entsteht ein Schnappschuss; `onUndoable` bekommt den Rückgängig-Hinweis
+    /// (zum Beispiel `undo.present`). Ein Drop, der nichts ändert, meldet keinen.
     @MainActor
+    @discardableResult
     static func place(
         _ payload: [String],
         on date: Date?,
         goal: Goal?,
         weeks: [Week],
-        modelContext: ModelContext
+        modelContext: ModelContext,
+        onUndoable: (TaskUndoNotice) -> Void = { _ in }
     ) -> Bool {
         guard let raw = payload.first, let id = UUID(uuidString: raw) else { return false }
         let descriptor = FetchDescriptor<AnkerTask>(predicate: #Predicate { $0.id == id })
         guard let task = try? modelContext.fetch(descriptor).first else { return false }
+        // Die Ursprungszeile einer `TaskCard` wartet auf das Drag-Ende, sonst bleibt sie blass.
+        defer { TaskDragEvents.end(taskID: id) }
 
+        let snapshot = TaskActions.snapshot(task)
         if let date {
             TaskActions.place(task, on: date, goalID: goal?.id, weeks: weeks, modelContext: modelContext)
         } else {
             TaskActions.unschedule(task, modelContext: modelContext)
             TaskActions.link(task, to: goal, modelContext: modelContext)
+        }
+
+        let after = TaskActions.snapshot(task)
+        if after.dayID != snapshot.dayID || after.goalID != snapshot.goalID {
+            onUndoable(TaskUndoNotice(message: "Aufgabe verschoben", snapshots: [snapshot]))
         }
         return true
     }
@@ -397,7 +484,7 @@ struct BlattIconButton: View {
                 .ankerIcon(AnkerIconSize.m)
                 .foregroundStyle(AnkerColor.ink)
                 .frame(width: 40, height: 40)
-                .contentShape(Rectangle())
+                .ankerTapTarget(40)
         }
         .buttonStyle(.plain)
         .accessibilityLabel(label)

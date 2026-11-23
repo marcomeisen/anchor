@@ -45,7 +45,7 @@ Code-Identifier sind Englisch.
 | [Anchor/CaptureSyntax.swift](Anchor/CaptureSyntax.swift) | Erfassungssyntax `!a` / `#2` / `mo…so` — reiner Parser |
 | [Anchor/GoalOrdering.swift](Anchor/GoalOrdering.swift) | Ankernummer 1–4 aus `Goal.order` — **nie** über `week.goalList` sortieren |
 | [Anchor/WeekActions.swift](Anchor/WeekActions.swift) | Woche schließen/öffnen, Rückblickantwort, `ReviewReadiness`, `CarryDecision` pro Aufgabe |
-| [Anchor/AnkerStatistics.swift](Anchor/AnkerStatistics.swift), [Anchor/AnkerArchive.swift](Anchor/AnkerArchive.swift), [Anchor/AnkerMatrix.swift](Anchor/AnkerMatrix.swift), [Anchor/SidebarTimeline.swift](Anchor/SidebarTimeline.swift) | Kennzahlen und ältere Logikschichten; von Tests abgedeckt, die Oberfläche von „Blatt" nutzt `WeekSheet` und `ArchiveSummary` |
+| [Anchor/SidebarTimeline.swift](Anchor/SidebarTimeline.swift) | Wochenzeilen der Seitenleiste: sieben Tagesmarken, offene Aufgaben (von `BlattSidebar` benutzt) |
 | **Designtokens** (dürfen die Grundbausteine benutzen, alles andere nicht) | |
 | [Anchor/Theme.swift](Anchor/Theme.swift) | `AnkerColor` (Tinte, Grund, Karte, **ein** Blau), `AnkerSpacing`, `AnkerBorder`, `AnkerRadius` — **keine** Hex-Werte in Views |
 | [Anchor/ThemeType.swift](Anchor/ThemeType.swift), [Anchor/ThemeFont.swift](Anchor/ThemeFont.swift) | `AnkerType` in der Systemschrift, auf iOS mit Dynamic Type skaliert; `.ankerType(_:)` |
@@ -68,7 +68,9 @@ Code-Identifier sind Englisch.
 | [Anchor/OnboardingView.swift](Anchor/OnboardingView.swift) | Zwei Schritte: iCloud-Entscheidung, dann bis zu vier Anker |
 | [Anchor/SettingsView.swift](Anchor/SettingsView.swift), [Anchor/DataPrivacyView.swift](Anchor/DataPrivacyView.swift) | Einstellungen, Daten und Datenschutz |
 | [Anchor/TaskCaptureSheets.swift](Anchor/TaskCaptureSheets.swift), [Anchor/TaskEditorSheets.swift](Anchor/TaskEditorSheets.swift) | Schnellerfassung in der Menüleiste, Aufgaben- und Zieleditor |
-| [Anchor/AnkerComponents.swift](Anchor/AnkerComponents.swift) | `TaskCard` (**die** Aufgabenzeile, mit Kontextmenü, Swipe, Undo), `TaskTitleField`, `TaskCheckmark`, `AnkerTabBar` |
+| [Anchor/AnkerComponents.swift](Anchor/AnkerComponents.swift) | `TaskCard` (**die** Aufgabenzeile, mit Kontextmenü, Swipe, Undo), `TaskTitleField`, `TaskCheckmark`, `ankerTapTarget` |
+| [Anchor/TaskDropHandling.swift](Anchor/TaskDropHandling.swift), [Anchor/AnkerTabBar.swift](Anchor/AnkerTabBar.swift) | Ziehen und Ablegen von Aufgaben (UUID-Text); die Tableiste des iPhones |
+| [Anchor/AppCommands.swift](Anchor/AppCommands.swift) | Mac-Menü „Gehe zu“ (⌘1–3, ⌘[ / ⌘], ⌘F) über `FocusedValue` |
 | [Anchor/AnkerPhoneChrome.swift](Anchor/AnkerPhoneChrome.swift) | Die eigene Kopfzeile des iPhones statt der Systemleiste |
 | [Anchor/CloudSyncStatus.swift](Anchor/CloudSyncStatus.swift) | `CloudSyncStatusCenter` und die Sync-Anzeigen |
 | **Ressourcen, Skripte, Tests** | |
@@ -79,6 +81,8 @@ Code-Identifier sind Englisch.
 | [Scripts/make-app-icons.swift](Scripts/make-app-icons.swift) | Leitet daraus den Katalog ab (iOS randlos ohne Alpha, macOS gerundet mit Haarlinie) |
 | [Scripts/design-guard.swift](Scripts/design-guard.swift) | Grep-Schranken für „Blatt"; `swift Scripts/design-guard.swift` |
 | [AnchorTests/](AnchorTests/) | Unit-Tests (SwiftData in-memory): Kern, Sync-Zusammenführung über zwei Geräte, Zeitzonen, Aufgaben ohne Tag, Kennzahlen, Tokens, Kontrast, Erfassungssyntax |
+| [docs/](docs/) | Öffentliche Seiten für GitHub Pages: Datenschutzerklärung, Hilfe und Kontakt (in `AppLinks` verlinkt) |
+| [AppStore/](AppStore/) | Texte für App Store Connect ([Metadaten.md](AppStore/Metadaten.md)) und Bildschirmfotos |
 | [AnchorUITests/](AnchorUITests/) | Verankern und Erfassen, beide Wochenansichten, Titel bearbeiten (Mac); `PhoneChromeTests` nur iOS |
 
 Alles ist ein einziges Multiplattform-Target (`Anchor`, Produkt `Anchorit.app`); Plattformunterschiede

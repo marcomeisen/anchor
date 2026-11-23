@@ -3,8 +3,8 @@ import SwiftUI
 
 /// Die Erfassungszeile: tippen, Enter, fertig.
 ///
-/// `Angebot prüfen !a #2 mi` — Priorität, Anker und Wochentag als Kürzel. Darunter steht der
-/// **aufgelöste** Stand, also wo die Aufgabe ohne weitere Angabe landet.
+/// `Angebot prüfen #2 mi` — Anker und Wochentag als Kürzel, der Wochentag am Ende der Zeile.
+/// Darunter steht der **aufgelöste** Stand, also wo die Aufgabe ohne weitere Angabe landet.
 ///
 /// Die Woche darf fehlen: sie entsteht erst beim Sichern. Vorher legte schon das Anzeigen eine
 /// Woche an — auf einem neuen Gerät vor dem iCloud-Import, also als Duplikat.
@@ -15,7 +15,7 @@ struct CaptureBar: View {
     let week: Week?
     let weekStart: Date
     let fallbackDate: Date
-    var placeholder = "Was steht an?  ·  1–4 für den Anker"
+    var placeholder = "Was steht an?  ·  #1–#4 Anker, mo–so Tag"
     var onCommitted: (AnkerTask) -> Void = { _ in }
 
     @State private var raw = ""
@@ -55,6 +55,7 @@ struct CaptureBar: View {
                         .foregroundStyle(AnkerColor.onInk)
                         .frame(width: 38, height: 38)
                         .background(AnkerColor.ink, in: RoundedRectangle(cornerRadius: AnkerRadius.inlineButton, style: .continuous))
+                        .ankerTapTarget(38)
                 }
                 .buttonStyle(.plain)
                 .disabled(input.isEmpty)

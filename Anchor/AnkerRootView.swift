@@ -10,6 +10,7 @@ import SwiftUI
 struct AnkerRootView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.horizontalSizeClass) private var horizontalClass
+    @Environment(\.scenePhase) private var scenePhase
 
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
     @AppStorage("onboardingVersion") private var onboardingVersion = 0
@@ -29,6 +30,10 @@ struct AnkerRootView: View {
     @State private var showingSettings = false
     @State private var weekStartTarget: Date?
     @State private var reviewTarget: Date?
+    /// Die Uhr der Oberfläche. Ein `Date()` als Vorgabewert in den Bildschirmen blieb über
+    /// Nacht stehen: „Heute" zeigte gestern, und die Erfassung legte auf gestern. Aktualisiert
+    /// beim Aktivwerden, beim Tageswechsel und bei Zeitsprüngen (Zeitzone, Uhr gestellt).
+    @State private var now = Date()
 
     private let requiredOnboardingVersion = 2
 
@@ -91,6 +96,8 @@ struct AnkerRootView: View {
         // Moment sieht einen halben Bestand. Der Schlüssel wechselt bei jeder Remote-Änderung und
         // beim Ende eines Imports, die kurze Pause bündelt Serien von Änderungen.
         .task(id: maintenanceTrigger) {
+            // Vor dem ersten Import dieser Sitzung sähe das Aufräumen nur den lokalen Bestand.
+            guard !CloudSyncConfiguration.usesCloudKit || cloudSyncStatus.hasCompletedImportThisSession else { return }
             guard cloudSyncStatus.phase != .syncing else { return }
             try? await Task.sleep(for: .seconds(2))
             guard !Task.isCancelled, cloudSyncStatus.phase != .syncing else { return }
@@ -100,12 +107,61 @@ struct AnkerRootView: View {
             storedNavigation = newValue.encoded
         }
         .onOpenURL { url in
-            _ = navigation.apply(url)
+            guard navigation.apply(url) else { return }
+            // `anchorit://review` öffnet den Rückblick der Woche, nicht nur einen Bereich.
+            if navigation.destination == .review {
+                navigation.select(.week)
+                reviewTarget = navigation.weekStart
+            }
         }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active { refreshNow() }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .NSCalendarDayChanged)) { _ in
+            // Kommt auf einem beliebigen Thread an; der Zustand gehört dem Hauptthread.
+            Task { @MainActor in refreshNow() }
+        }
+#if os(iOS)
+        .onReceive(NotificationCenter.default.publisher(for: UIApplication.significantTimeChangeNotification)) { _ in
+            refreshNow()
+        }
+#endif
+        .focusedSceneValue(\.ankerNavigation, needsOnboarding ? nil : $navigation)
+        .focusedSceneValue(\.ankerSceneActions, needsOnboarding ? nil : sceneActions)
     }
 
     private var maintenanceTrigger: String {
-        "\(cloudSyncStatus.remoteChangeCount)-\(cloudSyncStatus.phase == .syncing)"
+        "\(cloudSyncStatus.remoteChangeCount)-\(cloudSyncStatus.phase == .syncing)-\(cloudSyncStatus.hasCompletedImportThisSession)"
+    }
+
+    /// Für die Menübefehle: Setzen und Rückblick gelten der angezeigten Woche, auf Heute der
+    /// laufenden.
+    private var sceneActions: AnkerSceneActions {
+        AnkerSceneActions(
+            showSearch: { showingSearch = true },
+            startWeek: { weekStartTarget = commandWeekStart },
+            review: { reviewTarget = commandWeekStart }
+        )
+    }
+
+    private var commandWeekStart: Date {
+        navigation.topLevel == .week
+            ? navigation.weekStart
+            : AnkerCalendar.weekInterval(containing: now).monday
+    }
+
+    private func refreshNow() {
+        let fresh = Date()
+        // Nur bei einem neuen Kalendertag neu zeichnen — sonst bei jedem Aktivwerden.
+        guard !AnkerCalendar.isSameDay(fresh, now) else { return }
+        let wasOnToday = AnkerCalendar.isSameDay(navigation.dayDate, now)
+        let wasOnCurrentWeek = AnkerCalendar.weekKey(containing: navigation.weekStart) == AnkerCalendar.weekKey(containing: now)
+        now = fresh
+        // Wer auf „heute" stand, steht danach wieder auf heute — nicht auf gestern.
+        if wasOnToday { navigation.dayDate = fresh }
+        if wasOnCurrentWeek && !navigation.isPushed {
+            navigation.weekStart = AnkerCalendar.weekInterval(containing: fresh).monday
+        }
     }
 
     private func sheetFrame<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
@@ -143,7 +199,9 @@ struct AnkerRootView: View {
                     .frame(width: 44, height: 44)
                 AnkerHeaderButton(icon: .settings, label: "Einstellungen öffnen") { showingSettings = true }
             }
-            if cloudSyncStatus.isShowingManualSync || cloudSyncStatus.phase == .issue || cloudSyncStatus.phase == .disabled {
+            // Nur bei einem Problem. „Nur auf diesem Gerät" ist eine bewusste Wahl — das Symbol
+            // daneben zeigt sie, ein Dauerbanner wäre Gängelei.
+            if cloudSyncStatus.isShowingManualSync || cloudSyncStatus.phase == .issue {
                 CloudSyncStatusRow(status: cloudSyncStatus)
                     .padding(.horizontal, AnkerSpacing.screenPadding)
                     .padding(.bottom, AnkerSpacing.s2)
@@ -164,12 +222,13 @@ struct AnkerRootView: View {
         NavigationSplitView(columnVisibility: sidebarVisibility) {
             BlattSidebar(
                 selectedWeekStart: navigation.weekStart,
+                now: now,
                 onSelectWeek: { monday in
                     navigation.moveToWeek(startingAt: monday)
                     navigation.select(.week)
                 },
                 onToday: {
-                    navigation.moveToToday()
+                    navigation.moveToToday(now: now)
                     navigation.select(.week)
                 },
                 onArchive: { navigation.select(.archive) }
@@ -219,7 +278,7 @@ struct AnkerRootView: View {
 
     private var windowHeader: some View {
         let interval = AnkerCalendar.weekInterval(containing: navigation.weekStart)
-        let isCurrent = AnkerCalendar.weekKey(containing: Date()) == AnkerCalendar.weekKey(containing: navigation.weekStart)
+        let isCurrent = AnkerCalendar.weekKey(containing: now) == AnkerCalendar.weekKey(containing: navigation.weekStart)
         return HStack(spacing: AnkerSpacing.s4) {
             BlattIconButton(icon: .sidebar, label: isSidebarVisible ? "Seitenleiste ausblenden" : "Seitenleiste einblenden") {
                 toggleSidebar()
@@ -232,7 +291,7 @@ struct AnkerRootView: View {
                     WeekStepper(
                         onPrevious: { navigation.moveWeek(by: -1) },
                         onNext: { navigation.moveWeek(by: 1) },
-                        onToday: { navigation.moveToToday() },
+                        onToday: { navigation.moveToToday(now: now); navigation.select(.week) },
                         isCurrent: isCurrent
                     )
                     }
@@ -289,8 +348,8 @@ struct AnkerRootView: View {
                 }
             }
 
+            // ⌘F trägt der Menübefehl „Gehe zu › Suchen" (`AnkerCommands`).
             BlattIconButton(icon: .search, label: "Suchen") { showingSearch = true }
-                .keyboardShortcut("f", modifiers: .command)
             CloudSyncStatusBadge(status: cloudSyncStatus)
                 .frame(width: 40, height: 40)
 #if os(iOS)
@@ -308,12 +367,14 @@ struct AnkerRootView: View {
         case .week:
             WeekScreen(
                 weekStart: navigation.weekStart,
+                now: now,
                 onPreviousWeek: { navigation.moveWeek(by: -1) },
                 onNextWeek: { navigation.moveWeek(by: 1) },
-                onToday: { navigation.moveToToday() },
+                onToday: { navigation.moveToToday(now: now); navigation.select(.week) },
                 onOpenAnchor: { navigation.select(.goal($0.id)) },
                 onOpenDay: { navigation.openDay(on: $0) },
                 onStartWeek: { weekStartTarget = navigation.weekStart },
+                onReview: { reviewTarget = navigation.weekStart },
                 showsNavigation: !isWide
             )
         case .archive, .year, .review:
@@ -323,13 +384,14 @@ struct AnkerRootView: View {
             }
         default:
             TodayScreen(
+                now: now,
                 onOpenAnchor: { navigation.select(.goal($0.id)) },
-                onStartWeek: { weekStartTarget = AnkerCalendar.weekInterval(containing: Date()).monday },
+                onStartWeek: { weekStartTarget = AnkerCalendar.weekInterval(containing: now).monday },
                 onOpenWeek: {
-                    navigation.moveToToday()
+                    navigation.moveToToday(now: now)
                     navigation.select(.week)
                 },
-                onReview: { reviewTarget = AnkerCalendar.weekInterval(containing: Date()).monday }
+                onReview: { monday in reviewTarget = monday }
             )
         }
     }
@@ -339,7 +401,7 @@ struct AnkerRootView: View {
         switch destination {
         case .goal(let id):
             if let goal = weeks.lazy.flatMap(\.goalList).first(where: { $0.id == id }) {
-                AnchorScreen(goal: goal) { navigation.popToTopLevel() }
+                AnchorScreen(goal: goal, now: now) { navigation.popToTopLevel() }
             } else {
                 BlattEmptyNote(text: "Dieser Anker ist nicht mehr da — vielleicht auf einem anderen Gerät gelöscht.")
                     .padding(AnkerSpacing.screenPadding)
@@ -351,19 +413,13 @@ struct AnkerRootView: View {
         }
     }
 
-    /// Das Tagesdetail (Fokus, Notizen, Zeitplan) braucht einen Tag zum Hineinschreiben. Er
-    /// entsteht hier, weil das Öffnen eines Tages die ausdrückliche Absicht ist, an ihm zu
-    /// arbeiten — nicht schon beim Blättern durch die Woche.
-    @ViewBuilder
+    /// Das Tagesdetail rendert mit dem Datum allein. Woche und Tag entstehen erst, wenn darin
+    /// etwas geschrieben wird — nicht beim Öffnen, Wiederherstellen oder über `anchorit://day/…`.
     private var dayDetail: some View {
-        let week = TaskActions.ensureWeek(containing: navigation.dayDate, weeks: weeks, modelContext: modelContext)
-        let day = TaskActions.ensureDay(containing: navigation.dayDate, in: week)
         DayDetailView(
-            day: day,
-            week: week,
-            onAddTask: {},
-            onSelectGoal: { navigation.select(.goal($0.id)) },
-            onClose: { navigation.popToTopLevel() }
+            date: navigation.dayDate,
+            now: now,
+            onSelectGoal: { navigation.select(.goal($0.id)) }
         )
     }
 
@@ -395,7 +451,7 @@ struct AnkerRootView: View {
     }
 
     private var currentWeekTitle: String {
-        let interval = AnkerCalendar.weekInterval(containing: Date())
+        let interval = AnkerCalendar.weekInterval(containing: now)
         return AnkerDateFormat.weekSpan(monday: interval.monday, sunday: interval.sunday)
     }
 
@@ -434,6 +490,12 @@ struct AnkerRootView: View {
             switch UserDefaults.standard.string(forKey: "AnchoritTab") {
             case "week": navigation.select(.week)
             case "archive": navigation.select(.archive)
+            case "review":
+                navigation.select(.week)
+                reviewTarget = navigation.weekStart
+            case "setzen":
+                navigation.select(.week)
+                weekStartTarget = navigation.weekStart
             default: break
             }
             return

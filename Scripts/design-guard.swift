@@ -1,6 +1,6 @@
 #!/usr/bin/env swift
 
-// Schranken des Modernist-Designsystems.
+// Schranken des Designsystems „Blatt".
 //
 // Jede Regel des Systemblatts, die sich mechanisch pruefen laesst, steht hier. Aufruf:
 //
@@ -17,6 +17,9 @@ struct Rule {
     let pattern: String
     /// Warum die Regel besteht — der Text steht im Fehlerfall daneben.
     let reason: String
+    /// Ob Zeilen mit `colorHex` uebersprungen werden. Fuer die Farbregel gerade nicht: dort ist
+    /// `Color(hex: goal.colorHex)` der Fall, den sie fangen soll.
+    var skipsColorHexLines = true
 }
 
 let rules = [
@@ -63,6 +66,11 @@ let rules = [
          reason: "Ein Ring ist eine gerundete, geschmueckte Form. AnkerProgressBar benutzen."),
     Rule(label: "Rohhex", pattern: #"Color\((?:hex|light): ""#,
          reason: "Hexwerte stehen nur in Theme.swift."),
+    // Gespeicherte Zielfarben sind Altbestand: „Blatt" kennt genau ein Blau, `goalTint(_:)`
+    // liefert es. Ein `Color(hex:)` in einer View faerbte einen Anker wieder bunt.
+    Rule(label: "Color(hex:)", pattern: #"Color\(hex:"#,
+         reason: "Farben nur aus AnkerColor; Zielfarben ueber AnkerColor.goalTint(_:) — Color(hex:) gehoert nach Theme.swift.",
+         skipsColorHexLines: false),
     Rule(label: "Kreis", pattern: #"(?:Circle|Ellipse)\("#,
          reason: "Marker und Bedienelemente sind Quadrate. Rectangle() benutzen."),
     // Groessen (frame, width, height) bleiben Zahlen — ein 22pt-Kaestchen ist kein Abstand.
@@ -105,7 +113,7 @@ for rule in rules {
         let lines = text.split(separator: "\n", omittingEmptySubsequences: false)
         for (index, rawLine) in lines.enumerated() {
             // `goal.colorHex` ist gespeicherte Nutzereingabe, kein Token.
-            if rawLine.contains("colorHex") { continue }
+            if rule.skipsColorHexLines, rawLine.contains("colorHex") { continue }
             // Ausnahmemarker in der Zeile selbst oder darueber. Bewusst eng: er verlangt eine
             // Begruendung im Klartext daneben, sonst waere es ein Schalter zum Abschalten.
             let marker = "design-guard: erlaubt"

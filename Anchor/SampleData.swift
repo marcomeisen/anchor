@@ -128,6 +128,31 @@ extension SampleData {
             if done, let task { TaskActions.setDone(task, true, modelContext: context) }
         }
         _ = TaskActions.createUnscheduled(title: "Arzttermin vereinbaren", goal: nil, modelContext: context)
+        insertDemoHistory(in: context, before: week.monday)
         context.saveChanges()
+    }
+
+    /// Abgeschlossene Wochen vor der Demowoche — damit Archiv, Jahresraster und Serie etwas
+    /// zeigen. Deterministisch, damit Bildschirmfotos reproduzierbar sind.
+    private static func insertDemoHistory(in context: ModelContext, before monday: Date, weeks count: Int = 30) {
+        let titles = ["Launch vorbereiten", "Dreimal laufen", "Zeit für Familie", "Spanisch lernen",
+                      "Steuer erledigen", "Wohnung streichen", "Vortrag üben", "Früher schlafen"]
+        // Ein Muster aus gehalten (h), teilweise (p) und nicht (m), je Woche bis zu vier Anker.
+        let pattern = ["hhhp", "hhph", "hhhh", "hphm", "hhhh", "hhhh", "phhm", "hhhh", "hmhp", "hhhh",
+                       "hhp", "hhhh", "hhhh", "hhhh", "phhh", "hmph", "hhhh", "hhh", "hphm", "hhhh",
+                       "hhhh", "hhhh", "phmh", "hhhh", "hhph", "hhhh", "hhhh", "hhhh", "hhhh", "hhhp"]
+        for offset in 1...count {
+            guard let date = AnkerCalendar.iso.date(byAdding: .weekOfYear, value: -offset, to: monday) else { continue }
+            let week = TaskActions.ensureWeek(containing: date, weeks: [], modelContext: context)
+            let marks = Array(pattern[(offset - 1) % pattern.count])
+            for (index, mark) in marks.enumerated() {
+                let title = titles[(offset + index * 3) % titles.count]
+                let goal = Goal(title: title, colorHex: AnkerColor.goalTintOptions[0], order: index, week: week)
+                goal.verdict = mark == "h" ? .held : (mark == "p" ? .partial : .missed)
+                context.insert(goal)
+                week.appendGoal(goal)
+            }
+            week.reviewedAt = AnkerCalendar.iso.date(byAdding: .day, value: 6, to: week.monday)
+        }
     }
 }

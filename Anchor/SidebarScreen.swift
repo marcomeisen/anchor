@@ -65,11 +65,17 @@ struct BlattSidebar: View {
                 .ankerType(AnkerType.overline)
                 .foregroundStyle(AnkerColor.inkSecond)
             Spacer()
-            Button("Heute", action: onToday)
-                .ankerType(AnkerType.label)
-                .foregroundStyle(AnkerColor.accentInk)
-                .buttonStyle(.plain)
-                .accessibilityLabel("Zur laufenden Woche")
+            Button(action: onToday) {
+                Text("Heute")
+                    .ankerType(AnkerType.label)
+                    .foregroundStyle(AnkerColor.accentInk)
+#if os(iOS)
+                    .frame(minWidth: 44, minHeight: 44)
+#endif
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Zur laufenden Woche")
         }
         .padding(.horizontal, AnkerSpacing.s4)
 #if os(macOS)

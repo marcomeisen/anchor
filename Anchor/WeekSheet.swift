@@ -28,16 +28,32 @@ struct WeekSheet {
     let week: Week?
     let dates: [Date]
     let lanes: [Lane]
+    /// Ob der Eingang in der losen Bahn steht.
+    let includesInbox: Bool
 
-    init(monday: Date, weeks: [Week], inbox: [AnkerTask]) {
+    /// - Parameters:
+    ///   - inbox: Aufgaben ohne Tag und ohne Anker. Sie gehören zu **keiner** Woche.
+    ///   - now: Bestimmt die laufende Woche.
+    ///   - includesInbox: `nil` (Standard) heißt: nur in der laufenden Woche.
+    ///
+    /// **Der Eingang steht nur auf dem Blatt der laufenden Woche.** Vorher stand er in der
+    /// losen Bahn jeder Woche — in der Vorwoche, im Archiv, in einer Woche in drei Monaten —,
+    /// und der Rückblick einer vergangenen Woche zählte ihn als „offen geblieben", obwohl er
+    /// nie zu ihr gehörte. Der Eingang ist das, was *jetzt* noch keinen Platz hat; also steht
+    /// er dort, wo jetzt geplant wird. Wer ihn anderswo braucht, gibt `includesInbox: true`.
+    init(monday: Date, weeks: [Week], inbox: [AnkerTask], now: Date = Date(), includesInbox: Bool? = nil) {
         let interval = AnkerCalendar.weekInterval(containing: monday)
         self.monday = interval.monday
         self.dates = AnkerCalendar.daysInWeek(starting: interval.monday)
         let week = WeekPlanning.week(startingAt: interval.monday, in: weeks)
         self.week = week
+        let showsInbox = includesInbox
+            ?? (AnkerCalendar.weekKey(containing: now) == AnkerCalendar.weekKey(containing: interval.monday))
+        self.includesInbox = showsInbox
+        let inbox = showsInbox ? inbox.filter { !$0.isDeleted && $0.day == nil && $0.linkedGoal == nil } : []
 
         guard let week else {
-            lanes = [Lane(goal: nil, number: nil, tasks: inbox)]
+            lanes = [Lane(goal: nil, number: nil, tasks: Self.sorted(inbox))]
             return
         }
 
@@ -48,13 +64,30 @@ struct WeekSheet {
 
         // Ohne Anker: was an einem Tag dieser Woche liegt und keinen der vier Anker hat —
         // auch Aufgaben eines fünften Ziels, das über das Limit gerutscht ist — plus der Eingang.
+        // Jede Aufgabe steht genau einmal auf dem Blatt; doppelte Kanten aus dem Sync (eine
+        // Aufgabe in zwei Tageslisten) dürfen sie nicht zweimal zählen.
         let anchorIDs = Set(anchors.map(\.id))
+        var seen = Set(anchorLanes.flatMap(\.tasks).map(\.id))
         let looseScheduled = week.dayList
+            .filter { !$0.isDeleted }
             .flatMap(\.taskList)
             .filter { task in !task.isDeleted && !(task.linkedGoal.map { anchorIDs.contains($0.id) } ?? false) }
-        let looseUnscheduled = GoalOrdering.excess(in: week).flatMap { $0.taskList.filter { $0.day == nil } }
-        anchorLanes.append(Lane(goal: nil, number: nil, tasks: Self.sorted(looseScheduled + looseUnscheduled + inbox)))
+        let looseUnscheduled = GoalOrdering.excess(in: week).flatMap { $0.taskList.filter { !$0.isDeleted && $0.day == nil } }
+        let loose = (looseScheduled + looseUnscheduled + inbox).filter { seen.insert($0.id).inserted }
+        anchorLanes.append(Lane(goal: nil, number: nil, tasks: Self.sorted(loose)))
         lanes = anchorLanes
+    }
+
+    /// Das Blatt einer gespeicherten Woche, über ihren gemeinten Montag — `week.monday` ist
+    /// Mitternacht in der Zone des anlegenden Geräts und läge westlich davon in der Vorwoche.
+    init(week: Week, inbox: [AnkerTask] = [], now: Date = Date(), includesInbox: Bool? = nil) {
+        self.init(
+            monday: AnkerCalendar.nominalDate(ofStored: week.monday),
+            weeks: [week],
+            inbox: inbox,
+            now: now,
+            includesInbox: includesInbox
+        )
     }
 
     var anchorLanes: [Lane] { lanes.filter { !$0.isLoose } }

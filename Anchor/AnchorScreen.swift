@@ -19,19 +19,15 @@ struct AnchorScreen: View {
 
     private var week: Week? { goal.week }
 
-    private var sheet: WeekSheet? {
-        week.map { WeekSheet(monday: $0.monday, weeks: weeks, inbox: inbox) }
-    }
-
-    private var lane: WeekSheet.Lane? {
-        sheet?.anchorLanes.first { $0.goal?.id == goal.id }
-    }
-
     var body: some View {
+        // Einmal pro Durchlauf — als berechnete Eigenschaften baute jeder Zugriff ein neues Blatt.
+        let sheet = week.map { WeekSheet(monday: $0.monday, weeks: weeks, inbox: inbox) }
+        let lane = sheet?.anchorLanes.first { $0.goal?.id == goal.id }
+
         ScrollView {
             VStack(alignment: .leading, spacing: AnkerSpacing.s5) {
-                header
-                progress
+                header(lane: lane)
+                progress(lane: lane)
                 if let sheet, let lane {
                     days(sheet: sheet, lane: lane)
                 }
@@ -68,7 +64,7 @@ struct AnchorScreen: View {
         .goalDeleteConfirmation(goal: $goalPendingDeletion, week: week, onDeleted: onDeleted)
     }
 
-    private var header: some View {
+    private func header(lane: WeekSheet.Lane?) -> some View {
         VStack(alignment: .leading, spacing: AnkerSpacing.s3) {
             HStack {
                 if let week {
@@ -81,15 +77,17 @@ struct AnchorScreen: View {
                     Button("Bearbeiten") { editing = true }
                     Button("Anker löschen", role: .destructive) { goalPendingDeletion = goal }
                 } label: {
-                    Text("Bearbeiten")
-                        .ankerType(AnkerType.label)
+                    Image(.more)
+                        .ankerIcon(AnkerIconSize.m)
                         .foregroundStyle(AnkerColor.ink)
-                        .padding(.horizontal, AnkerSpacing.s3)
-                        .frame(minHeight: 36)
-                        .ankerControl()
+                        .frame(width: 44, height: 44)
+                        .contentShape(Rectangle())
                 }
                 .menuStyle(.borderlessButton)
+                .menuIndicator(.hidden)
                 .fixedSize()
+                .accessibilityLabel("Ankeraktionen")
+                .help("Ankeraktionen")
             }
 
             HStack(alignment: .top, spacing: AnkerSpacing.s3) {
@@ -118,7 +116,7 @@ struct AnchorScreen: View {
         }
     }
 
-    private var progress: some View {
+    private func progress(lane: WeekSheet.Lane?) -> some View {
         let done = lane?.doneCount ?? 0
         let total = lane?.tasks.count ?? 0
         return VStack(alignment: .leading, spacing: AnkerSpacing.s2) {
@@ -193,6 +191,8 @@ struct AnchorScreen: View {
                     .foregroundStyle(AnkerColor.onInk)
                     .frame(width: 38, height: 38)
                     .background(AnkerColor.ink, in: RoundedRectangle(cornerRadius: AnkerRadius.inlineButton, style: .continuous))
+                    .frame(minWidth: 44, minHeight: 44)
+                    .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
             .disabled(newTitle.trimmingCharacters(in: .whitespaces).isEmpty)

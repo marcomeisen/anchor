@@ -53,7 +53,7 @@ gehören zusätzlich als Swipe. Swipe-Überladung ist explizit unerwünscht.
 |---|---|---|---|---|
 | Erledigt / offen | Leading, Full-Swipe | ✓ oben | `⌘.` | `.impactLight` |
 | Löschen | Trailing, destruktiv | 🗑 unten, isoliert | `⌘⌫` | `.notificationSuccess` |
-| Verschieben | Trailing, gezielter Tap | 📅 Untermenü | `⌘⇧M` | `.impactMedium` |
+| Verschieben | Trailing, gezielter Tap | 📅 Untermenü | — (kein Zeilenkürzel, siehe unten) | `.impactMedium` |
 | Priorität A/B/C | — | ⚑ Untermenü | `⌘1`/`⌘2`/`⌘3` | `.impactLight` |
 | Mit Ziel verknüpfen | — | 🎯 Untermenü | — | `.impactLight` |
 | Duplizieren | — | 📋 | `⌘D` | `.impactLight` |
@@ -75,7 +75,7 @@ Der Zuschnitt läuft über `#if os(macOS)` in `TaskCard` und die beiden Helper
 - Kontextmenü **ohne** `preview:` — macOS unterstützt das nicht
 - Drag: `NSItemProvider(object: task.id.uuidString as NSString)` + `TaskDragPreviewCard`, Ursprungszeile auf `opacity 0.35`
 - Drop-Ende über `TaskDragEvents.end(taskID:)`; ein 8-s-Watchdog setzt `isDragging` zurück, falls kein Drop-Ende kommt
-- Verschieben ohne Sheet: Hover-Aktion und `⌘⇧M` verschieben direkt in die nächste Woche
+- Verschieben ohne Sheet: die Hover-Aktion verschiebt direkt in die nächste Woche. **Keine Tastenkürzel an Zeilen oder Kontextmenüeinträgen:** jede sichtbare Zeile registrierte dasselbe Kürzel, mit vielen Zeilen war es mehrdeutig, und Kürzel an Menüeinträgen greifen nur bei offenem Menü. Globale Befehle stehen im Menü „Gehe zu“ (`AppCommands.swift`)
 
 **iPhone**
 - `.swipeActions(edge: .leading, allowsFullSwipe: true)` → erledigt/offen, `.tint(AnkerColor.accentFill)`
@@ -91,7 +91,7 @@ Die Wochen der Seitenleiste nutzen `TaskDropHandling.loadTaskID` — damit komme
 `String`-Payload.
 
 Aufgaben werden als reine UUID-Zeichenkette gezogen. Jedes Drop-Ziel nutzt `TaskDropHandling`
-(in `AnkerComponents.swift`) statt die drei Schritte erneut zu implementieren:
+(in `TaskDropHandling.swift`) statt die drei Schritte erneut zu implementieren:
 
 ```swift
 .onDrop(of: TaskDropHandling.draggedTypes, isTargeted: …) { providers in

@@ -59,6 +59,15 @@ enum AppSettingsKey {
     static let startupViewMode = "startupViewMode"
     static let cloudSyncEnabled = "cloudSyncEnabled"
     static let hasChosenCloudSync = "hasChosenCloudSync"
+    static let hasCompletedOnboarding = "hasCompletedOnboarding"
+}
+
+/// Öffentliche Seiten zur App. App Store Connect verlangt beide URLs, Richtlinie 5.1.1(i)
+/// zusätzlich den Link zur Datenschutzerklärung in der App selbst. Ein `Link` öffnet den
+/// Browser — die App selbst baut keine Netzwerkverbindung auf.
+enum AppLinks {
+    static let privacyPolicy = URL(string: "https://marcomeisen.github.io/anchor/datenschutz.html")!
+    static let support = URL(string: "https://marcomeisen.github.io/anchor/support.html")!
 }
 
 /// Welche Ansicht beim Start geöffnet wird.
@@ -186,8 +195,12 @@ enum AppearanceMode: String, CaseIterable, Identifiable {
 /// Umschaltung, die halb funktioniert.
 @MainActor
 enum CloudSyncPreference {
-    /// Standard ist eingeschaltet: bestehende Installationen synchronisieren bereits, und ein
-    /// stiller Wechsel auf "aus" waere aus Nutzersicht ein Datenverlust.
+    /// Ohne gespeicherte Wahl entscheidet, ob das Onboarding schon durchlaufen ist:
+    /// - **Bestehende Installationen** (Onboarding fertig) synchronisierten bisher — für sie
+    ///   bleibt es an. Ein stiller Wechsel auf „aus" wäre aus Nutzersicht ein Datenverlust.
+    /// - **Ein frisches Gerät** überträgt nichts, bevor gefragt wurde. Vorher war der Sync
+    ///   auch hier an, und wer „Nur auf diesem Gerät" wählte, hatte seine ersten Anker
+    ///   trotzdem schon in iCloud — gegen die eigene, ausdrückliche Wahl.
     ///
     /// Im UI-Test **immer** aus, und zwar hier statt ueber einen geschriebenen Wert: der Testmodus
     /// darf keine Einstellung hinterlassen, die den naechsten echten Start ueberlebt.
@@ -195,7 +208,10 @@ enum CloudSyncPreference {
 #if DEBUG
         if UITestMode.isActive { return false }
 #endif
-        return defaults.object(forKey: AppSettingsKey.cloudSyncEnabled) as? Bool ?? true
+        if let stored = defaults.object(forKey: AppSettingsKey.cloudSyncEnabled) as? Bool {
+            return stored
+        }
+        return defaults.bool(forKey: AppSettingsKey.hasCompletedOnboarding)
     }
 
     /// Hat der Nutzer die Frage im Onboarding schon beantwortet?
@@ -216,7 +232,14 @@ enum CloudSyncPreference {
 
     /// Der Wert, mit dem dieser Prozess gestartet ist. Wird beim ersten Zugriff festgeschrieben
     /// und aendert sich danach nicht mehr — auch nicht, wenn der Nutzer die Einstellung umlegt.
-    static let activeAtLaunch: Bool = isEnabled()
+    ///
+    /// Einzige Ausnahme: `AnkerStoreHolder.enableCloudSyncNow()` im Onboarding. Dort lief der
+    /// Store noch nie mit CloudKit, ein Neuaufbau mit Sync ist also kein zweites Spiegeln.
+    private(set) static var activeAtLaunch: Bool = isEnabled()
+
+    static func markEnabledAtRuntime() {
+        activeAtLaunch = true
+    }
 
     /// Weicht die Einstellung von dem ab, was gerade laeuft?
     static var needsRestart: Bool {

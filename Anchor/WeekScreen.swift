@@ -33,6 +33,8 @@ struct WeekScreen: View {
     var onOpenAnchor: (Goal) -> Void
     var onOpenDay: (Date) -> Void
     var onStartWeek: () -> Void
+    /// Rückblick der angezeigten Woche. Auf Mac und iPad trägt ihn der Fensterkopf.
+    var onReview: () -> Void = {}
     /// Auf Mac und iPad sitzt die Wochennavigation im Fensterkopf.
     var showsNavigation = true
 
@@ -86,7 +88,7 @@ struct WeekScreen: View {
                     week: sheet.week,
                     weekStart: sheet.monday,
                     fallbackDate: sheet.dates.first { BlattDates.isToday($0, now: now) } ?? sheet.monday,
-                    placeholder: "Was steht an?  ·  1–4 Anker, mo–so Tag"
+                    placeholder: "Was steht an?  ·  #1–#4 Anker, mo–so Tag"
                 )
                 .frame(maxWidth: 640)
             }
@@ -126,6 +128,21 @@ struct WeekScreen: View {
                     }
                 }
             }
+            if !isWide {
+                // Auf dem iPhone gibt es keinen Fensterkopf: Setzen und Rückblick der angezeigten
+                // Woche stehen deshalb hier — für jede Woche, nicht nur sonntags auf Heute.
+                HStack(spacing: AnkerSpacing.s2) {
+                    if sheet.anchorLanes.count < 4 && !sheet.anchorLanes.isEmpty {
+                        Button("Anker setzen", action: onStartWeek)
+                            .buttonStyle(AnkerButtonStyle.secondary)
+                    }
+                    Spacer(minLength: 0)
+                    if sheet.week != nil {
+                        Button(sheet.week?.isReviewed == true ? "Rückblick ansehen" : "Rückblick", action: onReview)
+                            .buttonStyle(AnkerButtonStyle.secondary)
+                    }
+                }
+            }
         }
     }
 
@@ -151,13 +168,17 @@ struct WeekScreen: View {
                     .ankerType(AnkerType.caption)
                     .foregroundStyle(AnkerColor.accentInk)
                 Spacer()
-                Button("Abbrechen") { self.placing = nil }
-                    .ankerType(AnkerType.caption)
-                    .foregroundStyle(AnkerColor.inkSecond)
-                    .buttonStyle(.plain)
+                Button { self.placing = nil } label: {
+                    Text("Abbrechen")
+                        .ankerType(AnkerType.caption)
+                        .foregroundStyle(AnkerColor.inkSecond)
+                        .frame(minWidth: 44, minHeight: 44)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
             }
             .padding(.horizontal, AnkerSpacing.s3)
-            .frame(minHeight: 36)
+            .frame(minHeight: 44)
             .ankerCard(fill: AnkerColor.accentTint, elevated: false)
         }
         if !unplanned.isEmpty || (placing != nil && placing?.day == nil) {
@@ -273,7 +294,7 @@ struct WeekScreen: View {
                             .ankerType(AnkerType.bodyStrong)
                             .foregroundStyle(AnkerColor.ink)
                         Spacer()
-                        Text(verbatim: lane.isLoose ? "\(lane.tasks.count) Aufgaben" : "\(lane.doneCount) von \(lane.tasks.count)")
+                        Text(verbatim: lane.isLoose ? BlattCount.tasks(lane.tasks.count) : "\(lane.doneCount) von \(lane.tasks.count)")
                             .ankerType(AnkerType.caption)
                             .monospacedDigit()
                             .foregroundStyle(AnkerColor.inkSecond)
@@ -291,12 +312,16 @@ struct WeekScreen: View {
                         TaskChip(task: task, showsCheckbox: true, onUndoableAction: undo.present)
                         Spacer(minLength: AnkerSpacing.s2)
                         if task.day == nil && !task.isDone {
-                            Button("Tag wählen") {
+                            Button {
                                 placing = task
                                 layout.wrappedValue = .byDay
+                            } label: {
+                                Text("Tag wählen")
+                                    .ankerType(AnkerType.caption)
+                                    .foregroundStyle(AnkerColor.accentInk)
+                                    .frame(minWidth: 44, minHeight: 44)
+                                    .contentShape(Rectangle())
                             }
-                            .ankerType(AnkerType.caption)
-                            .foregroundStyle(AnkerColor.accentInk)
                             .buttonStyle(.plain)
                         } else if let day = task.day {
                             Text(verbatim: BlattDates.isToday(day.date, now: now) ? "Heute" : AnkerDateFormat.weekdayShort(day.date))
@@ -354,6 +379,11 @@ struct WeekStepper: View {
                 .foregroundStyle(AnkerColor.ink)
                 .frame(width: 40, height: 40)
                 .ankerControl()
+#if os(iOS)
+                // Die Kachel bleibt 40pt, die Tippfläche ist Apples Mindestmaß.
+                .frame(minWidth: 44, minHeight: 44)
+#endif
+                .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .accessibilityLabel(label)
@@ -392,8 +422,30 @@ struct WeekOverviewGrid: View {
         }
         .padding(AnkerSpacing.s3)
         .ankerCard()
-        .accessibilityElement()
-        .accessibilityLabel("Überblick: vier Anker über sieben Tage")
+        // Ein Element pro Anker statt vierzig Zellen: „Anker 1, Launch: Montag 2 Aufgaben, 1 erledigt; …"
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(overviewLabel)
+        .accessibilityChildren {
+            ForEach(sheet.anchorLanes) { lane in
+                Text(verbatim: rowLabel(lane))
+            }
+        }
+    }
+
+    private var overviewLabel: String {
+        let count = sheet.anchorLanes.count
+        return "Überblick: \(count == 1 ? "ein Anker" : "\(count) Anker") über sieben Tage"
+    }
+
+    private func rowLabel(_ lane: WeekSheet.Lane) -> String {
+        let days = sheet.dates.map { date -> String in
+            let tasks = sheet.tasks(in: lane, on: date)
+            let name = AnkerDateFormat.weekdayLong(date)
+            guard !tasks.isEmpty else { return "\(name) keine" }
+            let done = tasks.filter(\.isDone).count
+            return "\(name) \(BlattCount.tasks(tasks.count)), \(done) erledigt"
+        }
+        return "Anker \(lane.numberLabel), \(lane.title): " + days.joined(separator: "; ")
     }
 
     private func cell(_ tasks: [AnkerTask], isToday: Bool) -> some View {
@@ -430,25 +482,31 @@ struct WeekGrid: View {
     var onOpenAnchor: (Goal) -> Void
     var onOpenDay: (Date) -> Void
 
-    private let anchorColumn: CGFloat = 210
-    private let looseColumn: CGFloat = 150
+    private let looseColumn: CGFloat = 116
 
-    /// Unter dieser Breite wird ein Chip unlesbar; dann scrollt das Raster waagerecht.
-    private let minimumDayColumn: CGFloat = 112
+    /// Unter dieser Breite wird ein Chip unlesbar; dann scrollt das Raster waagerecht. Mit
+    /// 150 + 116 + 7 × 84 = 854 passt das Raster bei 960pt Inhalt samt Rand ohne Querscroll.
+    private let minimumDayColumn: CGFloat = 84
+
+    /// Die Ankerspalte wächst mit dem Fenster, aber nie unter 150 und nie über 210.
+    static func anchorColumnWidth(for available: CGFloat) -> CGFloat {
+        min(210, max(150, (available * 0.18).rounded()))
+    }
 
     var body: some View {
         GeometryReader { proxy in
             // Die Polsterung liegt außen, die Breite kommt aus dem Fenster: so füllt das Raster
             // den Platz, statt bei breitem Fenster in der Mitte zu hängen.
             let available = proxy.size.width - 2 * AnkerSpacing.screenPadding
+            let anchorColumn = Self.anchorColumnWidth(for: available)
             let minimum = anchorColumn + looseColumn + 7 * minimumDayColumn
-            ScrollView([.vertical, .horizontal]) {
+            ScrollView(available < minimum ? [.vertical, .horizontal] : .vertical) {
                 VStack(spacing: 0) {
-                    headerRow
+                    headerRow(anchorColumn: anchorColumn)
                     AnkerRule()
                     ForEach(Array(sheet.lanes.enumerated()), id: \.element.id) { index, lane in
                         if index > 0 { AnkerRule(weight: lane.isLoose ? .section : .row) }
-                        row(lane)
+                        row(lane, anchorColumn: anchorColumn)
                     }
                 }
                 .ankerCard()
@@ -460,7 +518,7 @@ struct WeekGrid: View {
         }
     }
 
-    private var headerRow: some View {
+    private func headerRow(anchorColumn: CGFloat) -> some View {
         HStack(spacing: 0) {
             Color.clear.frame(width: anchorColumn, height: 40)
             ForEach(Array(sheet.dates.enumerated()), id: \.offset) { index, date in
@@ -490,7 +548,7 @@ struct WeekGrid: View {
         }
     }
 
-    private func row(_ lane: WeekSheet.Lane) -> some View {
+    private func row(_ lane: WeekSheet.Lane, anchorColumn: CGFloat) -> some View {
         HStack(alignment: .top, spacing: 0) {
             laneHeader(lane)
                 .frame(width: anchorColumn, alignment: .topLeading)
@@ -557,8 +615,38 @@ struct WeekGrid: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .contentShape(Rectangle())
         .dropDestination(for: String.self) { items, _ in
-            BlattDrop.place(items, on: date, goal: lane.goal, weeks: weeks, modelContext: modelContext)
+            drop(items, on: date, goal: lane.goal)
         }
+    }
+
+    /// Snapshot vor der Mutation, damit „Rückgängig" die Aufgabe genau zurücklegt.
+    private func drop(_ items: [String], on date: Date?, goal: Goal?) -> Bool {
+        guard let task = WeekDropSupport.task(from: items, modelContext: modelContext) else { return false }
+        let id = task.id
+        let snapshot = TaskActions.snapshot(task)
+        let placed: Bool = BlattDrop.place(items, on: date, goal: goal, weeks: weeks, modelContext: modelContext)
+        TaskDragEvents.end(taskID: id)
+        if placed {
+            let message = date.map { "Auf \(AnkerDateFormat.weekdayLong($0)) gelegt" } ?? "Ohne Tag gelegt"
+            undo.present(TaskUndoNotice(message: message, snapshots: [snapshot]))
+        }
+        return placed
+    }
+}
+
+/// Gemeinsames der beiden Drop-Ziele der Woche.
+enum WeekDropSupport {
+    @MainActor
+    static func task(from items: [String], modelContext: ModelContext) -> AnkerTask? {
+        guard let raw = items.first, let id = UUID(uuidString: raw) else { return nil }
+        return try? modelContext.fetch(FetchDescriptor<AnkerTask>(predicate: #Predicate { $0.id == id })).first
+    }
+}
+
+/// Zählwörter mit richtiger Einzahl.
+enum BlattCount {
+    static func tasks(_ count: Int) -> String {
+        count == 1 ? "1 Aufgabe" : "\(count) Aufgaben"
     }
 }
 
@@ -586,6 +674,20 @@ struct WeekColumns: View {
         }
     }
 
+    @ViewBuilder
+    private func dayLabel(for task: AnkerTask) -> some View {
+        if let day = task.day {
+            let isToday = BlattDates.isToday(day.date, now: now)
+            Text(verbatim: isToday ? "Heute" : AnkerDateFormat.weekdayShort(day.date))
+                .ankerType(AnkerType.microLabel)
+                .foregroundStyle(isToday ? AnkerColor.accentInk : AnkerColor.inkSecond)
+        } else {
+            Text("Ohne Tag")
+                .ankerType(AnkerType.microLabel)
+                .foregroundStyle(AnkerColor.inkTertiary)
+        }
+    }
+
     private func column(_ lane: WeekSheet.Lane) -> some View {
         VStack(alignment: .leading, spacing: AnkerSpacing.s3) {
             Button {
@@ -597,7 +699,7 @@ struct WeekColumns: View {
                             .ankerType(AnkerType.title3)
                             .foregroundStyle(lane.isLoose ? AnkerColor.inkTertiary : AnkerColor.ink)
                         Spacer()
-                        Text(verbatim: lane.isLoose ? "\(lane.tasks.count) Aufgaben" : "\(lane.doneCount) von \(lane.tasks.count)")
+                        Text(verbatim: lane.isLoose ? BlattCount.tasks(lane.tasks.count) : "\(lane.doneCount) von \(lane.tasks.count)")
                             .ankerType(AnkerType.caption)
                             .monospacedDigit()
                             .foregroundStyle(AnkerColor.inkSecond)
@@ -619,19 +721,13 @@ struct WeekColumns: View {
             .buttonStyle(.plain)
             .disabled(lane.isLoose)
 
-            VStack(alignment: .leading, spacing: AnkerSpacing.s0) {
+            VStack(alignment: .leading, spacing: AnkerSpacing.s2) {
                 ForEach(lane.tasks) { task in
-                    HStack(spacing: AnkerSpacing.s2) {
+                    // Der Tag steht über dem Chip, nicht daneben: in schmalen Spalten (iPad mit
+                    // Seitenleiste) blieb dem Titel neben „Heute" sonst kaum Breite.
+                    VStack(alignment: .leading, spacing: AnkerSpacing.s0) {
+                        dayLabel(for: task)
                         TaskChip(task: task, compact: true, showsCheckbox: true, onUndoableAction: undo.present)
-                        if let day = task.day {
-                            Text(verbatim: BlattDates.isToday(day.date, now: now) ? "Heute" : AnkerDateFormat.weekdayShort(day.date))
-                                .ankerType(AnkerType.microLabel)
-                                .foregroundStyle(BlattDates.isToday(day.date, now: now) ? AnkerColor.accentInk : AnkerColor.inkSecond)
-                        } else {
-                            Text("ohne Tag")
-                                .ankerType(AnkerType.microLabel)
-                                .foregroundStyle(AnkerColor.inkTertiary)
-                        }
                     }
                 }
             }
@@ -642,10 +738,14 @@ struct WeekColumns: View {
         .modifier(LaneSurface(isLoose: lane.isLoose))
         .contentShape(Rectangle())
         .dropDestination(for: String.self) { items, _ in
-            guard let raw = items.first, let id = UUID(uuidString: raw),
-                  let task = try? modelContext.fetch(FetchDescriptor<AnkerTask>(predicate: #Predicate { $0.id == id })).first
-            else { return false }
+            guard let task = WeekDropSupport.task(from: items, modelContext: modelContext) else { return false }
+            let snapshot = TaskActions.snapshot(task)
             TaskActions.link(task, to: lane.goal, modelContext: modelContext)
+            TaskDragEvents.end(taskID: task.id)
+            undo.present(TaskUndoNotice(
+                message: lane.goal == nil ? "Ohne Anker gelegt" : "An Anker \(lane.numberLabel) gehängt",
+                snapshots: [snapshot]
+            ))
             return true
         }
     }

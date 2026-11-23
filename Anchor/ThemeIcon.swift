@@ -31,12 +31,10 @@ struct AnkerIcon: Sendable, Hashable {
     static let more = AnkerIcon("lucide-ellipsis")
     static let chevronLeft = AnkerIcon("lucide-chevron-left")
     static let chevronRight = AnkerIcon("lucide-chevron-right")
-    static let chevronDown = AnkerIcon("lucide-chevron-down")
 
     // MARK: - Aufgaben und Ziele
 
     static let add = AnkerIcon("lucide-plus")
-    static let addCircle = AnkerIcon("lucide-circle-plus")
     /// Der Anker als **Balken**, nicht als Zielscheibe.
     ///
     /// Runde 1 hat den Fortschrittsring ueberall durch einen Balken ersetzt; ein Anker ist in
@@ -93,21 +91,15 @@ struct AnkerIcon: Sendable, Hashable {
     static let cloudOff = AnkerIcon("lucide-cloud-off")
     static let refresh = AnkerIcon("lucide-refresh-cw")
 
-    // MARK: - Hinweise
-
-    static let warning = AnkerIcon("lucide-triangle-alert")
-    static let info = AnkerIcon("lucide-circle-alert")
-
     /// Fuer die Designsystem-Galerie und den Test, der prueft, dass jedes Asset existiert.
     static let all: [AnkerIcon] = [
-        today, week, year, more, chevronLeft, chevronRight, chevronDown,
-        add, addCircle, goal, check, checkCircle, checkCircleLarge, open,
+        today, week, year, more, chevronLeft, chevronRight,
+        add, goal, check, checkCircle, checkCircleLarge, open,
         delete, edit, duplicate, move, undo, priority, clear,
         nextMonth, previousMonth, pickDate, tomorrow, time,
         search, settings, privacy, note, archive, sidebar, share,
         appearanceLight, appearanceDark, appearanceSystem,
         cloud, cloudSynced, cloudUploading, cloudOff, refresh,
-        warning, info,
     ]
 }
 

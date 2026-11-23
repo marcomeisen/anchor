@@ -18,33 +18,6 @@ struct SectionLabel: View {
     }
 }
 
-struct PriorityTag: View {
-    let priority: Priority
-
-    /// Die Marke traegt Schrift, also muss jede Stufe 4,5:1 mit `onAccent` halten.
-    ///
-    /// Deshalb **nicht** `accentMark`: das ist die 3:1-Markenfarbe fuer Linien und Icons, und mit
-    /// einem Buchstaben darauf kam sie auf 4,20:1. Die Stufen laufen jetzt ueber die Rampe —
-    /// A tiefer als B, C aus der Textrampe.
-    var color: Color {
-        switch priority {
-        case .a: AnkerColor.accent[700]
-        case .b: AnkerColor.accentFill
-        case .c: AnkerColor.inkSecond
-        }
-    }
-
-    var body: some View {
-        Text(priority.label)
-            .ankerType(AnkerType.microLabel)
-            .foregroundStyle(AnkerColor.onAccent)
-            .padding(.horizontal, AnkerSpacing.s1)
-            .padding(.vertical, AnkerSpacing.s1)
-            .background(color, in: Rectangle())
-            .accessibilityLabel("Priorität \(priority.label)")
-    }
-}
-
 struct TaskCheckmark: View {
     let isDone: Bool
     /// Die Tagesliste hat Platz fuer 22pt, der Matrixchip in einer 108pt-Spalte nicht.
@@ -165,7 +138,6 @@ struct TaskTitleField: View {
 struct TaskCard: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @Query(sort: \Week.monday) private var weeks: [Week]
 
     /// Was in der Metazeile steht.
     ///
@@ -193,8 +165,15 @@ struct TaskCard: View {
     @State private var isHovering = false
     @State private var isDragging = false
 
-    private var isActionable: Bool {
+    /// Aufgaben ohne Tag sind vollwertig: nur was sich auf *ihren* Tag bezieht (Morgen, ein
+    /// Tag dieser Woche), entfällt — sie haben keinen.
+    private var hasDay: Bool {
         task.day != nil
+    }
+
+    /// Die Woche, zu der die Aufgabe gehört: über ihren Tag oder, ohne Tag, über ihren Anker.
+    private var owningWeek: Week? {
+        task.day?.week ?? task.linkedGoal?.week
     }
 
     /// „Anker 2 · Security-Review" oder „Ohne Anker".
@@ -209,7 +188,7 @@ struct TaskCard: View {
 
     private var priorityColor: Color {
         switch task.priority {
-        case .a: AnkerColor.accentInk
+        case .a: AnkerColor.ink
         case .b: AnkerColor.inkSecond
         case .c: AnkerColor.inkTertiary
         }
@@ -222,6 +201,7 @@ struct TaskCard: View {
                     onSelectionToggle?()
                 } label: {
                     SelectionCheckmark(isSelected: isSelected)
+                        .ankerTapTarget(20)
                 }
                 .buttonStyle(.plain)
                 .padding(.top, 1)  // optische Ausrichtung, kein Raster. design-guard: erlaubt
@@ -234,7 +214,9 @@ struct TaskCard: View {
                 Button {
                     performToggleDone()
                 } label: {
+                    // Die Hauptaktion der Zeile: auf dem iPhone 44pt Tippfläche um das 22pt-Kästchen.
                     TaskCheckmark(isDone: task.isDone)
+                        .ankerTapTarget(22)
                 }
                 .buttonStyle(.plain)
                 .padding(.top, 1)  // optische Ausrichtung, kein Raster. design-guard: erlaubt
@@ -246,6 +228,7 @@ struct TaskCard: View {
                         onStartSelection()
                     }
                 )
+                .accessibilityLabel(task.isDone ? "Erledigt" : "Offen")
             }
 
             VStack(alignment: .leading, spacing: AnkerSpacing.s1 + 1) {
@@ -265,10 +248,10 @@ struct TaskCard: View {
                         .lineLimit(1)
                 }
             }
-            // Doppelklick auf die Zeile bearbeitet den Titel an der Stelle. Bewusst nicht der
+            // Doppelklick auf den Titel bearbeitet ihn an der Stelle. Bewusst nicht der
             // einfache Klick: der zieht in der Mehrfachauswahl und darf nicht zweierlei tun.
             .onTapGesture(count: 2) {
-                guard isActionable && !isSelectionMode else { return }
+                guard !isSelectionMode else { return }
                 isEditingTitle = true
             }
             Spacer(minLength: AnkerSpacing.s2)
@@ -281,7 +264,7 @@ struct TaskCard: View {
                     .padding(.top, AnkerSpacing.s1)
             }
 
-            if isActionable && !isSelectionMode {
+            if !isSelectionMode {
 #if os(macOS)
                 hoverActions
 #endif
@@ -301,18 +284,18 @@ struct TaskCard: View {
         .frame(minHeight: 46)
         .contentShape(Rectangle())
         .platformTaskContextMenu {
-            if isActionable && !isSelectionMode {
+            if !isSelectionMode {
                 taskMenuItems
             }
         } preview: {
-            if isActionable && !isSelectionMode {
+            if !isSelectionMode {
                 TaskContextPreviewCard(task: task)
             }
         }
-        .conditionalTaskDrag(task: task, isEnabled: isActionable && !isSelectionMode, isDragging: $isDragging)
+        .conditionalTaskDrag(task: task, isEnabled: !isSelectionMode, isDragging: $isDragging)
 #if os(iOS)
         .swipeActions(edge: .leading, allowsFullSwipe: true) {
-            if isActionable && !isSelectionMode {
+            if !isSelectionMode {
                 Button {
                     performToggleDone()
                 } label: {
@@ -322,7 +305,7 @@ struct TaskCard: View {
             }
         }
         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-            if isActionable && !isSelectionMode {
+            if !isSelectionMode {
                 Button(role: .destructive) {
                     performDelete()
                 } label: {
@@ -333,11 +316,12 @@ struct TaskCard: View {
                     iOSImpact(.medium)
                     showingMoveSheet = true
                 } label: {
-                    Label("Verschieben", ankerIcon: AnkerIcon.week)
+                    Label(hasDay ? "Verschieben" : "Tag wählen", ankerIcon: AnkerIcon.week)
                 }
                 .tint(AnkerColor.accentInk)
             }
         }
+#endif
         .accessibilityAction(named: task.isDone ? "Als offen markieren" : "Als erledigt markieren") {
             performToggleDone()
         }
@@ -347,13 +331,15 @@ struct TaskCard: View {
         .accessibilityAction(named: "Aufgabe bearbeiten") {
             showingEditor = true
         }
-        .accessibilityAction(named: "Aufgabe verschieben") {
+        .accessibilityAction(named: hasDay ? "Aufgabe verschieben" : "Tag wählen") {
             showingMoveSheet = true
+        }
+        .accessibilityAction(named: "In die nächste Woche") {
+            performMoveToNextWeek()
         }
         .accessibilityAction(named: "Aufgabe löschen") {
             confirmingDelete = true
         }
-#endif
         .onTapGesture {
             if isSelectionMode {
                 onSelectionToggle?()
@@ -375,7 +361,7 @@ struct TaskCard: View {
         }
 #endif
         .sheet(isPresented: $showingEditor) {
-            TaskEditorSheet(task: task)
+            TaskEditorSheet(task: task, onUndoableAction: onUndoableAction)
                 .presentationDetents([.medium, .large])
         }
         .sheet(isPresented: $showingMoveSheet) {
@@ -396,22 +382,22 @@ struct TaskCard: View {
         .accessibilityIdentifier("taskCard")
     }
 
+    /// Drei Knöpfe, die beim Überfahren erscheinen. **Ohne** Tastenkürzel: jede Zeile trüge
+    /// sonst dasselbe Kürzel, und mit vielen Zeilen wäre es mehrdeutig.
     private var hoverActions: some View {
         HStack(spacing: AnkerSpacing.s2) {
             hoverAction(
                 ankerIcon: task.isDone ? .open : .check,
-                tint: AnkerColor.ink,
-                help: task.isDone ? "Als offen markieren (⌘.)" : "Als erledigt markieren (⌘.)"
+                help: task.isDone ? "Als offen markieren" : "Als erledigt markieren"
             ) {
                 performToggleDone()
             }
 
-            hoverAction(ankerIcon: .week, tint: AnkerColor.accentFill, help: "In die nächste Woche verschieben (⌘⇧M)") {
-                performMoveByDays(7)
+            hoverAction(ankerIcon: .week, help: "In die nächste Woche verschieben") {
+                performMoveToNextWeek()
             }
-            .keyboardShortcut("m", modifiers: [.command, .shift])
 
-            hoverAction(ankerIcon: .delete, tint: AnkerColor.accentMark, help: "Aufgabe löschen (⌘⌫)", isDestructive: true) {
+            hoverAction(ankerIcon: .delete, help: "Aufgabe löschen") {
                 confirmingDelete = true
             }
         }
@@ -423,37 +409,24 @@ struct TaskCard: View {
 
     private func hoverAction(
         ankerIcon: AnkerIcon,
-        tint: Color,
         help: String,
-        isDestructive: Bool = false,
         action: @escaping () -> Void
     ) -> some View {
         Button(action: action) {
             Image(ankerIcon)
                 .ankerIcon(AnkerIconSize.xs)
-                .foregroundStyle(tint)
+                .foregroundStyle(AnkerColor.ink)
                 .frame(width: 26, height: 26)
-                .ankerControl(fill: isDestructive ? tint.opacity(0.10) : AnkerColor.divider, stroke: nil)
+                .ankerControl(fill: AnkerColor.divider, stroke: nil)
         }
         .buttonStyle(.plain)
         .help(help)
         .accessibilityLabel(help)
     }
 
-    private var taskMenu: some View {
-        Menu {
-            taskMenuItems
-        } label: {
-            Image(.more)
-                .ankerType(AnkerType.caption)
-                .foregroundStyle(AnkerColor.inkSecond)
-                .frame(width: 26, height: 26)
-                .ankerControl()
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel("Aufgabenaktionen")
-    }
-
+    /// Die vollständige Handlungsmenge. Bewusst **ohne** Tastenkürzel: Einträge eines
+    /// Kontextmenüs greifen nur, solange das Menü offen ist — ein angezeigtes ⌘. versprach
+    /// etwas, das in der Liste nie funktionierte.
     @ViewBuilder
     private var taskMenuItems: some View {
         Button {
@@ -461,7 +434,6 @@ struct TaskCard: View {
         } label: {
             Label(task.isDone ? "Als offen markieren" : "Als erledigt markieren", ankerIcon: task.isDone ? .open : .checkCircle)
         }
-        .keyboardShortcut(".", modifiers: .command)
 
         Button {
             isEditingTitle = true
@@ -474,95 +446,93 @@ struct TaskCard: View {
         } label: {
             Label("Bearbeiten …", ankerIcon: AnkerIcon.edit)
         }
-        .keyboardShortcut("e", modifiers: .command)
 
         Menu {
             Button {
-                let snapshot = TaskActions.snapshot(task)
-                TaskActions.move(task, to: Date(), weeks: weeks, modelContext: modelContext)
-                notifyUndo(message: "Aufgabe verschoben", snapshots: [snapshot])
+                performMove(to: Date())
             } label: {
-                Label("Heute", ankerIcon: AnkerIcon.week)
+                Label("Heute", ankerIcon: AnkerIcon.today)
             }
 
-            Button {
-                performMoveByDays(1)
-            } label: {
-                Label("Morgen", ankerIcon: AnkerIcon.tomorrow)
-            }
-
-            Menu {
-                ForEach(currentWeekDates, id: \.self) { date in
-                    Button {
-                        performMove(to: date)
-                    } label: {
-                        Label(verbatim: AnkerDateFormat.weekdayLongWithDayMonth(date), ankerIcon: AnkerIcon.week)
-                    }
+            if hasDay {
+                Button {
+                    performMoveByDays(1)
+                } label: {
+                    Label("Morgen", ankerIcon: AnkerIcon.tomorrow)
                 }
-            } label: {
-                Label("Diese Woche", ankerIcon: AnkerIcon.week)
+
+                Menu {
+                    ForEach(currentWeekDates, id: \.self) { date in
+                        Button {
+                            performMove(to: date)
+                        } label: {
+                            Label(verbatim: AnkerDateFormat.weekdayLongWithDayMonth(date), ankerIcon: AnkerIcon.week)
+                        }
+                    }
+                } label: {
+                    Label("Diese Woche", ankerIcon: AnkerIcon.week)
+                }
             }
 
             Button {
-                performMoveByDays(7)
+                performMoveToNextWeek()
             } label: {
                 Label("Nächste Woche", ankerIcon: AnkerIcon.nextMonth)
             }
-            .keyboardShortcut("m", modifiers: [.command, .shift])
 
-#if !os(macOS)
             Button {
                 showingMoveSheet = true
             } label: {
-                Label("Datum wählen ...", ankerIcon: AnkerIcon.pickDate)
+                Label(hasDay ? "Datum wählen …" : "Tag wählen …", ankerIcon: AnkerIcon.pickDate)
             }
-            .keyboardShortcut("m", modifiers: [.command, .shift])
-#endif
+
+            if hasDay {
+                Divider()
+                Button {
+                    let snapshot = TaskActions.snapshot(task)
+                    TaskActions.unschedule(task, modelContext: modelContext)
+                    iOSImpact(.medium)
+                    notifyUndo(message: "Ohne Tag", snapshots: [snapshot])
+                } label: {
+                    Label("Ohne Tag", ankerIcon: AnkerIcon.clear)
+                }
+            }
         } label: {
             Label("Verschieben", ankerIcon: AnkerIcon.move)
         }
 
         Menu {
-            if let goals = task.day?.week?.goalList, !goals.isEmpty {
-                ForEach(goals, id: \.id) { goal in
+            if let week = owningWeek {
+                let anchors = GoalOrdering.anchors(in: week)
+                ForEach(Array(anchors.enumerated()), id: \.element.id) { index, goal in
                     Button {
-                        let snapshot = TaskActions.snapshot(task)
-                        TaskActions.link(task, to: goal, modelContext: modelContext)
-                        iOSImpact(.light)
-                        notifyUndo(message: "Ziel verknüpft", snapshots: [snapshot])
+                        performLink(goal)
                     } label: {
-                        Label(verbatim: goal.title, ankerIcon: task.linkedGoal?.id == goal.id ? .check : .goal)
+                        Label(verbatim: "\(index + 1) · \(goal.title)", ankerIcon: task.linkedGoal?.id == goal.id ? .check : .goal)
                     }
                 }
-                Divider()
+                if !anchors.isEmpty {
+                    Divider()
+                }
             }
 
             Button {
-                let snapshot = TaskActions.snapshot(task)
-                TaskActions.link(task, to: nil, modelContext: modelContext)
-                iOSImpact(.light)
-                notifyUndo(message: "Ziel gelöst", snapshots: [snapshot])
+                performLink(nil)
             } label: {
-                Label("Kein Ziel", ankerIcon: task.linkedGoal == nil ? .check : .clear)
+                Label("Ohne Anker", ankerIcon: task.linkedGoal == nil ? .check : .clear)
             }
         } label: {
-            Label("Mit Ziel verknüpfen", ankerIcon: AnkerIcon.goal)
+            Label("Anker wählen", ankerIcon: AnkerIcon.goal)
         }
 
-        Menu {
-            ForEach(Priority.allCases, id: \.self) { priority in
-                Button {
-                    let snapshot = TaskActions.snapshot(task)
-                    TaskActions.setPriority(task, to: priority, modelContext: modelContext)
-                    iOSImpact(.light)
-                    notifyUndo(message: "Priorität geändert", snapshots: [snapshot])
-                } label: {
-                    Label("Priorität \(priority.label)", ankerIcon: task.priority == priority ? .check : .priority)
-                }
-                .keyboardShortcut(priority.shortcutKey, modifiers: .command)
-            }
+        Button {
+            let snapshot = TaskActions.snapshot(task)
+            let isImportant = task.priority == .a
+            TaskActions.setPriority(task, to: isImportant ? .b : .a, modelContext: modelContext)
+            iOSImpact(.light)
+            notifyUndo(message: isImportant ? "Nicht mehr wichtig" : "Als wichtig markiert", snapshots: [snapshot])
         } label: {
-            Label("Priorität", ankerIcon: AnkerIcon.priority)
+            Label(task.priority == .a ? "Nicht mehr wichtig" : "Als wichtig markieren", ankerIcon: AnkerIcon.priority)
         }
 
         Button {
@@ -577,7 +547,6 @@ struct TaskCard: View {
         } label: {
             Label("Duplizieren", ankerIcon: AnkerIcon.duplicate)
         }
-        .keyboardShortcut("d", modifiers: .command)
 
         Divider()
 
@@ -586,7 +555,6 @@ struct TaskCard: View {
         } label: {
             Label("Aufgabe löschen", ankerIcon: AnkerIcon.delete)
         }
-        .keyboardShortcut(.delete, modifiers: .command)
     }
 
     private var anchorNumberText: String {
@@ -645,18 +613,42 @@ struct TaskCard: View {
         notifyUndo(message: "Aufgabe gelöscht", snapshots: [snapshot])
     }
 
+    // `weeks: []` — `TaskActions.ensureWeek` sucht dann per Abfrage über ISO-Jahr und -Woche.
+    // Eine `@Query` über alle Wochen in **jeder** Zeile kostete bei jeder Änderung einen
+    // Neuaufbau der ganzen Liste.
+
     private func performMoveByDays(_ offset: Int) {
         let snapshot = TaskActions.snapshot(task)
-        TaskActions.move(task, byDays: offset, weeks: weeks, modelContext: modelContext)
+        TaskActions.move(task, byDays: offset, weeks: [], modelContext: modelContext)
         iOSImpact(.medium)
         notifyUndo(message: "Aufgabe verschoben", snapshots: [snapshot])
     }
 
     private func performMove(to date: Date) {
         let snapshot = TaskActions.snapshot(task)
-        TaskActions.move(task, to: date, weeks: weeks, modelContext: modelContext)
+        TaskActions.move(task, to: date, weeks: [], modelContext: modelContext)
         iOSImpact(.medium)
         notifyUndo(message: "Aufgabe verschoben", snapshots: [snapshot])
+    }
+
+    /// Derselbe Wochentag eine Woche später; ohne Tag der Montag der Woche nach ihrer
+    /// Ankerwoche (bzw. nach der laufenden Woche im Eingang).
+    private func performMoveToNextWeek() {
+        let snapshot = TaskActions.snapshot(task)
+        let base = task.day?.date.addingTimeInterval(12 * 60 * 60) ?? owningWeek?.monday ?? Date()
+        let monday = AnkerCalendar.weekInterval(containing: base).monday
+        guard let next = AnkerCalendar.iso.date(byAdding: .weekOfYear, value: 1, to: monday) else { return }
+        TaskActions.move(task, toWeekStarting: next, weeks: [], modelContext: modelContext)
+        iOSImpact(.medium)
+        notifyUndo(message: "In die nächste Woche verschoben", snapshots: [snapshot])
+    }
+
+    private func performLink(_ goal: Goal?) {
+        guard task.linkedGoal?.id != goal?.id else { return }
+        let snapshot = TaskActions.snapshot(task)
+        TaskActions.link(task, to: goal, modelContext: modelContext)
+        iOSImpact(.light)
+        notifyUndo(message: goal == nil ? "Anker gelöst" : "Anker gesetzt", snapshots: [snapshot])
     }
 
     private func notifyUndo(message: String, snapshots: [TaskSnapshot]) {
@@ -686,110 +678,26 @@ struct TaskCard: View {
     }
 }
 
-private extension Priority {
-    var shortcutKey: KeyEquivalent {
-        switch self {
-        case .a: "1"
-        case .b: "2"
-        case .c: "3"
-        }
-    }
-}
-
 private enum TaskHapticStyle {
     case light
     case medium
 }
 
-enum TaskDragEvents {
-    static let didEnd = Notification.Name("AnchoritTaskDragDidEnd")
-
-    static func end(taskID: UUID) {
-        NotificationCenter.default.post(name: didEnd, object: taskID.uuidString)
-    }
-}
-
-/// Gemeinsame Behandlung von Task-Drops. Aufgaben werden als reine UUID-Zeichenkette
-/// gezogen (`conditionalTaskDrag`), also braucht jedes Drop-Ziel dieselben drei Schritte:
-/// ID laden, Aufgabe verschieben, Drag-Ende melden.
-enum TaskDropHandling {
-    static let draggedTypes = [UTType.plainText]
-
-    /// Laedt die Task-ID aus dem Provider und ruft `completion` auf dem Main Actor auf.
-    /// Ueber die Grenze geht bewusst nur die `UUID` — Modellobjekte sind nicht `Sendable`.
-    static func loadTaskID(
-        from providers: [NSItemProvider],
-        completion: @escaping @MainActor (UUID) -> Void
-    ) -> Bool {
-        guard let provider = providers.first(where: { $0.canLoadObject(ofClass: NSString.self) }) else {
-            return false
-        }
-
-        provider.loadObject(ofClass: NSString.self) { object, _ in
-            guard let rawID = object as? String ?? (object as? NSString)?.description,
-                  let taskID = UUID(uuidString: rawID) else { return }
-
-            Task { @MainActor in
-                completion(taskID)
-            }
-        }
-
-        return true
-    }
-
-    /// Verschiebt die Aufgabe auf `date` und meldet in jedem Fall das Drag-Ende, damit die
-    /// Ursprungszeile auf macOS ihre Transparenz verliert — auch wenn die Aufgabe
-    /// inzwischen geloescht wurde.
-    @MainActor
-    @discardableResult
-    static func moveTask(
-        id: UUID,
-        to date: Date,
-        weeks: [Week],
-        modelContext: ModelContext
-    ) -> TaskSnapshot? {
-        defer { TaskDragEvents.end(taskID: id) }
-
-        guard let task = task(with: id, in: weeks) else { return nil }
-
-        let snapshot = TaskActions.snapshot(task)
-        TaskActions.move(task, to: date, weeks: weeks, modelContext: modelContext)
-        return snapshot
-    }
-
-    /// Ziel eines Matrix-Drops. `goalID == nil` ist der Eingangskorb.
-    struct MatrixTarget: Equatable, Hashable {
-        let date: Date
-        let goalID: UUID?
-    }
-
-    /// Wie `moveTask`, aber zweidimensional. Dieselben drei Schritte, deshalb hier und nicht
-    /// als zweite Umsetzung daneben: das Drag-Nutzlast bleibt die nackte UUID, also landet
-    /// **jeder** bestehende Drag (Sidebar, Tagesliste) ohne Aenderung auch in der Matrix.
-    @MainActor
-    @discardableResult
-    static func placeTask(
-        id: UUID,
-        on target: MatrixTarget,
-        weeks: [Week],
-        modelContext: ModelContext
-    ) -> TaskSnapshot? {
-        defer { TaskDragEvents.end(taskID: id) }
-
-        guard let task = task(with: id, in: weeks) else { return nil }
-
-        let snapshot = TaskActions.snapshot(task)
-        TaskActions.place(task, on: target.date, goalID: target.goalID, weeks: weeks, modelContext: modelContext)
-        return snapshot
-    }
-
-    @MainActor
-    private static func task(with id: UUID, in weeks: [Week]) -> AnkerTask? {
-        weeks
-            .lazy
-            .flatMap(\.dayList)
-            .flatMap(\.taskList)
-            .first { $0.id == id }
+extension View {
+    /// Eine Tippfläche von mindestens 44 pt auf dem iPhone, ohne dass sich Optik oder Layout
+    /// ändern: der Rahmen wächst, ein negativer Rand gibt den Platz im Layout zurück.
+    /// Auf dem Mac bleibt es beim sichtbaren Maß — dort zielt ein Zeiger, kein Finger.
+    @ViewBuilder
+    func ankerTapTarget(_ visibleSize: CGFloat, minimum: CGFloat = 44) -> some View {
+#if os(iOS)
+        let inset = max(0, (minimum - visibleSize) / 2)
+        self
+            .frame(width: visibleSize + inset * 2, height: visibleSize + inset * 2)
+            .contentShape(Rectangle())
+            .padding(-inset)
+#else
+        self.contentShape(Rectangle())
+#endif
     }
 }
 
@@ -798,11 +706,7 @@ private struct TaskContextPreviewCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: AnkerSpacing.s2) {
-            HStack(spacing: AnkerSpacing.s2) {
-                PriorityTag(priority: task.priority)
-                TaskCheckmark(isDone: task.isDone)
-                Spacer(minLength: 0)
-            }
+            TaskCheckmark(isDone: task.isDone)
 
             Text(task.title)
                 .ankerType(AnkerType.bodyStrong)
@@ -817,7 +721,7 @@ private struct TaskContextPreviewCard: View {
                         .lineLimit(1)
                 }
                 .ankerType(AnkerType.caption)
-                .foregroundStyle(AnkerColor.accentInk)
+                .foregroundStyle(AnkerColor.inkSecond)
             }
         }
         .padding(AnkerSpacing.s4)
@@ -831,7 +735,6 @@ private struct TaskDragPreviewCard: View {
 
     var body: some View {
         HStack(spacing: AnkerSpacing.s2) {
-            PriorityTag(priority: task.priority)
             TaskCheckmark(isDone: task.isDone)
             Text(task.title)
                 .ankerType(AnkerType.caption)
@@ -912,117 +815,3 @@ extension View {
         }
     }
 }
-
-/// Ein Anker als Zeile: Nummer, Titel, Fortschrittsbalken, Bruch.
-///
-/// Der Entwurf zeigt diese Zeile auf Heute (filterbar), im Rueckblick und in der Ankerspalte
-/// der Matrix. Ein Baustein statt drei Kopien.
-struct AnchorRow: View {
-    let number: Int
-    let title: String
-    let doneCount: Int
-    let totalCount: Int
-    var tint: Color = AnkerColor.ink
-    var isActive = false
-
-    private var progress: Double {
-        totalCount == 0 ? 0 : Double(doneCount) / Double(totalCount)
-    }
-
-    private var fraction: String {
-        totalCount == 0 ? "—" : "\(doneCount)/\(totalCount)"
-    }
-
-    var body: some View {
-        HStack(alignment: .top, spacing: AnkerSpacing.s3) {
-            Text(verbatim: String(number))
-                .ankerType(AnkerType.numeric)
-                .foregroundStyle(isActive ? AnkerColor.accentInk : AnkerColor.ink)
-                .frame(width: 20, alignment: .leading)
-
-            VStack(alignment: .leading, spacing: AnkerSpacing.s2) {
-                Text(verbatim: title)
-                    .ankerType(isActive ? AnkerType.subheadline : AnkerType.bodyStrong)
-                    .foregroundStyle(AnkerColor.ink)
-                    .lineLimit(1)
-                AnkerProgressBar(progress: progress, tint: tint, thickness: AnkerBorder.rule * 2)
-            }
-
-            Text(verbatim: fraction)
-                .ankerType(AnkerType.numericSmall)
-                .foregroundStyle(AnkerColor.inkSecond)
-        }
-        .padding(.vertical, AnkerSpacing.s2 + 1)
-        .frame(minHeight: 44)
-        .contentShape(Rectangle())
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Anker \(number), \(title), \(doneCount) von \(totalCount) erledigt")
-    }
-}
-
-struct ChipButton: View {
-    let title: String
-    var isPrimary = false
-    var action: () -> Void = {}
-
-    var body: some View {
-        Button(action: action) {
-            Text(title)
-                .ankerType(AnkerType.caption)
-                .foregroundStyle(isPrimary ? AnkerColor.onAccent : AnkerColor.inkSecond)
-                .padding(.horizontal, AnkerSpacing.s3)
-                .padding(.vertical, AnkerSpacing.s2)
-                .ankerControl(
-                    fill: isPrimary ? AnkerColor.accentFill : AnkerColor.surface,
-                    stroke: isPrimary ? nil : AnkerColor.divider
-                )
-        }
-        .buttonStyle(.plain)
-    }
-}
-
-/// Die Tableiste des iPhones: Heute, Woche, Archiv — Text, die Auswahl unterstrichen.
-struct AnkerTabBar: View {
-    @Binding var selection: AppDestination
-
-    var body: some View {
-        HStack(spacing: 0) {
-            tab(.today, title: "Heute")
-            tab(.week, title: "Woche")
-            tab(.archive, title: "Archiv")
-        }
-        .padding(.horizontal, AnkerSpacing.s4)
-        .padding(.top, AnkerSpacing.s1)
-        .background(AnkerColor.ground)
-        .overlay(alignment: .top) { AnkerRule() }
-        .accessibilityElement(children: .contain)
-    }
-
-    private func isSelected(_ destination: AppDestination) -> Bool {
-        switch (selection, destination) {
-        case (.year, .archive), (.review, .archive): true
-        default: selection == destination
-        }
-    }
-
-    private func tab(_ destination: AppDestination, title: String) -> some View {
-        let isOn = isSelected(destination)
-        return Button {
-            selection = destination
-        } label: {
-            Text(title)
-                .ankerType(isOn ? AnkerType.label : AnkerType.meta)
-                .foregroundStyle(isOn ? AnkerColor.ink : AnkerColor.inkSecond)
-                .frame(maxWidth: .infinity, minHeight: 44)
-                .overlay(alignment: .bottom) {
-                    if isOn {
-                        Rectangle().fill(AnkerColor.ink).frame(height: 2)
-                    }
-                }
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityAddTraits(isOn ? [.isButton, .isSelected] : .isButton)
-    }
-}
-

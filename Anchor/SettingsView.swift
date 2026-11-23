@@ -207,6 +207,14 @@ struct SettingsView: View {
             }
             .buttonStyle(.plain)
             .accessibilityLabel("Daten und Datenschutz öffnen")
+
+            HStack(spacing: AnkerSpacing.s4) {
+                Link("Datenschutzerklärung", destination: AppLinks.privacyPolicy)
+                Link("Hilfe und Kontakt", destination: AppLinks.support)
+            }
+            .ankerType(AnkerType.caption)
+            .foregroundStyle(AnkerColor.accentInk)
+            .padding(.top, AnkerSpacing.s2)
         }
     }
 

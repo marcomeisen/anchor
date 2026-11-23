@@ -1,6 +1,8 @@
 import Foundation
 
-enum AnkerCalendar {
+/// Reine Kalenderrechnung ohne Zustand — deshalb `nonisolated`: sie wird auch aus
+/// nicht-isolierten Helfern (`TaskActions.isCarryOver`) und Sortierprädikaten gerufen.
+nonisolated enum AnkerCalendar {
     /// Ein einziges `Calendar` fuer den ganzen Prozess.
     ///
     /// Vorher eine berechnete `static var`, die bei jedem Zugriff ein neues `Calendar` baute —
@@ -65,6 +67,13 @@ enum AnkerCalendar {
         static func < (lhs: WeekKey, rhs: WeekKey) -> Bool {
             (lhs.isoYear, lhs.isoWeek) < (rhs.isoYear, rhs.isoWeek)
         }
+
+        /// Die Woche danach — über den Jahreswechsel hinweg: auf KW 52 bzw. 53 folgt KW 1.
+        var next: WeekKey {
+            isoWeek < AnkerCalendar.weeksInISOYear(isoYear)
+                ? WeekKey(isoYear: isoYear, isoWeek: isoWeek + 1)
+                : WeekKey(isoYear: isoYear + 1, isoWeek: 1)
+        }
     }
 
     static func weekKey(containing date: Date) -> WeekKey {
@@ -87,6 +96,16 @@ enum AnkerCalendar {
     static func nominalDay(ofStored date: Date, calendar: Calendar = iso) -> DateComponents {
         let middle = date.addingTimeInterval(12 * 60 * 60)
         return calendar.dateComponents([.year, .month, .day], from: middle)
+    }
+
+    /// Der gemeinte Kalendertag eines gespeicherten Tagesdatums als Mitternacht in **dieser**
+    /// Zone — der Ausgangspunkt für jede Rechnung („eine Woche später", „zwei Tage früher").
+    ///
+    /// `date(byAdding:)` direkt auf `Day.date` übernimmt den Zonenversatz des anlegenden
+    /// Geräts: ein Montag aus Tokio ist in Berlin Sonntag 16 Uhr, eine Woche später wieder
+    /// Sonntag — und die Aufgabe landete einen Tag zu früh.
+    static func nominalDate(ofStored date: Date, calendar: Calendar = iso) -> Date {
+        calendar.date(from: nominalDay(ofStored: date, calendar: calendar)) ?? calendar.startOfDay(for: date)
     }
 
     /// Meint das gespeicherte Tagesdatum `stored` den Kalendertag von `date`?
@@ -183,7 +202,7 @@ enum AnkerDateFormat {
 
     /// `03.08. - 09.08.2026`
     static func weekSpan(monday: Date, sunday: Date) -> String {
-        "\(dayMonth(monday)) - \(dayMonthYear(sunday))"
+        "\(dayMonth(monday))–\(dayMonthYear(sunday))"
     }
 }
 

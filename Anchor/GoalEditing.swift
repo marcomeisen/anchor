@@ -21,29 +21,73 @@ enum GoalActions {
         modelContext.saveChanges()
     }
 
-    /// Wie viele Aufgaben verlieren beim Loeschen ihre Zuordnung? Fuer den Bestaetigungstext,
-    /// damit die Konsequenz benannt ist statt nur die Aktion.
     /// Legt ein Wochenziel an und vergibt dabei die Ankerordnung.
     ///
     /// Bisher erzeugten `NewGoalSheet` und `WeekPlanning` selbst `Goal(...)` — damit lag die
     /// Vergabe von `order` an zwei Stellen und konnte vergessen werden.
+    ///
+    /// **Höchstens vier Anker pro Woche, hier zentral.** Gibt `nil` zurück, wenn die Woche schon
+    /// vier vom Nutzer angelegte Anker hat. Der Onboarding-Platzhalter zählt nicht mit. Über
+    /// zwei Geräte offline kann trotzdem ein fünftes entstehen; das fängt `GoalOrdering.excess` ab.
     @discardableResult
-    static func create(title: String, colorHex: String, in week: Week, modelContext: ModelContext) -> Goal? {
+    static func create(
+        title: String,
+        colorHex: String? = nil,
+        why: String? = nil,
+        in week: Week,
+        modelContext: ModelContext
+    ) -> Goal? {
         let cleanTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !cleanTitle.isEmpty else { return nil }
+        guard !cleanTitle.isEmpty, canAddAnchor(to: week) else { return nil }
 
         let goal = Goal(
             title: cleanTitle,
-            colorHex: colorHex,
+            colorHex: colorHex ?? WeekPlanning.defaultGoalColorHex,
             order: GoalOrdering.nextOrder(in: week),
             week: week
         )
+        goal.why = cleanWhy(why)
         modelContext.insert(goal)
         week.appendGoal(goal)
         modelContext.saveChanges()
         return goal
     }
 
+    /// Ist in dieser Woche noch Platz für einen Anker?
+    static func canAddAnchor(to week: Week) -> Bool {
+        week.goalList.filter { !$0.isDeleted && WeekPlanning.isUserCreated($0) }.count < GoalOrdering.maxAnchors
+    }
+
+    /// Titel und Warum-Satz ändern. `nil` heißt: dieses Feld nicht anfassen. Ein leerer Titel
+    /// wird verworfen (wie bei `TaskActions.rename`), ein leerer Warum-Satz löscht ihn.
+    /// Gibt zurück, ob sich etwas geändert hat; gespeichert wird nur dann.
+    @discardableResult
+    static func update(_ goal: Goal, title: String? = nil, why: String? = nil, modelContext: ModelContext) -> Bool {
+        var didChange = false
+        if let title {
+            let clean = title.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !clean.isEmpty, clean != goal.title {
+                goal.title = clean
+                didChange = true
+            }
+        }
+        if let why {
+            let clean = cleanWhy(why)
+            if clean != goal.why {
+                goal.why = clean
+                didChange = true
+            }
+        }
+        if didChange { modelContext.saveChanges() }
+        return didChange
+    }
+
+    private static func cleanWhy(_ why: String?) -> String? {
+        why?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty
+    }
+
+    /// Wie viele Aufgaben verlieren beim Loeschen ihre Zuordnung? Fuer den Bestaetigungstext,
+    /// damit die Konsequenz benannt ist statt nur die Aktion.
     static func linkedTaskCount(for goal: Goal, in week: Week?) -> Int {
         linkedTasks(for: goal, in: week).count
     }

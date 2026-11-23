@@ -54,7 +54,8 @@ open -n "$APP" --args -AnchoritUITest -AnchoritDemoData -AnchoritTab week
 
 - `-AnchoritUITest`: Speicher-Store ohne CloudKit, Onboarding zurückgesetzt (nur durch Entfernen).
 - `-AnchoritDemoData`: eine Beispielwoche um heute (`SampleData.insertDemoWeek`).
-- `-AnchoritTab week|archive`: Startbereich; wird nur gelesen.
+- `-AnchoritTab today|week|archive|review|setzen`: Startbereich bzw. offenes Blatt (Rückblick, Woche setzen); wird nur gelesen. Dazu `-weekLayout byDay|byAnchor` und `-sidebarVisible YES|NO` (Argument-Domain der `@AppStorage`-Werte).
+- App-Store-Bildschirmfotos: iPhone 17 Pro Max (1320 × 2868) und iPad Pro 13" (2064 × 2752) mit `xcrun simctl status_bar … override --time 9:41`, Aufnahme per `xcrun simctl io … screenshot`, dann per `sips -s format jpeg` ohne Alphakanal nach `AppStore/Screenshots/`. Nach einem `simctl openurl` bleibt der Systemdialog „Open in …“ stehen — Simulator neu starten.
 - Deep Links (`anchorit://`) gehen an einen unsignierten Build oft **nicht**, oder an eine
   installierte TestFlight-Version mit echten Daten — dafür das Startargument benutzen.
 - Bildschirmfoto nur des Fensters (braucht die Bildschirmaufnahme-Freigabe für das Terminal):

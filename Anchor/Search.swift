@@ -1,4 +1,5 @@
 import Foundation
+import SwiftData
 import SwiftUI
 
 /// Suche über Aufgaben, Wochenziele, Notizen und Zeitblöcke.
@@ -7,6 +8,7 @@ import SwiftUI
 /// mit `#Predicate`: gesucht wird auch in `Day.notes` und `Day.focusNote`, und die Treffer
 /// brauchen ihren Kontext (Kalenderwoche, Tag, zugeordnetes Ziel) für die Anzeige und die
 /// anschließende Navigation. Der Bestand ist klein — ein Jahr Nutzung sind rund 365 Tage.
+/// Nur Aufgaben **ohne Tag** kommen per Fetch dazu; sie hängen an keinem Tag einer Woche.
 enum AnkerSearch {
     enum Kind: String, Hashable {
         case task
@@ -56,34 +58,74 @@ enum AnkerSearch {
         /// Wo der Treffer sitzt: Kalenderwoche, Datum, zugeordnetes Ziel.
         let context: String
         let isDone: Bool
-        /// Tag zum Anspringen. Bei Wochenzielen leer.
+        /// Tag zum Anspringen. Leer bei Wochenzielen, Rückblicken und Aufgaben ohne Tag —
+        /// die springen über `date` in ihre Woche bzw. über `goalID` zum Anker.
         let dayID: UUID?
         let goalID: UUID?
-        /// Für die Sortierung: Datum des Tages, bei Zielen der Montag der Woche.
+        /// Für Sortierung und Sprung: Datum des Tages, bei Zielen und Rückblicken der Montag der
+        /// Woche, im Eingang „jetzt".
         let date: Date
     }
 
+    /// Wie `results(for:in:unscheduled:)`, holt die Aufgaben ohne Tag selbst aus dem Store.
+    ///
+    /// Die hängen an keinem Tag und wären über `week.dayList` unauffindbar: Anker-Aufgaben,
+    /// die noch nicht eingeplant sind, und der ganze Eingang.
+    static func results(
+        for query: String,
+        in weeks: [Week],
+        modelContext: ModelContext,
+        now: Date = Date(),
+        limit: Int = 60
+    ) -> [Result] {
+        let needle = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard needle.count >= 2 else { return [] }
+        let descriptor = FetchDescriptor<AnkerTask>(predicate: #Predicate { $0.day == nil })
+        let unscheduled = (try? modelContext.fetch(descriptor)) ?? []
+        return results(for: query, in: weeks, unscheduled: unscheduled, now: now, limit: limit)
+    }
+
     /// Leeres Ergebnis bei leerer Eingabe, statt alles zurückzugeben.
-    static func results(for query: String, in weeks: [Week], limit: Int = 60) -> [Result] {
+    ///
+    /// `unscheduled` sind Aufgaben ohne Tag. Mit Anker springt ihr Treffer zum Anker in seiner
+    /// Woche, ohne Anker (Eingang) zur laufenden Woche.
+    static func results(
+        for query: String,
+        in weeks: [Week],
+        unscheduled: [AnkerTask] = [],
+        now: Date = Date(),
+        limit: Int = 60
+    ) -> [Result] {
         let needle = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard needle.count >= 2 else { return [] }
 
         var results: [Result] = []
+        // Beschriftungen erst beim Treffer bauen: Datumsformatierung ist der teure Teil, und
+        // die allermeisten Tage treffen nicht.
+        func weekLabel(_ week: Week) -> String {
+            "\(AnkerDateFormat.calendarWeek(week.isoWeek)) · \(week.isoYear)"
+        }
 
-        for week in weeks {
-            let weekLabel = "\(AnkerDateFormat.calendarWeek(week.isoWeek)) · \(week.isoYear)"
+        for week in weeks where !week.isDeleted {
+            let monday = AnkerCalendar.nominalDate(ofStored: week.monday)
 
-            for goal in week.goalList where matches(goal.title, needle) {
+            for goal in week.goalList where !goal.isDeleted {
+                let titleHit = matches(goal.title, needle)
+                let whyHit = !titleHit && matches(goal.why ?? "", needle)
+                guard titleHit || whyHit else { continue }
+                let context = whyHit
+                    ? "\(snippet(of: goal.why ?? "", around: needle)) · \(weekLabel(week))"
+                    : weekLabel(week)
                 results.append(
                     Result(
                         id: goal.id,
                         kind: .goal,
                         title: goal.title,
-                        context: weekLabel,
+                        context: context,
                         isDone: goal.progress >= 1,
                         dayID: nil,
                         goalID: goal.id,
-                        date: week.monday
+                        date: monday
                     )
                 )
             }
@@ -94,20 +136,22 @@ enum AnkerSearch {
                         id: week.id,
                         kind: .note,
                         title: snippet(of: reflection, around: needle),
-                        context: "Rückblick · \(weekLabel)",
+                        context: "Rückblick · \(weekLabel(week))",
                         isDone: false,
                         dayID: nil,
                         goalID: nil,
-                        date: week.monday
+                        // Ziel des Sprungs: die Woche des Rückblicks.
+                        date: monday
                     )
                 )
             }
 
-            for day in week.dayList {
-                let dayLabel = AnkerDateFormat.weekdayShortWithDayMonth(day.date)
+            for day in week.dayList where !day.isDeleted {
+                let date = AnkerCalendar.nominalDate(ofStored: day.date)
+                func dayLabel() -> String { AnkerDateFormat.weekdayShortWithDayMonth(date) }
 
-                for task in day.taskList where matches(task.title, needle) {
-                    var context = "\(dayLabel) · Prio \(task.priority.label)"
+                for task in day.taskList where !task.isDeleted && matches(task.title, needle) {
+                    var context = "\(dayLabel()) · Prio \(task.priority.label)"
                     if let goalTitle = task.linkedGoal?.title, !goalTitle.isEmpty {
                         context += " · \(goalTitle)"
                     }
@@ -120,7 +164,7 @@ enum AnkerSearch {
                             isDone: task.isDone,
                             dayID: day.id,
                             goalID: task.linkedGoal?.id,
-                            date: day.date
+                            date: date
                         )
                     )
                 }
@@ -131,11 +175,11 @@ enum AnkerSearch {
                             id: day.id,
                             kind: .focus,
                             title: snippet(of: focus, around: needle),
-                            context: "\(dayLabel) · \(weekLabel)",
+                            context: "\(dayLabel()) · \(weekLabel(week))",
                             isDone: false,
                             dayID: day.id,
                             goalID: nil,
-                            date: day.date
+                            date: date
                         )
                     )
                 }
@@ -148,11 +192,11 @@ enum AnkerSearch {
                             id: noteResultID(for: day),
                             kind: .note,
                             title: snippet(of: notes, around: needle),
-                            context: "\(dayLabel) · \(weekLabel)",
+                            context: "\(dayLabel()) · \(weekLabel(week))",
                             isDone: false,
                             dayID: day.id,
                             goalID: nil,
-                            date: day.date
+                            date: date
                         )
                     )
                 }
@@ -163,15 +207,43 @@ enum AnkerSearch {
                             id: block.id,
                             kind: .timeBlock,
                             title: block.title,
-                            context: "\(dayLabel) · \(AnkerDateFormat.clock(block.startTime))",
+                            context: "\(dayLabel()) · \(AnkerDateFormat.clock(block.startTime))",
                             isDone: false,
                             dayID: day.id,
                             goalID: nil,
-                            date: day.date
+                            date: date
                         )
                     )
                 }
             }
+        }
+
+        var seenTasks = Set(results.lazy.filter { $0.kind == .task }.map(\.id))
+        for task in unscheduled where !task.isDeleted && task.day == nil && matches(task.title, needle) {
+            guard seenTasks.insert(task.id).inserted else { continue }
+            var context = "Ohne Tag · Prio \(task.priority.label)"
+            var date = now
+            if let goal = task.linkedGoal, !goal.isDeleted {
+                if !goal.title.isEmpty { context += " · \(goal.title)" }
+                if let week = goal.week {
+                    context += " · \(weekLabel(week))"
+                    date = AnkerCalendar.nominalDate(ofStored: week.monday)
+                }
+            } else {
+                context = "Eingang · Prio \(task.priority.label)"
+            }
+            results.append(
+                Result(
+                    id: task.id,
+                    kind: .task,
+                    title: task.title,
+                    context: context,
+                    isDone: task.isDone,
+                    dayID: nil,
+                    goalID: task.linkedGoal?.id,
+                    date: date
+                )
+            )
         }
 
         // Neueste zuerst innerhalb einer Art: gesucht wird meist nach etwas Kürzlichem.
@@ -304,6 +376,7 @@ struct SearchResultsList: View {
 /// erreichbar über die Lupe in der Navigationsleiste.
 struct SearchSheet: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.modelContext) private var modelContext
 
     let weeks: [Week]
     var onSelect: (AnkerSearch.Result) -> Void
@@ -313,7 +386,7 @@ struct SearchSheet: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                SearchResultsList(query: query, results: AnkerSearch.results(for: query, in: weeks)) { result in
+                SearchResultsList(query: query, results: AnkerSearch.results(for: query, in: weeks, modelContext: modelContext)) { result in
                     onSelect(result)
                     dismiss()
                 }

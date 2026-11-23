@@ -18,7 +18,8 @@ struct TodayScreen: View {
     var onOpenAnchor: (Goal) -> Void
     var onStartWeek: () -> Void
     var onOpenWeek: () -> Void
-    var onReview: () -> Void
+    /// Öffnet den Rückblick der Woche, die mit diesem Montag beginnt.
+    var onReview: (Date) -> Void
 
     private var sheet: WeekSheet {
         WeekSheet(monday: AnkerCalendar.weekInterval(containing: now).monday, weeks: weeks, inbox: inbox)
@@ -41,8 +42,16 @@ struct TodayScreen: View {
                     BlattAnchorStrip(sheet: sheet, onSelect: onOpenAnchor, onAddAnchor: onStartWeek)
                 }
 
+                if let previous = unreviewedPreviousWeek {
+                    reviewCard(
+                        title: "Letzte Woche ist noch offen.",
+                        detail: "\(AnkerDateFormat.calendarWeek(previous.isoWeek)) · pro Anker eine ehrliche Antwort.",
+                        monday: previous.monday
+                    )
+                }
+
                 if showsReviewPrompt(sheet) {
-                    reviewCard
+                    reviewCard(title: "Wie lief die Woche?", detail: "Pro Anker eine ehrliche Antwort.", monday: sheet.monday)
                 }
 
                 VStack(alignment: .leading, spacing: AnkerSpacing.s2) {
@@ -160,13 +169,23 @@ struct TodayScreen: View {
         .ankerCard()
     }
 
-    private var reviewCard: some View {
-        Button(action: onReview) {
+    /// Die Vorwoche, solange sie Anker hat und noch nicht geprüft ist. Wer am Sonntag nicht
+    /// dazu kam, findet den Rückblick am Montag hier — nicht nur am Sonntag selbst.
+    private var unreviewedPreviousWeek: WeekSheet? {
+        let monday = AnkerCalendar.weekInterval(containing: now).monday
+        guard let previousMonday = AnkerCalendar.iso.date(byAdding: .weekOfYear, value: -1, to: monday) else { return nil }
+        let previous = WeekSheet(monday: previousMonday, weeks: weeks, inbox: [])
+        guard let week = previous.week, !week.isReviewed, !previous.anchorLanes.isEmpty else { return nil }
+        return previous
+    }
+
+    private func reviewCard(title: String, detail: String, monday: Date) -> some View {
+        Button { onReview(monday) } label: {
             HStack {
                 VStack(alignment: .leading, spacing: AnkerSpacing.s0) {
-                    Text("Wie lief die Woche?")
+                    Text(verbatim: title)
                         .ankerType(AnkerType.bodyStrong)
-                    Text("Pro Anker eine ehrliche Antwort.")
+                    Text(verbatim: detail)
                         .ankerType(AnkerType.meta)
                         .foregroundStyle(AnkerColor.inkSecond)
                 }

@@ -51,7 +51,7 @@ enum WeekActions {
         // Ab dem Sonntag der Woche, also sobald ihr letzter Tag begonnen hat. `sunday` ist der
         // Tagesbeginn, deshalb genügt der Vergleich — nicht erst, wenn die Woche ganz vorbei ist:
         // dann käme der Hinweis, wenn er nichts mehr ändern kann.
-        guard now >= week.sunday else { return .quiet }
+        guard now >= AnkerCalendar.nominalDate(ofStored: week.sunday) else { return .quiet }
         return .armed(open: openTaskCount(in: week))
     }
 
@@ -83,9 +83,28 @@ enum WeekActions {
         var didSave = true
     }
 
+    /// Was im Rückblick „offen geblieben" ist — **die** Liste, die `ReviewScreen` zeigt und
+    /// deren Länge `readiness` nennt.
+    ///
+    /// Offene Aufgaben der Ankerbahnen (mit oder ohne Tag) und die der losen Bahn, die zu
+    /// dieser Woche gehören: an einem ihrer Tage ohne Anker, und Aufgaben überzähliger Ziele.
+    /// Der Eingang gehört zu keiner Woche und zählt nie mit, auch wenn das Blatt ihn zeigt.
+    static func openTasks(in sheet: WeekSheet) -> [AnkerTask] {
+        var seen = Set<UUID>()
+        return sheet.lanes.flatMap(\.tasks).filter { task in
+            !task.isDone
+                && !task.isDeleted
+                && !(task.day == nil && task.linkedGoal == nil)
+                && seen.insert(task.id).inserted
+        }
+    }
+
     /// Wie viele Aufgaben eine Schließung verschieben würde — für den Bestätigungstext.
+    ///
+    /// Dieselbe Zahl wie `openTasks(in:)`. Vorher zählte sie nur Aufgaben an Tagen, der
+    /// Rückblick listete aber auch offene Anker-Aufgaben ohne Tag: „2 offen" über drei Zeilen.
     static func openTaskCount(in week: Week) -> Int {
-        week.dayList.flatMap(\.taskList).filter { !$0.isDone }.count
+        openTasks(in: WeekSheet(week: week, includesInbox: false)).count
     }
 
     /// Schließt die Woche und schiebt offene Aufgaben in die Folgewoche.
@@ -120,6 +139,19 @@ enum WeekActions {
     ///
     /// Aufgaben ohne Eintrag in `decisions` bekommen `fallback`. Ist `fallback` nil, bleiben sie
     /// unangetastet in ihrer Woche stehen — genau das ist „Nur schließen".
+    ///
+    /// Betroffen ist genau `openTasks(in:)`, also auch offene Anker-Aufgaben **ohne Tag**. Die
+    /// bleiben beim Mitnehmen ohne Tag.
+    ///
+    /// **Mitnehmen behält den Anker, wenn es ihn drüben gibt.** Ein Anker gehört zu genau einer
+    /// Woche, `TaskActions.move` löst ihn deshalb über die Wochengrenze. Hat die Folgewoche
+    /// schon einen Anker mit demselben Titel (getrimmt, ohne Groß-/Kleinschreibung), hängt die
+    /// Aufgabe dort an. Sonst steht sie ohne Anker — an ihrem Tag bzw. im Eingang.
+    ///
+    /// Grenze: Wird der gleichnamige Anker erst **nach** dem Schließen gesetzt (Montag im
+    /// Setzen), findet er die mitgenommenen Aufgaben nicht mehr. Woher eine ankerlose Aufgabe
+    /// kam, steht in keinem Feld (`carryOverCount` sagt nur *dass*, nicht *von welchem Anker*),
+    /// und ein neues Modellfeld wäre eine Schemaänderung.
     @discardableResult
     static func close(
         _ week: Week,
@@ -130,31 +162,55 @@ enum WeekActions {
         modelContext: ModelContext
     ) -> CloseReport {
         var report = CloseReport()
-        let nextMonday = AnkerCalendar.iso.date(byAdding: .weekOfYear, value: 1, to: week.monday) ?? week.monday
+        let monday = AnkerCalendar.nominalDate(ofStored: week.monday)
+        let nextMonday = AnkerCalendar.iso.date(byAdding: .weekOfYear, value: 1, to: monday) ?? monday
         report.targetISOWeek = AnkerCalendar.weekInterval(containing: nextMonday).isoWeek
 
         // Erst sammeln, dann anwenden: `move` und `delete` hängen Aufgaben um, und darüber zu
         // iterieren, während sich die Beziehung ändert, ist nicht verlässlich.
-        let open = week.dayList
-            .sorted { $0.date < $1.date }
-            .flatMap { $0.taskList.filter { !$0.isDone } }
+        let open = openTasks(in: WeekSheet(week: week, now: now, includesInbox: false))
+        var knownWeeks = weeks
 
         for task in open {
             guard let decision = decisions[task.id] ?? fallback else { continue }
+            let sourceTitle = task.linkedGoal?.title
 
             switch decision {
             case .drop:
-                TaskActions.delete(task, modelContext: modelContext)
+                TaskActions.delete(task, save: false, modelContext: modelContext)
                 report.droppedTasks += 1
 
             case .keep:
-                guard let target = nextWeekDate(for: task, in: week) else { continue }
-                TaskActions.move(task, to: target, weeks: weeks, modelContext: modelContext)
+                if task.day != nil {
+                    guard let target = nextWeekDate(for: task, in: week) else { continue }
+                    TaskActions.move(task, to: target, weeks: knownWeeks, save: false, modelContext: modelContext)
+                    if let targetWeek = task.day?.week, !knownWeeks.contains(where: { $0 === targetWeek }) {
+                        knownWeeks.append(targetWeek)
+                    }
+                    if task.linkedGoal == nil, let sourceTitle, let targetWeek = task.day?.week {
+                        task.linkedGoal = matchingAnchor(titled: sourceTitle, in: targetWeek)
+                    }
+                } else {
+                    // Ohne Tag gibt es nichts zu schreiben außer dem Anker: die Folgewoche nur
+                    // finden, nie anlegen.
+                    let targetWeek = TaskActions.existingWeek(containing: nextMonday, weeks: knownWeeks, modelContext: modelContext)
+                    let goal = sourceTitle.flatMap { title in targetWeek.flatMap { matchingAnchor(titled: title, in: $0) } }
+                    TaskActions.link(task, to: goal, save: false, modelContext: modelContext)
+                }
                 report.carriedOverTasks += 1
 
             case .reanchor(let goalID):
-                guard let target = nextWeekDate(for: task, in: week) else { continue }
-                TaskActions.place(task, on: target, goalID: goalID, weeks: weeks, modelContext: modelContext)
+                if task.day != nil {
+                    guard let target = nextWeekDate(for: task, in: week) else { continue }
+                    TaskActions.place(task, on: target, goalID: goalID, weeks: knownWeeks, save: false, modelContext: modelContext)
+                    if let targetWeek = task.day?.week, !knownWeeks.contains(where: { $0 === targetWeek }) {
+                        knownWeeks.append(targetWeek)
+                    }
+                } else {
+                    let targetWeek = TaskActions.existingWeek(containing: nextMonday, weeks: knownWeeks, modelContext: modelContext)
+                    let goal = goalID.flatMap { id in targetWeek?.goalList.first { $0.id == id } }
+                    TaskActions.link(task, to: goal, save: false, modelContext: modelContext)
+                }
                 report.carriedOverTasks += 1
                 report.reanchoredTasks += 1
             }
@@ -165,10 +221,25 @@ enum WeekActions {
         return report
     }
 
+    /// Der Anker der Woche mit demselben Titel — getrimmt, ohne Groß-/Kleinschreibung. Nur die
+    /// sichtbaren vier; ein überzähliges Ziel ist kein Anker.
+    static func matchingAnchor(titled title: String, in week: Week) -> Goal? {
+        let needle = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !needle.isEmpty else { return nil }
+        return GoalOrdering.anchors(in: week).first { goal in
+            goal.title.trimmingCharacters(in: .whitespacesAndNewlines)
+                .compare(needle, options: [.caseInsensitive]) == .orderedSame
+        }
+    }
+
     /// Derselbe Wochentag eine Woche später. Bewusst nicht der Montag der Folgewoche: eine
     /// Aufgabe, die für den Freitag gedacht war, bleibt eine Freitagsaufgabe.
+    ///
+    /// Ab dem **gemeinten** Kalendertag: `Day.date` ist Mitternacht in der Zone des anlegenden
+    /// Geräts. Ein Freitag aus Tokio ist in Berlin Donnerstag 16 Uhr — direkt darauf eine Woche
+    /// addiert, wäre die Aufgabe drüben eine Donnerstagsaufgabe.
     private static func nextWeekDate(for task: AnkerTask, in week: Week) -> Date? {
-        let source = task.day?.date ?? week.monday
+        let source = AnkerCalendar.nominalDate(ofStored: task.day?.date ?? week.monday)
         return AnkerCalendar.iso.date(byAdding: .weekOfYear, value: 1, to: source)
     }
 

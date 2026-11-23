@@ -1,3 +1,4 @@
+import CloudKit
 import Foundation
 import OSLog
 import SwiftData
@@ -19,7 +20,8 @@ enum DataPortability {
     /// Tag sind ueber die Oberflaeche nicht erreichbar, gehoeren dem Nutzer aber trotzdem und
     /// muessen in einer Auskunft nach Art. 15 auftauchen.
     struct Snapshot: Codable, Sendable {
-        var formatVersion = 2
+        /// 3: Anker tragen ihren Warum-Satz (`why`) und die Rückblickantwort (`verdict`).
+        var formatVersion = 3
         var exportedAt: Date
         var application: String
         var weeks: [ExportedWeek]
@@ -55,6 +57,8 @@ enum DataPortability {
         var colorHex: String
         var order: Int
         var weekID: UUID?
+        var why: String?
+        var verdict: String?
     }
 
     struct ExportedDay: Codable, Sendable {
@@ -140,7 +144,15 @@ enum DataPortability {
     }
 
     private static func exported(goal: Goal) -> ExportedGoal {
-        ExportedGoal(id: goal.id, title: goal.title, colorHex: goal.colorHex, order: goal.order, weekID: goal.week?.id)
+        ExportedGoal(
+            id: goal.id,
+            title: goal.title,
+            colorHex: goal.colorHex,
+            order: goal.order,
+            weekID: goal.week?.id,
+            why: goal.why,
+            verdict: goal.verdictRaw
+        )
     }
 
     private static func exported(day: Day) -> ExportedDay {
@@ -226,12 +238,47 @@ enum DataPortability {
         for week in weeks { context.delete(week) }
 
         report.didSave = context.saveChanges()
+        // Sonst blieben die Löschungen im Kontext hängen: die Oberfläche zeigte sofort nichts
+        // mehr an, und der nächste beliebige Save löschte doch alles — ohne neue Bestätigung.
+        if !report.didSave { context.rollback() }
 
         persistenceLog.notice(
             "Alle Daten geloescht: \(report.weeks, privacy: .public) Wochen, \(report.goals, privacy: .public) Ziele, \(report.days, privacy: .public) Tage, \(report.tasks, privacy: .public) Aufgaben, \(report.timeBlocks, privacy: .public) Zeitbloecke, gespeichert=\(report.didSave, privacy: .public)"
         )
 
         return report
+    }
+
+    /// Löscht die CloudKit-Zone, in der SwiftData den Bestand spiegelt.
+    ///
+    /// Die lokale Löschung erreicht nur, was dieses Gerät kennt. Was noch nicht importiert ist
+    /// (frisches Gerät, laufender Import) oder bei abgeschaltetem Sync, bliebe in iCloud liegen.
+    /// Das Löschen der Zone räumt den ganzen Bestand ab; die anderen Geräte erfahren davon und
+    /// leeren ihre gespiegelten Daten. **Erst nach** der lokalen Löschung aufrufen, sonst würde
+    /// der laufende Container die lokalen Daten in eine neue Zone zurückexportieren.
+    ///
+    /// - Returns: `true`, wenn die Zone gelöscht wurde oder gar nicht existierte.
+    static func deleteCloudData() async -> CloudDeletionResult {
+        guard !CloudSyncConfiguration.isRunningTests, CloudSyncConfiguration.hasCloudKitEntitlement else {
+            return .notApplicable
+        }
+        let container = CKContainer(identifier: CloudSyncConfiguration.containerIdentifier)
+        do {
+            guard try await container.accountStatus() == .available else { return .noAccount }
+            let zone = CKRecordZone.ID(zoneName: "com.apple.coredata.cloudkit.zone", ownerName: CKCurrentUserDefaultName)
+            _ = try await container.privateCloudDatabase.deleteRecordZone(withID: zone)
+            persistenceLog.notice("CloudKit-Zone gelöscht")
+            return .deleted
+        } catch let error as CKError where error.code == .zoneNotFound || error.code == .userDeletedZone {
+            return .deleted
+        } catch {
+            persistenceLog.error("CloudKit-Zone nicht gelöscht — \((error as NSError).domain, privacy: .public) \((error as NSError).code, privacy: .public)")
+            return .failed
+        }
+    }
+
+    enum CloudDeletionResult: Sendable {
+        case deleted, noAccount, notApplicable, failed
     }
 
     /// Zum Datenbestand gehoerende Einstellungen. Ohne diesen Schritt bliebe nach einer

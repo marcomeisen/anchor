@@ -5,8 +5,8 @@ import XCTest
 /// Die vier gemeinsamen Festlegungen der zweiten Entwurfsrunde.
 ///
 /// Alle vier sind Aussagen über Zustand, nicht über Aussehen — und damit prüfbar, ohne die
-/// Oberfläche zu starten. Genau dafür liegen `SidebarTimeline`, `WeekActions.readiness` und
-/// `AnkerArchive` als reine Typen ohne View-Bezug.
+/// Oberfläche zu starten. Genau dafür liegen `SidebarTimeline` und `WeekActions` als reine
+/// Typen ohne View-Bezug.
 final class SidebarTimelineTests: XCTestCase {
 
     // MARK: - Die sieben Quadrate
@@ -224,111 +224,7 @@ final class SidebarTimelineTests: XCTestCase {
 
     // MARK: - Archiv als Ort
 
-    @MainActor
-    func testArchiveHoldsClosedAndPastWeeksButNotTheRunningOne() throws {
-        let container = try makeContainer()
-        let context = container.mainContext
-        let now = AnkerCalendar.date(year: 2026, month: 8, day: 4, hour: 10)
-
-        let past = TaskActions.ensureFullWeek(containing: AnkerCalendar.date(year: 2026, month: 7, day: 27),
-                                          weeks: [], modelContext: context)
-        let current = TaskActions.ensureFullWeek(containing: AnkerCalendar.date(year: 2026, month: 8, day: 3),
-                                             weeks: [past], modelContext: context)
-        let future = TaskActions.ensureFullWeek(containing: AnkerCalendar.date(year: 2026, month: 8, day: 10),
-                                            weeks: [past, current], modelContext: context)
-        let weeks = [past, current, future]
-
-        // Vergangen zählt, auch ohne Rückblick: wer den überspringt, darf nicht den Zugang zu
-        // seinen eigenen Daten verlieren.
-        XCTAssertTrue(AnkerArchive.isArchived(past, now: now))
-        XCTAssertFalse(AnkerArchive.isArchived(current, now: now))
-        XCTAssertFalse(AnkerArchive.isArchived(future, now: now))
-
-        // Bewusst geschlossen zählt auch dann, wenn die Woche noch läuft.
-        current.reviewedAt = now
-        XCTAssertTrue(AnkerArchive.isArchived(current, now: now))
-
-        XCTAssertEqual(AnkerArchive.count(in: weeks, now: now), 2)
-        // Neueste zuerst.
-        XCTAssertEqual(AnkerArchive.entries(in: weeks, now: now).map(\.isoWeek), [32, 31])
-    }
-
-    @MainActor
-    func testArchiveEntryReportsHeldAnchorsAndTasks() throws {
-        let container = try makeContainer()
-        let context = container.mainContext
-        let week = makeWeek(in: context)
-        let day = try XCTUnwrap(week.dayList.first)
-        let held = try XCTUnwrap(GoalActions.create(title: "Gehalten", colorHex: "#DD2B0F",
-                                                   in: week, modelContext: context))
-        _ = try XCTUnwrap(GoalActions.create(title: "Nicht gehalten", colorHex: "#2D2B2B",
-                                            in: week, modelContext: context))
-        let done = try XCTUnwrap(TaskActions.create(title: "Erledigt", priority: .b, on: day,
-                                                   linkedGoal: held, modelContext: context))
-        TaskActions.setDone(done, true, modelContext: context)
-        _ = TaskActions.create(title: "Offen", priority: .b, on: day, linkedGoal: nil, modelContext: context)
-        week.reviewedAt = AnkerCalendar.date(year: 2026, month: 8, day: 9, hour: 20)
-        week.reflection = "Zu viel parallel."
-        try context.save()
-
-        let entry = try XCTUnwrap(AnkerArchive.entries(in: [week]).first)
-        XCTAssertEqual(entry.anchorCount, 2)
-        XCTAssertEqual(entry.heldAnchorCount, 1)
-        XCTAssertFalse(entry.isHeld)
-        XCTAssertEqual(entry.doneTaskCount, 1)
-        XCTAssertEqual(entry.taskCount, 2)
-        XCTAssertTrue(entry.hasReflection)
-    }
-
     // MARK: - Der Streifen zeigt den Überschuss
-
-    @MainActor
-    func testStripShowsEveryAnchorAndNamesTheOverflow() throws {
-        let container = try makeContainer()
-        let context = container.mainContext
-        let week = makeWeek(in: context)
-
-        for index in 1...5 {
-            _ = GoalActions.create(title: "Anker \(index)", colorHex: "#DD2B0F",
-                                   in: week, modelContext: context)
-        }
-        try context.save()
-
-        // `week()` liefert die vier: die Kennzahlen dürfen sich nicht verschieben, wenn zwei
-        // Geräte offline fünf erzeugt haben.
-        XCTAssertEqual(AnkerStatistics.week(week).anchors.count, GoalOrdering.maxAnchors)
-
-        // Der Streifen zeigt alle fünf — erlaubt, aber nie versteckt.
-        let strip = AnkerStatistics.allAnchors(in: week)
-        XCTAssertEqual(strip.count, 5)
-        XCTAssertEqual(strip.map(\.number), [1, 2, 3, 4, 5])
-        XCTAssertEqual(strip.filter(\.isOverRecommendation).map(\.number), [5])
-        XCTAssertEqual(strip[4].statusLine, "über Empfehlung")
-    }
-
-    @MainActor
-    func testStalledOnlyCountsAfterTwoDays() throws {
-        let container = try makeContainer()
-        let context = container.mainContext
-        let week = makeWeek(in: context)
-        let day = try XCTUnwrap(week.dayList.first)
-        let goal = try XCTUnwrap(GoalActions.create(title: "Steht", colorHex: "#DD2B0F",
-                                                   in: week, modelContext: context))
-        _ = TaskActions.create(title: "Offen", priority: .b, on: day, linkedGoal: goal, modelContext: context)
-        try context.save()
-
-        // Montag: jeder Anker steht still. Die Aussage wäre keine.
-        let monday = AnkerCalendar.date(year: 2026, month: 8, day: 3, hour: 9)
-        let onMonday = try XCTUnwrap(AnkerStatistics.allAnchors(in: week, now: monday).first)
-        XCTAssertFalse(onMonday.isStalled)
-        XCTAssertEqual(onMonday.statusLine, "noch nicht begonnen")
-
-        // Mittwoch: jetzt ist es eine.
-        let wednesday = AnkerCalendar.date(year: 2026, month: 8, day: 5, hour: 9)
-        let onWednesday = try XCTUnwrap(AnkerStatistics.allAnchors(in: week, now: wednesday).first)
-        XCTAssertTrue(onWednesday.isStalled)
-        XCTAssertEqual(onWednesday.statusLine, "steht still")
-    }
 
     // MARK: - Titel umbenennen
 

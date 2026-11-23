@@ -45,6 +45,14 @@ struct WeekStartScreen: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: AnkerSpacing.s4) {
+#if os(macOS)
+                HStack {
+                    Spacer()
+                    Button("Abbrechen") { dismiss() }
+                        .buttonStyle(AnkerButtonStyle.quiet)
+                        .keyboardShortcut(.cancelAction)
+                }
+#endif
                 BlattHeading(
                     eyebrow: "\(AnkerDateFormat.calendarWeek(interval.isoWeek)) · \(AnkerDateFormat.weekSpan(monday: interval.monday, sunday: interval.sunday))",
                     title: "Was zählt diese Woche?",
@@ -122,6 +130,9 @@ struct WeekStartScreen: View {
             .frame(maxWidth: .infinity)
         }
         .background(AnkerColor.ground)
+#if os(iOS)
+        .ankerSheetChrome("Woche setzen", cancel: AnkerSheetAction("Abbrechen") { dismiss() })
+#endif
         .onAppear(perform: load)
     }
 
@@ -167,24 +178,13 @@ struct WeekStartScreen: View {
     private func save() {
         let week = TaskActions.ensureWeek(containing: interval.monday, weeks: weeks, modelContext: modelContext)
         for draft in drafts {
-            let title = draft.title.trimmingCharacters(in: .whitespacesAndNewlines)
-            let why = draft.why.trimmingCharacters(in: .whitespacesAndNewlines).nilIfBlank
+            // Anlegen und Ändern laufen über `GoalActions` — dort liegt die Grenze von vier Ankern.
             if let id = draft.goalID, let goal = week.goalList.first(where: { $0.id == id }) {
-                if !title.isEmpty { goal.title = title }
-                goal.why = why
-            } else if !title.isEmpty, GoalOrdering.anchors(in: week).count < 4 {
-                let goal = Goal(
-                    title: title,
-                    colorHex: AnkerColor.goalTintOptions[0],
-                    order: GoalOrdering.nextOrder(in: week),
-                    week: week
-                )
-                goal.why = why
-                modelContext.insert(goal)
-                week.appendGoal(goal)
+                GoalActions.update(goal, title: draft.title, why: draft.why, modelContext: modelContext)
+            } else {
+                GoalActions.create(title: draft.title, why: draft.why, in: week, modelContext: modelContext)
             }
         }
-        modelContext.saveChanges()
         onDone()
         dismiss()
     }

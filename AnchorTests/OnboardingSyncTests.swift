@@ -136,6 +136,9 @@ final class OnboardingSyncTests: XCTestCase {
         synced.days = [day]
         for (index, title) in ["Echt 1", "Echt 2", "Echt 3", "Echt 4"].enumerated() {
             let goal = Goal(title: title, colorHex: "#DD2B0F", order: index, week: synced)
+            // Benutzt heißt: Felder des Datensatzes selbst (hier das Warum), nicht seine
+            // lokal sichtbaren Aufgaben — siehe `StoreMaintenance.usageRank`.
+            goal.why = "Weil \(title) zählt"
             context.insert(goal)
             synced.appendGoal(goal)
             let task = AnkerTask(title: "Aufgabe \(index)", priority: .b, order: index, day: day, linkedGoal: goal)
@@ -201,7 +204,9 @@ final class OnboardingSyncTests: XCTestCase {
     }
 
     /// Kommt die Löschung der doppelten Woche an, bevor dieses Gerät ihre Tage umgehängt hat,
-    /// bleiben die Tage als Waisen stehen — und werden wieder eingehängt.
+    /// bleiben die Tage als Waisen stehen — und werden wieder eingehängt, sobald es die Woche
+    /// (in ihrer überlebenden Kopie) gibt. Angelegt wird sie dafür **nicht**: ein abgebrochener
+    /// Import brächte sonst neben der noch kommenden echten Woche ein Duplikat hervor.
     @MainActor
     func testDeletingAWeekKeepsItsDaysAndMaintenanceAdoptsThem() throws {
         let container = try makeContainer()
@@ -222,6 +227,13 @@ final class OnboardingSyncTests: XCTestCase {
         XCTAssertNil(orphan.week, "Mit `.nullify` bleibt der Tag als Waise erhalten")
         XCTAssertEqual(orphan.taskList.map(\.title), ["Überlebt"])
 
+        let waiting = StoreMaintenance.run(modelContext: context, reporter: nil)
+        XCTAssertEqual(waiting.adoptedOrphans, 0)
+        XCTAssertTrue(try context.fetch(FetchDescriptor<Week>()).isEmpty, "Keine Woche anlegen, nur um eine Waise einzuhängen")
+
+        // Die überlebende Kopie kommt an.
+        _ = TaskActions.ensureWeek(containing: date, weeks: [], modelContext: context)
+        try context.save()
         let report = StoreMaintenance.run(modelContext: context, reporter: nil)
         XCTAssertEqual(report.adoptedOrphans, 1)
         let adopted = try XCTUnwrap(try context.fetch(FetchDescriptor<Day>()).first)

@@ -2,22 +2,21 @@ import SwiftData
 import SwiftUI
 import UniformTypeIdentifiers
 
-/// Detailansicht eines einzelnen Tages.
+/// Detailansicht eines einzelnen Tages: Kennzahlen, Tagesfokus, Anker dieses Tages, Zeitplan,
+/// Aufgaben (offen, dann erledigt) und freie Notizen.
 ///
-/// Bis hierher fuehrte ein Klick auf einen Tag nur dazu, dass er in der Wochenuebersicht
-/// hervorgehoben wurde. Diese Ansicht zeigt den Tag stattdessen vollstaendig: Kennzahlen,
-/// Tagesfokus, betroffene Wochenziele, Zeitplan, Aufgaben nach Prioritaet und freie Notizen.
-/// `focusNote` und `notes` am `Day`-Modell waren bisher nirgends bearbeitbar.
+/// Die Ansicht rendert mit einem **Datum** — ein gespeicherter `Day` ist optional. Wochen und
+/// Tage entstehen erst beim Schreiben (Fokus, Notiz, abgelegte oder erfasste Aufgabe); vorher
+/// legte schon das Öffnen eines Tages beides an, auch beim Wiederherstellen und über Deep Links,
+/// und auf einem frischen Gerät entstanden so Duplikate vor dem iCloud-Import.
 struct DayDetailView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Query(sort: \Week.monday) private var weeks: [Week]
 
-    @Bindable var day: Day
-    let week: Week
-    var onAddTask: () -> Void = {}
+    let date: Date
+    var now: Date = Date()
     var onSelectGoal: (Goal) -> Void = { _ in }
-    var onClose: (() -> Void)?
 
     @StateObject private var undo = TaskUndoCoordinator()
 
@@ -27,59 +26,53 @@ struct DayDetailView: View {
     @State private var commitTask: Task<Void, Never>?
     @State private var isDropTargeted = false
 
-    private var tasks: [AnkerTask] {
-        day.taskList.sorted { $0.order < $1.order }
-    }
+    private var monday: Date { AnkerCalendar.weekInterval(containing: date).monday }
 
-    private var doneCount: Int {
-        day.taskList.filter(\.isDone).count
-    }
+    private var week: Week? { WeekPlanning.week(startingAt: monday, in: weeks) }
 
-    private var openCount: Int {
-        day.taskList.count - doneCount
-    }
+    private var day: Day? { WeekPlanning.existingDay(on: date, in: week) }
 
-    private var progress: Double {
-        day.taskList.isEmpty ? 0 : Double(doneCount) / Double(day.taskList.count)
-    }
-
-    private var linkedGoals: [Goal] {
-        var seen = Set<UUID>()
-        return day.taskList
-            .compactMap(\.linkedGoal)
-            .filter { seen.insert($0.id).inserted }
-    }
+    private var sheet: WeekSheet { WeekSheet(monday: monday, weeks: weeks, inbox: []) }
 
     private var isToday: Bool {
-        AnkerCalendar.isSameDay(day.date, Date())
+        AnkerCalendar.isSameDay(date, now)
     }
 
     var body: some View {
-        ZStack(alignment: .bottom) {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 0) {
-                    header
-                    statsRow
-                    focusSection
-                    goalSection
-                    scheduleSection
-                    taskSection
-                    notesSection
-                }
-                .padding(.horizontal, AnkerSpacing.screenPadding)
-                .padding(.bottom, AnkerSpacing.s5)
-            }
-            .background(AnkerColor.ground)
+        let sheet = sheet
+        let tasks = sheet.tasks(on: date)
 
-            VStack(spacing: AnkerSpacing.s3) {
-                if let notice = undo.notice {
-                    TaskUndoToast(notice: notice) {
-                        undo.undo(weeks: weeks, modelContext: modelContext)
-                    }
-                }
+        ScrollView {
+            VStack(alignment: .leading, spacing: 0) {
+                header(tasks: tasks, isoWeek: sheet.isoWeek)
+                statsRow(tasks: tasks)
+                focusSection
+                goalSection(sheet: sheet, tasks: tasks)
+                scheduleSection
+                taskSection(sheet: sheet, tasks: tasks)
+                notesSection
             }
             .padding(.horizontal, AnkerSpacing.screenPadding)
-            .padding(.bottom, AnkerSpacing.s4)
+            .padding(.bottom, AnkerSpacing.s5)
+        }
+        .background(AnkerColor.ground)
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            VStack(spacing: AnkerSpacing.s2) {
+                BlattUndoBar(coordinator: undo, weeks: weeks)
+                // Legt Woche und Tag erst beim Sichern an — wie überall.
+                CaptureBar(
+                    week: sheet.week,
+                    weekStart: sheet.monday,
+                    fallbackDate: date,
+                    placeholder: "Was steht an diesem Tag an?  ·  #1–#4 Anker"
+                )
+            }
+            .padding(.horizontal, AnkerSpacing.screenPadding)
+            .padding(.vertical, AnkerSpacing.s3)
+            .frame(maxWidth: 720)
+            .frame(maxWidth: .infinity)
+            .background(AnkerColor.ground)
+            .animation(.easeOut(duration: 0.2), value: undo.notice?.id)
         }
         .navigationTitle(navigationTitle)
 #if os(iOS)
@@ -96,23 +89,25 @@ struct DayDetailView: View {
     }
 
     private var navigationTitle: String {
-        let weekday = AnkerDateFormat.weekdayLong(day.date)
+        let weekday = AnkerDateFormat.weekdayLong(date)
         return isToday ? "\(weekday) — Heute" : weekday
     }
 
     // MARK: - Kopf
 
-    private var header: some View {
-        VStack(alignment: .leading, spacing: AnkerSpacing.s3) {
+    private func header(tasks: [AnkerTask], isoWeek: Int) -> some View {
+        let progress = Self.progress(tasks)
+        return VStack(alignment: .leading, spacing: AnkerSpacing.s3) {
             HStack(alignment: .top, spacing: AnkerSpacing.s3) {
                 VStack(alignment: .leading, spacing: AnkerSpacing.s1) {
-                    Text(headerMeta)
+                    Text(verbatim: "\(AnkerDateFormat.dayMonthYear(date)) · \(AnkerDateFormat.calendarWeek(isoWeek))")
                         .ankerType(AnkerType.numericSmall)
                         .foregroundStyle(AnkerColor.inkSecond)
 
-                    Text(AnkerDateFormat.weekdayLong(day.date))
+                    Text(verbatim: isToday ? "Heute, \(AnkerDateFormat.weekdayLong(date))" : AnkerDateFormat.weekdayLong(date))
                         .ankerType(AnkerType.headline)
-                        .foregroundStyle(AnkerColor.ink)
+                        .foregroundStyle(isToday ? AnkerColor.accentInk : AnkerColor.ink)
+                        .accessibilityAddTraits(.isHeader)
                 }
 
                 Spacer(minLength: AnkerSpacing.s2)
@@ -125,22 +120,11 @@ struct DayDetailView: View {
 
             AnkerProgressBar(progress: progress, thickness: AnkerBorder.rule * 3)
                 .padding(.top, AnkerSpacing.s2)
-
-            if let onClose {
-                Button(action: onClose) {
-                    Label("Zur Wochenübersicht", ankerIcon: AnkerIcon.chevronLeft)
-                        .ankerType(AnkerType.caption)
-                        .foregroundStyle(AnkerColor.accentInk)
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Zurück zur Wochenübersicht")
-            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, AnkerSpacing.s4)
         .padding(.vertical, AnkerSpacing.s3)
         .ankerPanel()
-        
         .overlay {
             if isDropTargeted {
                 Rectangle()
@@ -150,18 +134,18 @@ struct DayDetailView: View {
         .padding(.top, AnkerSpacing.s3)
     }
 
-    private var headerMeta: String {
-        let date = AnkerDateFormat.dayMonthYear(day.date)
-        return "\(date) · \(AnkerDateFormat.calendarWeek(week.isoWeek))"
+    private static func progress(_ tasks: [AnkerTask]) -> Double {
+        tasks.isEmpty ? 0 : Double(tasks.filter(\.isDone).count) / Double(tasks.count)
     }
 
     // MARK: - Kennzahlen
 
-    private var statsRow: some View {
-        HStack(spacing: AnkerSpacing.s2) {
-            statTile(value: openCount, label: "Offen", tint: AnkerColor.accentInk)
-            statTile(value: doneCount, label: "Erledigt", tint: AnkerColor.ink)
-            statTile(value: day.timeBlockList.count, label: "Zeitblöcke", tint: AnkerColor.inkTertiary)
+    private func statsRow(tasks: [AnkerTask]) -> some View {
+        let done = tasks.filter(\.isDone).count
+        return HStack(spacing: AnkerSpacing.s2) {
+            statTile(value: tasks.count - done, label: "Offen", tint: AnkerColor.accentInk)
+            statTile(value: done, label: "Erledigt", tint: AnkerColor.ink)
+            statTile(value: day?.timeBlockList.count ?? 0, label: "Zeitblöcke", tint: AnkerColor.inkTertiary)
         }
         .padding(.top, AnkerSpacing.s4)
     }
@@ -202,58 +186,68 @@ struct DayDetailView: View {
         }
     }
 
-    // MARK: - Wochenziele
+    // MARK: - Anker
 
     @ViewBuilder
-    private var goalSection: some View {
-        if !linkedGoals.isEmpty {
+    private func goalSection(sheet: WeekSheet, tasks: [AnkerTask]) -> some View {
+        let lanes = sheet.anchorLanes.filter { lane in
+            tasks.contains { $0.linkedGoal?.id == lane.goal?.id }
+        }
+        if !lanes.isEmpty {
             VStack(alignment: .leading, spacing: 0) {
-                SectionLabel(title: "Verankerte Wochenziele")
+                SectionLabel(title: "Anker an diesem Tag")
 
                 VStack(spacing: AnkerSpacing.s2) {
-                    ForEach(linkedGoals, id: \.id) { goal in
-                        goalRow(goal)
+                    ForEach(lanes) { lane in
+                        if let goal = lane.goal {
+                            goalRow(goal, lane: lane, tasks: tasks)
+                        }
                     }
                 }
             }
         }
     }
 
-    private func goalRow(_ goal: Goal) -> some View {
-        let dayTasks = day.taskList.filter { $0.linkedGoal?.id == goal.id }
+    private func goalRow(_ goal: Goal, lane: WeekSheet.Lane, tasks: [AnkerTask]) -> some View {
+        let dayTasks = tasks.filter { $0.linkedGoal?.id == goal.id }
         let dayDone = dayTasks.filter(\.isDone).count
+        let weekPercent = lane.tasks.isEmpty ? 0 : Int(Double(lane.doneCount) / Double(lane.tasks.count) * 100)
 
         return Button {
             onSelectGoal(goal)
         } label: {
             HStack(spacing: AnkerSpacing.s3) {
-                Rectangle()
-                    .fill(AnkerColor.goalTint(goal.colorHex))
-                    .frame(width: 8, height: 8)
+                Text(verbatim: lane.numberLabel)
+                    .ankerType(AnkerType.bodyStrong)
+                    .monospacedDigit()
+                    .foregroundStyle(AnkerColor.ink)
+                    .frame(width: 18, alignment: .leading)
 
                 VStack(alignment: .leading, spacing: AnkerSpacing.s1) {
-                    Text(goal.title)
+                    Text(verbatim: goal.title)
                         .ankerType(AnkerType.caption)
                         .foregroundStyle(AnkerColor.ink)
                         .lineLimit(1)
-                    Text("\(dayDone) von \(dayTasks.count) an diesem Tag")
+                    Text(verbatim: "\(dayDone) von \(dayTasks.count) an diesem Tag")
                         .ankerType(AnkerType.caption)
                         .foregroundStyle(AnkerColor.inkSecond)
                 }
 
                 Spacer(minLength: AnkerSpacing.s2)
 
-                Text(verbatim: "\(Int(goal.progress * 100))%")
+                Text(verbatim: "\(weekPercent)%")
                     .ankerType(AnkerType.numericSmall)
                     .foregroundStyle(AnkerColor.inkSecond)
             }
             .padding(.horizontal, AnkerSpacing.s3)
             .padding(.vertical, AnkerSpacing.s3)
             .ankerCard()
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .help("Ziel öffnen: \(goal.title)")
-        .accessibilityLabel("Ziel \(goal.title), \(Int(goal.progress * 100)) Prozent erreicht, \(dayDone) von \(dayTasks.count) Aufgaben an diesem Tag erledigt")
+        .help("Anker öffnen: \(goal.title)")
+        .accessibilityLabel("Anker \(lane.numberLabel), \(goal.title), \(weekPercent) Prozent der Woche erledigt, \(dayDone) von \(dayTasks.count) Aufgaben an diesem Tag erledigt")
+        .accessibilityHint("Öffnet den Anker")
     }
 
     // MARK: - Zeitplan
@@ -262,10 +256,11 @@ struct DayDetailView: View {
         VStack(alignment: .leading, spacing: 0) {
             SectionLabel(title: "Zeitplan")
 
-            if day.timeBlockList.isEmpty {
+            let blocks = (day?.timeBlockList ?? []).sorted { $0.startTime < $1.startTime }
+            if blocks.isEmpty {
                 emptyHint("Für diesen Tag sind keine Zeitblöcke eingetragen.")
             } else {
-                let blocks = day.timeBlockList.sorted { $0.startTime < $1.startTime }
+                let blocks = blocks.sorted { $0.startTime < $1.startTime }
                 VStack(spacing: 0) {
                     ForEach(Array(blocks.enumerated()), id: \.element.id) { index, block in
                         DayTimeBlockRow(block: block)
@@ -281,42 +276,46 @@ struct DayDetailView: View {
 
     // MARK: - Aufgaben
 
-    private var taskSection: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            HStack(alignment: .bottom) {
-                SectionLabel(title: "Aufgaben")
-                Spacer(minLength: AnkerSpacing.s2)
-                Button(action: onAddTask) {
-                    Label("Neu", ankerIcon: AnkerIcon.add)
-                        .ankerType(AnkerType.caption)
-                        .foregroundStyle(AnkerColor.accentInk)
-                }
-                .buttonStyle(.plain)
-                .help("Neue Aufgabe für diesen Tag")
-                .accessibilityLabel("Neue Aufgabe für diesen Tag erstellen")
-                .padding(.bottom, AnkerSpacing.s2)
-            }
+    /// Offen zuerst, darunter das Erledigte — das Blatt gliedert nach Zustand und Anker, nicht
+    /// nach Priorität. Die Ankernummer steht rechts an jeder Zeile.
+    private func taskSection(sheet: WeekSheet, tasks: [AnkerTask]) -> some View {
+        let open = tasks.filter { !$0.isDone }
+        let done = tasks.filter(\.isDone)
+        return VStack(alignment: .leading, spacing: 0) {
+            SectionLabel(title: "Aufgaben")
 
             if tasks.isEmpty {
-                emptyHint("Noch keine Aufgaben. Über den Neu-Button anlegen oder eine Aufgabe hierher ziehen.")
+                emptyHint("Noch keine Aufgaben. Schreib unten, was an diesem Tag ansteht.")
             } else {
-                ForEach(Priority.allCases, id: \.self) { priority in
-                    let priorityTasks = tasks.filter { $0.priority == priority }
-                    if !priorityTasks.isEmpty {
-                        Text("Prio \(priority.label)")
-                            .ankerType(AnkerType.caption)
-                            .foregroundStyle(AnkerColor.inkSecond)
-                            .padding(.top, AnkerSpacing.s3)
-                            .padding(.bottom, AnkerSpacing.s2)
+                taskGroup(title: "Offen", tasks: open)
+                taskGroup(title: "Erledigt", tasks: done)
+            }
+        }
+    }
 
-                        VStack(spacing: AnkerSpacing.s2) {
-                            ForEach(priorityTasks, id: \.id) { task in
-                                TaskCard(task: task, onUndoableAction: undo.present)
-                            }
-                        }
-                    }
+    @ViewBuilder
+    private func taskGroup(title: String, tasks: [AnkerTask]) -> some View {
+        if !tasks.isEmpty {
+            Text(verbatim: "\(title) · \(tasks.count)")
+                .ankerType(AnkerType.caption)
+                .foregroundStyle(AnkerColor.inkSecond)
+                .padding(.top, AnkerSpacing.s3)
+                .padding(.bottom, AnkerSpacing.s2)
+
+            VStack(spacing: 0) {
+                ForEach(Array(tasks.enumerated()), id: \.element.id) { index, task in
+                    if index > 0 { AnkerRule(weight: .row) }
+                    TaskCard(
+                        task: task,
+                        showPriority: false,
+                        metaLine: .none,
+                        showsAnchorNumber: true,
+                        onUndoableAction: undo.present
+                    )
+                    .padding(.horizontal, AnkerSpacing.s3)
                 }
             }
+            .ankerCard()
         }
     }
 
@@ -352,7 +351,7 @@ struct DayDetailView: View {
     // MARK: - Aktionen
 
     private func dropTask(from providers: [NSItemProvider]) -> Bool {
-        let targetDate = day.date
+        let targetDate = date
 
         return TaskDropHandling.loadTaskID(from: providers) { taskID in
             let snapshot = TaskDropHandling.moveTask(id: taskID, to: targetDate, weeks: weeks, modelContext: modelContext)
@@ -366,8 +365,8 @@ struct DayDetailView: View {
 
     private func loadDraftsIfNeeded() {
         guard !hasLoadedDrafts else { return }
-        focusDraft = day.focusNote ?? ""
-        notesDraft = day.notes ?? ""
+        focusDraft = day?.focusNote ?? ""
+        notesDraft = day?.notes ?? ""
         hasLoadedDrafts = true
     }
 
@@ -390,26 +389,26 @@ struct DayDetailView: View {
         commitDrafts()
     }
 
+    /// Erst wenn sich wirklich etwas ändert, entstehen Woche und Tag.
     private func commitDrafts() {
         guard hasLoadedDrafts else { return }
 
         let focus = normalized(focusDraft)
         let notes = normalized(notesDraft)
-        var didChange = false
+        guard day?.focusNote != focus || day?.notes != notes else { return }
+        // Ohne gespeicherten Tag ist „nichts" schon der Stand — dafür keinen Tag anlegen.
+        if day == nil && focus == nil && notes == nil { return }
 
-        if day.focusNote != focus {
-            day.focusNote = focus
-            didChange = true
+        let target: Day
+        if let day {
+            target = day
+        } else {
+            let week = TaskActions.ensureWeek(containing: date, weeks: weeks, modelContext: modelContext)
+            target = TaskActions.ensureDay(containing: date, in: week)
         }
-
-        if day.notes != notes {
-            day.notes = notes
-            didChange = true
-        }
-
-        if didChange {
-            modelContext.saveChanges()
-        }
+        if target.focusNote != focus { target.focusNote = focus }
+        if target.notes != notes { target.notes = notes }
+        modelContext.saveChanges()
     }
 
     private func normalized(_ text: String) -> String? {
