@@ -361,13 +361,21 @@ final class AnchorTests: XCTestCase {
         let firstGoal = try XCTUnwrap(GoalOrdering.sorted(week.goalList).first)
         firstGoal.why = "Weil es diese Woche zählt"
         firstGoal.verdict = .held
+        let recurringTask = try XCTUnwrap(week.dayList.flatMap(\.taskList).first)
+        recurringTask.recurrence = .weekdays
+        let nextID = UUID()
+        recurringTask.recurrenceNextID = nextID
         try context.save()
 
         let snapshot = try decodedExport(from: context)
 
         // Version 2: Ankerordnung, Erledigungszeitpunkt, Uebertragungszaehler, Rueckblicktext
         // und Abschlusszeitpunkt. Version 3: Warum-Satz und Rueckblickantwort je Anker.
-        XCTAssertEqual(snapshot.formatVersion, 3)
+        // Version 4: Wiederholregel und Folgeinstanz je Aufgabe.
+        XCTAssertEqual(snapshot.formatVersion, 4)
+        let exportedRecurring = try XCTUnwrap(snapshot.weeks.flatMap(\.days).flatMap(\.tasks).first { $0.id == recurringTask.id })
+        XCTAssertEqual(exportedRecurring.recurrence, "weekdays", "Wiederholregel fehlt im Export")
+        XCTAssertEqual(exportedRecurring.recurrenceNextID, nextID, "Folgeinstanz fehlt im Export")
         XCTAssertEqual(snapshot.weeks.count, 1)
 
         let exportedWeek = try XCTUnwrap(snapshot.weeks.first)

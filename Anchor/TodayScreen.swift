@@ -1,7 +1,8 @@
 import SwiftData
 import SwiftUI
 
-/// Heute: die vier Anker oben, darunter die Aufgaben dieses Tages, unten die Erfassungszeile.
+/// Heute: die vier Anker oben, darunter die Aufgaben dieses Tages, was aus früheren Tagen
+/// dieser Woche noch offen ist, unten die Erfassungszeile.
 ///
 /// Jeder Haken füllt sofort den Punkt bei seinem Anker — das ist der Zusammenhang, den die
 /// App sichtbar machen soll: was ich heute tue, zahlt auf etwas ein, das diese Woche zählt.
@@ -28,6 +29,8 @@ struct TodayScreen: View {
     var body: some View {
         let sheet = sheet
         let today = sheet.tasks(on: now).sorted { !$0.isDone && $1.isDone }
+        // Unerledigtes von gestern verschwindet nicht bis zum Rückblick, es rückt hier nach.
+        let overdue = sheet.overdueTasks(before: now)
 
         ScrollView {
             VStack(alignment: .leading, spacing: AnkerSpacing.s4) {
@@ -88,6 +91,10 @@ struct TodayScreen: View {
                     }
                 }
 
+                if !overdue.isEmpty {
+                    overdueSection(overdue, showsSelectButton: today.isEmpty)
+                }
+
                 let unplanned = sheet.unplanned.count
                 if unplanned > 0 {
                     Button(action: onOpenWeek) {
@@ -120,7 +127,7 @@ struct TodayScreen: View {
                 if selection.isActive {
                     BlattBulkActionBar(
                         selection: selection,
-                        tasks: today,
+                        tasks: today + overdue,
                         anchors: sheet.anchorLanes.compactMap(\.goal),
                         undo: undo
                     )
@@ -136,6 +143,62 @@ struct TodayScreen: View {
             .background(AnkerColor.ground)
             .animation(.easeOut(duration: 0.2), value: undo.notice?.id)
         }
+    }
+
+    // MARK: - Noch offen aus dieser Woche
+
+    /// Offenes von früheren Tagen dieser Woche — mit Tag, damit man sieht, wie lange es liegt.
+    /// „Alle auf heute" legt es in einem Schritt auf heute, mit Rückgängig.
+    private func overdueSection(_ tasks: [AnkerTask], showsSelectButton: Bool) -> some View {
+        VStack(alignment: .leading, spacing: AnkerSpacing.s2) {
+            HStack(alignment: .firstTextBaseline, spacing: AnkerSpacing.s3) {
+                BlattSectionLabel(title: String(localized: "Noch offen aus dieser Woche"), trailing: String(tasks.count))
+                if showsSelectButton {
+                    BlattSelectButton(selection: selection)
+                }
+                if !selection.isActive {
+                    Button("Alle auf heute") { moveToToday(tasks) }
+                        .ankerType(AnkerType.label)
+                        .foregroundStyle(AnkerColor.accentInk)
+                        .buttonStyle(.plain)
+                        .help("Alle offenen Aufgaben früherer Tage auf heute legen")
+                        .accessibilityHint("Legt alle offenen Aufgaben früherer Tage dieser Woche auf heute")
+                        .accessibilityIdentifier("today.overdue.moveAll")
+                }
+            }
+            VStack(spacing: 0) {
+                ForEach(Array(tasks.enumerated()), id: \.element.id) { index, task in
+                    if index > 0 { AnkerRule(weight: .row) }
+                    TaskCard(
+                        task: task,
+                        showPriority: false,
+                        metaLine: .none,
+                        showsAnchorNumber: true,
+                        isSelectionMode: selection.isActive,
+                        isSelected: selection.contains(task),
+                        onSelectionToggle: { selection.toggle(task) },
+                        onStartSelection: { withAnimation(.easeOut(duration: 0.15)) { selection.start(with: task) } },
+                        onUndoableAction: undo.present
+                    )
+                    .padding(.horizontal, AnkerSpacing.s3)
+                }
+            }
+            .ankerCard()
+        }
+    }
+
+    /// Über `TaskActions.move`: der Anker bleibt, denn heute liegt in derselben Woche.
+    private func moveToToday(_ tasks: [AnkerTask]) {
+        guard !tasks.isEmpty else { return }
+        let snapshots = tasks.map(TaskActions.snapshot)
+        for task in tasks {
+            TaskActions.move(task, to: now, weeks: weeks, save: false, modelContext: modelContext)
+        }
+        modelContext.saveChanges()
+        let message = tasks.count == 1
+            ? String(localized: "1 Aufgabe auf heute gelegt")
+            : String(localized: "\(tasks.count) Aufgaben auf heute gelegt")
+        undo.present(TaskUndoNotice(message: message, snapshots: snapshots))
     }
 
     private func eyebrow(for sheet: WeekSheet) -> String {

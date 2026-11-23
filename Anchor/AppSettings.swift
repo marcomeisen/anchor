@@ -64,6 +64,20 @@ enum AppSettingsKey {
     static let cloudSyncEnabled = "cloudSyncEnabled"
     static let hasChosenCloudSync = "hasChosenCloudSync"
     static let hasCompletedOnboarding = "hasCompletedOnboarding"
+
+    // Erinnerungen an das Ritual (`RitualReminders.swift`). Standard: aus.
+    nonisolated static let reminderWeekStartEnabled = "reminderWeekStartEnabled"
+    /// Minuten nach Mitternacht, Standard 8:00.
+    nonisolated static let reminderWeekStartMinutes = "reminderWeekStartMinutes"
+    nonisolated static let reminderReviewEnabled = "reminderReviewEnabled"
+    /// Minuten nach Mitternacht, Standard 18:00.
+    nonisolated static let reminderReviewMinutes = "reminderReviewMinutes"
+
+    /// Einmaliger Import aus Apple Erinnerungen (`RemindersImport.swift`): die
+    /// `calendarItemIdentifier`, die schon übernommen wurden. Nur auf diesem Gerät, bewusst
+    /// kein Modellfeld — ein Doppelimport von einem zweiten Gerät fängt der Abgleich über
+    /// Titel und Tag ab.
+    nonisolated static let remindersImportedIdentifiers = "remindersImportedIdentifiers"
 }
 
 /// Welche Ansicht beim Start geöffnet wird.

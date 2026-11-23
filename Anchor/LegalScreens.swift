@@ -77,6 +77,8 @@ enum LegalDocument: Hashable {
             Section(heading: "2. Welche Daten Anchorit verarbeitet", paragraphs: [
                 "Ausschließlich Inhalte, die du in der App anlegst: Wochen, Anker samt Warum-Satz und Rückblickantwort, Aufgaben, Zeitblöcke, Tagesfokus, Notizen und Wochenreflexionen. Dazu kommen Einstellungen wie Erscheinungsbild, Sprache, Startansicht und ob iCloud verwendet wird.",
                 "Anchorit erhebt keine Gerätekennungen, keinen Standort, keine Kontakte, keine Nutzungsstatistiken und keine Absturzberichte. Die App enthält keine Software von Drittanbietern zur Analyse oder Werbung und baut außer zu iCloud keine Netzwerkverbindung auf.",
+                "Import aus Apple Erinnerungen (optional). Nur wenn du unter Einstellungen → Daten den Import startest und den Zugriff erlaubst, liest Anchorit einmalig die offenen Erinnerungen der Listen, die du auswählst — Titel, Fälligkeit und Priorität — und legt daraus Aufgaben an. Gelesen wird auf dem Gerät; an Apple Erinnerungen wird nichts geändert und nichts zurückgeschrieben. Damit eine Erinnerung nicht zweimal übernommen wird, merkt sich Anchorit auf diesem Gerät deren Kennung. Den Zugriff kannst du jederzeit in den Systemeinstellungen widerrufen.",
+                "Erinnerungen an das Ritual (optional). Schaltest du sie ein, plant das Gerät selbst lokale Mitteilungen für Montag und Sonntag. Dafür wird nichts übertragen.",
             ]),
             Section(heading: "3. Wo die Daten liegen", paragraphs: [
                 "Auf deinem Gerät. Alle Inhalte werden lokal in der App gespeichert.",
@@ -105,6 +107,8 @@ enum LegalDocument: Hashable {
             Section(heading: "2. What data Anchorit processes", paragraphs: [
                 "Only content you create in the app: weeks, anchors with their why-sentence and review answer, tasks, time blocks, daily focus, notes and weekly reflections. Plus settings such as appearance, language, start view and whether iCloud is used.",
                 "Anchorit collects no device identifiers, no location, no contacts, no usage statistics and no crash reports. The app contains no third-party analytics or advertising software and makes no network connections other than to iCloud.",
+                "Import from Apple Reminders (optional). Only if you start the import under Settings → Data and allow access, Anchorit reads the open reminders of the lists you choose once — title, due date and priority — and creates tasks from them. Reading happens on the device; nothing in Apple Reminders is changed or written back. So that a reminder isn’t imported twice, Anchorit remembers its identifier on this device. You can revoke access at any time in the system settings.",
+                "Ritual reminders (optional). If you turn them on, the device itself schedules local notifications for Monday and Sunday. Nothing is transmitted for this.",
             ]),
             Section(heading: "3. Where the data lives", paragraphs: [
                 "On your device. All content is stored locally in the app.",

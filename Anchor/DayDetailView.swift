@@ -2,7 +2,7 @@ import SwiftData
 import SwiftUI
 import UniformTypeIdentifiers
 
-/// Detailansicht eines einzelnen Tages: Kennzahlen, Tagesfokus, Anker dieses Tages, Zeitplan,
+/// Detailansicht eines einzelnen Tages: Kennzahlen, Tagesfokus, Anker dieses Tages,
 /// Aufgaben (offen, dann erledigt) und freie Notizen.
 ///
 /// Die Ansicht rendert mit einem **Datum** — ein gespeicherter `Day` ist optional. Wochen und
@@ -48,7 +48,6 @@ struct DayDetailView: View {
                 statsRow(tasks: tasks)
                 focusSection
                 goalSection(sheet: sheet, tasks: tasks)
-                scheduleSection
                 taskSection(sheet: sheet, tasks: tasks)
                 notesSection
             }
@@ -145,7 +144,6 @@ struct DayDetailView: View {
         return HStack(spacing: AnkerSpacing.s2) {
             statTile(value: tasks.count - done, label: String(localized: "Offen"), tint: AnkerColor.accentInk)
             statTile(value: done, label: String(localized: "Erledigt"), tint: AnkerColor.ink)
-            statTile(value: day?.timeBlockList.count ?? 0, label: String(localized: "Zeitblöcke"), tint: AnkerColor.inkTertiary)
         }
         .padding(.top, AnkerSpacing.s4)
     }
@@ -248,30 +246,6 @@ struct DayDetailView: View {
         .help("Anker öffnen: \(goal.title)")
         .accessibilityLabel("Anker \(lane.numberLabel), \(goal.title), \(weekPercent) Prozent der Woche erledigt, \(dayDone) von \(dayTasks.count) Aufgaben an diesem Tag erledigt")
         .accessibilityHint("Öffnet den Anker")
-    }
-
-    // MARK: - Zeitplan
-
-    private var scheduleSection: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            SectionLabel(title: String(localized: "Zeitplan"))
-
-            let blocks = (day?.timeBlockList ?? []).sorted { $0.startTime < $1.startTime }
-            if blocks.isEmpty {
-                emptyHint("Für diesen Tag sind keine Zeitblöcke eingetragen.")
-            } else {
-                let blocks = blocks.sorted { $0.startTime < $1.startTime }
-                VStack(spacing: 0) {
-                    ForEach(Array(blocks.enumerated()), id: \.element.id) { index, block in
-                        DayTimeBlockRow(block: block)
-                        if index < blocks.count - 1 {
-                            AnkerRule(color: AnkerColor.cardDivider, weight: .row)
-                        }
-                    }
-                }
-                .ankerCard()
-            }
-        }
     }
 
     // MARK: - Aufgaben
@@ -416,43 +390,3 @@ struct DayDetailView: View {
         return trimmed.isEmpty ? nil : trimmed
     }
 }
-
-private struct DayTimeBlockRow: View {
-    let block: TimeBlock
-
-    private var isAnchored: Bool {
-        block.linkedEventIdentifier != nil
-    }
-
-    var body: some View {
-        HStack(spacing: AnkerSpacing.s3) {
-            VStack(alignment: .leading, spacing: AnkerSpacing.s1) {
-                Text(AnkerDateFormat.timeOfDay(block.startTime))
-                    .ankerType(AnkerType.numericSmall)
-                    .foregroundStyle(AnkerColor.ink)
-                Text(AnkerDateFormat.timeOfDay(block.endTime))
-                    .ankerType(AnkerType.numericSmall)
-                    .foregroundStyle(AnkerColor.inkSecond)
-            }
-            .frame(width: 44, alignment: .leading)
-
-            HStack {
-                Text(block.title)
-                    .ankerType(AnkerType.caption)
-                    .foregroundStyle(AnkerColor.ink)
-                    .lineLimit(1)
-                Spacer(minLength: AnkerSpacing.s2)
-                if isAnchored {
-                    Image(.week)
-                        .ankerType(AnkerType.caption)
-                        .foregroundStyle(AnkerColor.accentInk)
-                        .accessibilityLabel("Aus dem Kalender übernommen")
-                }
-            }
-        }
-        .padding(.horizontal, AnkerSpacing.s3)
-        .padding(.vertical, AnkerSpacing.s3)
-        .accessibilityElement(children: .combine)
-    }
-}
-

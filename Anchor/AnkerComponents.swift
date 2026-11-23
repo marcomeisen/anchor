@@ -266,6 +266,11 @@ struct TaskCard: View {
             }
             Spacer(minLength: AnkerSpacing.s2)
 
+            if let rule = task.recurrence {
+                TaskRecurrenceMark(rule: rule)
+                    .padding(.top, AnkerSpacing.s1)
+            }
+
             // Prio-Gruppen entfallen; der Buchstabe steht rechts an der Zeile.
             if showPriority {
                 Text(verbatim: task.priority.label)
@@ -349,6 +354,9 @@ struct TaskCard: View {
         }
         .accessibilityAction(named: "Aufgabe löschen") {
             confirmingDelete = true
+        }
+        .accessibilityActions {
+            TaskRecurrenceAccessibilityActions(task: task, perform: performSetRecurrence)
         }
         .onTapGesture {
             if isSelectionMode {
@@ -535,6 +543,8 @@ struct TaskCard: View {
             Label("Anker wählen", ankerIcon: AnkerIcon.goal)
         }
 
+        TaskRecurrenceMenu(current: task.recurrence, perform: performSetRecurrence)
+
         Button {
             let snapshot = TaskActions.snapshot(task)
             let isImportant = task.priority == .a
@@ -609,11 +619,23 @@ struct TaskCard: View {
         }
 
         let snapshot = TaskActions.snapshot(task)
+        var next: AnkerTask?
         withAnimation(taskAnimation) {
-            TaskActions.toggleDone(task, modelContext: modelContext)
+            next = TaskActions.toggleDone(task, modelContext: modelContext)
         }
         iOSImpact(.light)
-        notifyUndo(message: task.isDone ? "Aufgabe erledigt" : "Aufgabe wieder offen", snapshots: [snapshot])
+        if let message = TaskRecurrenceText.spawnedMessage(for: next) {
+            onUndoableAction?(TaskUndoNotice(message: message, snapshots: [snapshot]))
+        } else {
+            notifyUndo(message: task.isDone ? "Aufgabe erledigt" : "Aufgabe wieder offen", snapshots: [snapshot])
+        }
+    }
+
+    private func performSetRecurrence(_ rule: TaskRecurrence?) {
+        let snapshot = TaskActions.snapshot(task)
+        guard TaskActions.setRecurrence(task, to: rule, modelContext: modelContext) else { return }
+        iOSImpact(.light)
+        notifyUndo(message: rule == nil ? "Wiederholung beendet" : "Wiederholung gesetzt", snapshots: [snapshot])
     }
 
     private func performDelete() {
@@ -685,6 +707,73 @@ struct TaskCard: View {
 
     private var taskAnimation: Animation {
         reduceMotion ? .easeOut(duration: 0.15) : .snappy
+    }
+}
+
+// MARK: - Wiederholen
+
+/// Das kleine Wiederhol-Symbol an `TaskCard` und `TaskChip`: Tinte, keine Farbe — die eine
+/// Farbe heißt „erledigt" oder „heute", nicht „wiederholt sich".
+struct TaskRecurrenceMark: View {
+    let rule: TaskRecurrence
+    var size: CGFloat = AnkerIconSize.xs
+
+    var body: some View {
+        Image(.refresh)
+            .ankerIcon(size)
+            .foregroundStyle(AnkerColor.inkSecond)
+            .accessibilityLabel(rule.accessibilityDescription)
+    }
+}
+
+/// „Wiederholen ▸" im Kontextmenü: Nie und die fünf Regeln, die gesetzte mit Haken.
+struct TaskRecurrenceMenu: View {
+    let current: TaskRecurrence?
+    let perform: (TaskRecurrence?) -> Void
+
+    var body: some View {
+        Menu {
+            Button {
+                perform(nil)
+            } label: {
+                Label("Nie", ankerIcon: current == nil ? .check : .clear)
+            }
+            Divider()
+            ForEach(TaskRecurrence.allCases) { rule in
+                Button {
+                    perform(rule)
+                } label: {
+                    Label(verbatim: rule.label, ankerIcon: current == rule ? .check : .refresh)
+                }
+            }
+        } label: {
+            Label("Wiederholen", ankerIcon: AnkerIcon.refresh)
+        }
+    }
+}
+
+/// Dieselben Einträge als Bedienungshilfen-Aktionen.
+struct TaskRecurrenceAccessibilityActions: View {
+    let task: AnkerTask
+    let perform: (TaskRecurrence?) -> Void
+
+    var body: some View {
+        ForEach(TaskRecurrence.allCases.filter { $0 != task.recurrence }) { rule in
+            Button("Wiederholen: \(rule.label)") { perform(rule) }
+        }
+        if task.recurrence != nil {
+            Button("Nicht mehr wiederholen") { perform(nil) }
+        }
+    }
+}
+
+enum TaskRecurrenceText {
+    /// Der Rückgängig-Hinweis, wenn das Abhaken eine Folgeinstanz erzeugt hat — er nennt, wann
+    /// sie wiederkommt.
+    static func spawnedMessage(for next: AnkerTask?) -> String? {
+        guard let stored = next?.day?.date else { return nil }
+        let date = AnkerCalendar.nominalDate(ofStored: stored)
+        return String(localized: "Erledigt – wieder am \(AnkerDateFormat.weekdayShortWithDayMonth(date))")
     }
 }
 

@@ -172,6 +172,71 @@ enum Priority: String, Codable, CaseIterable, Identifiable {
     var label: String { rawValue.uppercased() }
 }
 
+/// Wie sich eine Aufgabe wiederholt — „nach Plan" wie das „every" von Things oder Todoist:
+/// der naechste Termin rechnet ab dem **geplanten** Tag der erledigten Instanz, nicht ab heute.
+///
+/// Als Text in `AnkerTask.recurrenceRaw` gespeichert, nicht als `Codable`-Enum.
+nonisolated enum TaskRecurrence: String, CaseIterable, Identifiable, Sendable {
+    case daily
+    case weekdays
+    case weekly
+    case biweekly
+    case monthly
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .daily: String(localized: "Täglich")
+        case .weekdays: String(localized: "Werktags")
+        case .weekly: String(localized: "Wöchentlich")
+        case .biweekly: String(localized: "Alle 2 Wochen")
+        case .monthly: String(localized: "Monatlich")
+        }
+    }
+
+    /// Fuer das kleine Wiederhol-Symbol an Zeile und Chip.
+    var accessibilityDescription: String {
+        switch self {
+        case .daily: String(localized: "wiederholt sich täglich")
+        case .weekdays: String(localized: "wiederholt sich werktags")
+        case .weekly: String(localized: "wiederholt sich wöchentlich")
+        case .biweekly: String(localized: "wiederholt sich alle 2 Wochen")
+        case .monthly: String(localized: "wiederholt sich monatlich")
+        }
+    }
+
+    /// Der naechste Termin nach dem Kalendertag `date` (Mitternacht in `calendar`).
+    ///
+    /// Werktags ueberspringt Samstag und Sonntag. Monatlich nimmt denselben Tag im Folgemonat,
+    /// in einem kuerzeren Monat dessen letzten Tag — `date(byAdding: .month)` klemmt genau so.
+    /// Grenze: die Kette merkt sich den urspruenglichen Monatstag nicht; nach einem 31. Januar
+    /// folgt der 28. Februar und danach der 28. Maerz. Ein Feld dafuer waere eine weitere
+    /// Schemaaenderung fuer einen seltenen Fall.
+    func nextDate(after date: Date, calendar: Calendar = AnkerCalendar.iso) -> Date {
+        let start = calendar.startOfDay(for: date)
+        let next: Date?
+        switch self {
+        case .daily:
+            next = calendar.date(byAdding: .day, value: 1, to: start)
+        case .weekdays:
+            var candidate = calendar.date(byAdding: .day, value: 1, to: start)
+            // `weekday` zaehlt auch im ISO-Kalender gregorianisch: 1 Sonntag, 7 Samstag.
+            while let current = candidate, [1, 7].contains(calendar.component(.weekday, from: current)) {
+                candidate = calendar.date(byAdding: .day, value: 1, to: current)
+            }
+            next = candidate
+        case .weekly:
+            next = calendar.date(byAdding: .day, value: 7, to: start)
+        case .biweekly:
+            next = calendar.date(byAdding: .day, value: 14, to: start)
+        case .monthly:
+            next = calendar.date(byAdding: .month, value: 1, to: start)
+        }
+        return calendar.startOfDay(for: next ?? start)
+    }
+}
+
 @Model
 final class AnkerTask {
     var id: UUID = UUID()
@@ -192,6 +257,27 @@ final class AnkerTask {
 
     var day: Day?
     var linkedGoal: Goal?
+
+    /// Die Wiederholregel: `TaskRecurrence.rawValue`, `nil` heisst einmalig.
+    ///
+    /// Bewusst **nicht** wie `priority` als `Codable`-Enum gespeichert: ein Fall, den eine neuere
+    /// Version hinzufuegt, braeche auf einem aelteren Geraet den Import. Als Text bleibt er
+    /// stehen und wird dort nur nicht verstanden. Optional und additiv — aeltere Datensaetze
+    /// und App-Versionen kommen ohne aus.
+    var recurrenceRaw: String?
+
+    /// Die ID der Folgeinstanz, sobald das Abhaken sie erzeugt hat.
+    ///
+    /// Haelt die Kette eindeutig: nur die **neueste** Instanz traegt die Regel weiter. Wird eine
+    /// erledigte Aufgabe wieder geoeffnet und erneut abgehakt, steht hier schon eine ID — es
+    /// entsteht keine zweite Folgeinstanz. Die ID statt eines `Bool`, damit Undo und der
+    /// Rueckblick die Folgeinstanz finden.
+    var recurrenceNextID: UUID?
+
+    var recurrence: TaskRecurrence? {
+        get { recurrenceRaw.flatMap(TaskRecurrence.init(rawValue:)) }
+        set { recurrenceRaw = newValue?.rawValue }
+    }
 
     /// Bestbekannter Erledigungstag, mit Rueckfall auf den geplanten Tag fuer Altbestand.
     var completionDate: Date? {

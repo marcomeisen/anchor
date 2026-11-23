@@ -232,6 +232,15 @@ struct TaskChip: View {
             .multilineTextAlignment(.leading)
     }
 
+    /// Klein und in Tinte hinter dem Titel; die Beschriftung trägt `accessibilityText`.
+    @ViewBuilder
+    private var recurrenceMark: some View {
+        if let rule = task.recurrence {
+            TaskRecurrenceMark(rule: rule)
+                .accessibilityHidden(true)
+        }
+    }
+
     @ViewBuilder
     private var chipContent: some View {
         if compact {
@@ -242,9 +251,13 @@ struct TaskChip: View {
                 HStack(spacing: AnkerSpacing.s1 + 2) {
                     chipMarks
                     chipTitle(lines: 1).fixedSize()
+                    recurrenceMark
                 }
                 VStack(alignment: .leading, spacing: AnkerSpacing.s1) {
-                    HStack(spacing: AnkerSpacing.s1 + 2) { chipMarks }
+                    HStack(spacing: AnkerSpacing.s1 + 2) {
+                        chipMarks
+                        recurrenceMark
+                    }
                     chipTitle(lines: 3)
                 }
             }
@@ -252,6 +265,7 @@ struct TaskChip: View {
             HStack(spacing: AnkerSpacing.s1 + 2) {
                 chipMarks
                 chipTitle(lines: 2)
+                recurrenceMark
             }
         }
     }
@@ -295,13 +309,18 @@ struct TaskChip: View {
         .accessibilityAction(named: "Ohne Anker") { link(nil) }
         .accessibilityAction(named: "In die nächste Woche") { moveToNextWeek() }
         .accessibilityAction(named: "Aufgabe löschen") { delete() }
+        .accessibilityActions {
+            TaskRecurrenceAccessibilityActions(task: task, perform: setRecurrence)
+        }
     }
 
     private var accessibilityText: String {
         let anchor = number.map { String(localized: "Anker \($0)") } ?? String(localized: "Ohne Anker")
-        return task.isDone
+        let base = task.isDone
             ? String(localized: "\(task.title), \(anchor), erledigt")
             : "\(task.title), \(anchor)"
+        guard let rule = task.recurrence else { return base }
+        return "\(base), \(rule.accessibilityDescription)"
     }
 
     @ViewBuilder
@@ -325,6 +344,7 @@ struct TaskChip: View {
                 Label("Ohne Anker", ankerIcon: task.linkedGoal == nil ? .check : .clear)
             }
         }
+        TaskRecurrenceMenu(current: task.recurrence, perform: setRecurrence)
         Button("Verschieben …") { showingMove = true }
         Button("In die nächste Woche", action: moveToNextWeek)
         if task.day != nil {
@@ -346,8 +366,24 @@ struct TaskChip: View {
 
     private func toggle() {
         let snapshot = TaskActions.snapshot(task)
-        TaskActions.toggleDone(task, modelContext: modelContext)
-        onUndoableAction?(TaskUndoNotice(message: task.isDone ? "Erledigt" : "Wieder offen", snapshots: [snapshot]))
+        let next = TaskActions.toggleDone(task, modelContext: modelContext)
+        if let message = TaskRecurrenceText.spawnedMessage(for: next) {
+            onUndoableAction?(TaskUndoNotice(message: message, snapshots: [snapshot]))
+        } else if task.isDone {
+            onUndoableAction?(TaskUndoNotice(message: "Erledigt", snapshots: [snapshot]))
+        } else {
+            onUndoableAction?(TaskUndoNotice(message: "Wieder offen", snapshots: [snapshot]))
+        }
+    }
+
+    private func setRecurrence(_ rule: TaskRecurrence?) {
+        let snapshot = TaskActions.snapshot(task)
+        guard TaskActions.setRecurrence(task, to: rule, modelContext: modelContext) else { return }
+        if rule == nil {
+            onUndoableAction?(TaskUndoNotice(message: "Wiederholung beendet", snapshots: [snapshot]))
+        } else {
+            onUndoableAction?(TaskUndoNotice(message: "Wiederholung gesetzt", snapshots: [snapshot]))
+        }
     }
 
     private func unschedule() {

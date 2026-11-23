@@ -2,6 +2,17 @@
 
 ## 2026-11-23
 
+### Vor dem Release: Übertrag, Wiederholen, Erinnerungen, Datumseingabe, Import
+
+- **Unerledigtes rückt nach.** Heute zeigt unter dem Tag „Noch offen aus dieser Woche" — was an früheren Tagen der laufenden Woche liegen blieb, statt bis zum Rückblick zu verschwinden. „Alle auf heute" legt alles mit einem Griff auf heute, mit Rückgängig.
+- **Wiederkehrende Aufgaben:** täglich, werktags, wöchentlich, alle 2 Wochen, monatlich. Beim Abhaken entsteht die nächste Aufgabe am nächsten Termin, gerechnet vom gemeinten Tag der erledigten; der Anker geht mit, in einer anderen Woche an den gleichnamigen. Rückgängig entfernt die Folgeaufgabe wieder, erneutes Abhaken erzeugt keine zweite, der Rückblick nimmt nichts doppelt mit. Einstellbar im Editor und im Kontextmenü. Zwei neue optionale Felder (`AnkerTask.recurrenceRaw`, `recurrenceNextID`) — **Schema-Deploy nötig**, siehe CloudKit-Anleitung (jetzt vier Felder).
+- **Natürliche Datumseingabe** in der Erfassungszeile und in der Menüleiste: „heute", „morgen", „übermorgen", „nächste Woche", „in 3 Tagen", „24.11." bzw. „today", „tomorrow", „next week", „in 3 days", „Nov 24". Nur am Zeilenende, damit „Ich ruf morgen nicht an" Titel bleibt. Die Hinweiszeile zeigt vorher Tag und Datum; liegt der Tag in einer anderen Woche, sagt sie, dass der Anker entfällt.
+- **Erinnerungen an das Ritual:** Einstellungen → Erinnerungen, montags „Anker setzen" und sonntags „Rückblick", Uhrzeit wählbar, Standard aus. Sie kommen nur, wenn sie passen: montags nur ohne Anker, sonntags nur mit Ankern und offener Woche. Tippen öffnet Woche bzw. Rückblick. Lokal, ohne Server.
+- **Import aus Apple Erinnerungen** (Einstellungen → Daten): einmalig, nur lesend. Listen wählen, Vorschau, Import. Mit Datum in dieser oder nächster Woche an den Tag, sonst in den Eingang; hohe Priorität wird „wichtig"; Erledigtes und schon Vorhandenes wird übersprungen. Rückgängig möglich. Neue Berechtigung `NSRemindersFullAccessUsageDescription` (de/en über `InfoPlist.xcstrings`), auf dem Mac `ENABLE_RESOURCE_ACCESS_CALENDARS`. Datenschutzerklärung ergänzt.
+- **Tagesdetail ohne „Zeitplan".** Der Abschnitt zeigte Zeitblöcke, die man nirgends anlegen konnte. Das Modell bleibt.
+- 514 Katalogschlüssel auf Deutsch und Englisch; 189 Unit-Tests (neu: `CaptureDateTests`, `RecurrenceTests`, `RitualReminderTests`, `RemindersImportTests`), iPhone-Oberflächentests grün.
+- Entwurf für die **Quartalsplanung** als Leinwand „Anchorit Quartal" (claude.ai-Artifact `U1SWebYdJaRExGjLCxyFGK`), noch nicht gebaut.
+
 ### Englisch als zweite Sprache
 
 - **Anchorit spricht Deutsch und Englisch.** Einstellungen → Sprache: *Wie das System* (Deutsch auf deutschen Geräten, sonst Englisch), *Deutsch* oder *English*. Die Wahl gilt nach einem Neustart, auf dem Mac per Knopf „Jetzt neu starten"; der Hinweis steht schon in der gewählten Sprache.

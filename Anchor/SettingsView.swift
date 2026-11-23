@@ -10,8 +10,17 @@ struct SettingsView: View {
     @AppStorage(AppSettingsKey.cloudSyncEnabled) private var cloudSyncEnabled = true
     @AppStorage(AppSettingsKey.language) private var languageRaw = AppLanguage.system.rawValue
 
+    @AppStorage(AppSettingsKey.reminderWeekStartEnabled) private var weekStartReminderOn = false
+    @AppStorage(AppSettingsKey.reminderWeekStartMinutes) private var weekStartReminderMinutes = RitualReminderKind.weekStart.defaultMinutes
+    @AppStorage(AppSettingsKey.reminderReviewEnabled) private var reviewReminderOn = false
+    @AppStorage(AppSettingsKey.reminderReviewMinutes) private var reviewReminderMinutes = RitualReminderKind.review.defaultMinutes
+
     @ObservedObject var cloudSyncStatus: CloudSyncStatusCenter = .shared
+    @ObservedObject private var reminderCenter: RitualReminderCenter = .shared
     @State private var showingDataPrivacy = false
+    @State private var showingRemindersImport = false
+    /// Gesetzt, wenn das Einschalten an einer verweigerten Berechtigung scheiterte.
+    @State private var reminderPermissionDenied = false
 
     /// `showsDoneButton` false in der macOS-Einstellungen-Szene: die hat ihr eigenes Fenster
     /// mit Schließen-Knopf, ein zweites "Fertig" wäre dort verwirrend.
@@ -32,6 +41,7 @@ struct SettingsView: View {
                 appearanceSection
                 languageSection
                 cloudSyncSection
+                remindersSection
                 dataSection
             }
             .padding(AnkerSpacing.screenPadding)
@@ -52,6 +62,15 @@ struct SettingsView: View {
             .frame(minWidth: 460, minHeight: 520)
 #endif
         }
+        .sheet(isPresented: $showingRemindersImport) {
+            NavigationStack {
+                RemindersImportSheet()
+            }
+#if os(macOS)
+            .frame(minWidth: 460, minHeight: 520)
+#endif
+        }
+        .task { await reminderCenter.refreshAuthorization() }
     }
 
     // MARK: - Start
@@ -257,6 +276,128 @@ struct SettingsView: View {
         .ankerCard(fill: AnkerColor.neutral[500].opacity(0.12), elevated: false)
     }
 
+    // MARK: - Erinnerungen
+
+    private var remindersSection: some View {
+        card {
+            sectionTitle("Erinnerungen")
+
+            reminderRow(.weekStart, title: "Montags: Anker setzen", isOn: $weekStartReminderOn, minutes: $weekStartReminderMinutes)
+            AnkerRule(color: AnkerColor.cardDivider, weight: .row)
+            reminderRow(.review, title: "Sonntags: Rückblick", isOn: $reviewReminderOn, minutes: $reviewReminderMinutes)
+
+            Text("Die Erinnerung am Montag kommt nur, solange die Woche noch keine Anker hat. Die am Sonntag nur, wenn die Woche Anker hat und noch offen ist.")
+                .ankerType(AnkerType.caption)
+                .foregroundStyle(AnkerColor.inkSecond)
+                .fixedSize(horizontal: false, vertical: true)
+
+            if showsReminderPermissionNotice {
+                reminderPermissionNotice
+            }
+        }
+        .disabled(RitualReminderCenter.isInactiveInThisProcess)
+    }
+
+    /// Verweigert, oder nachträglich in den Systemeinstellungen abgeschaltet, während hier noch
+    /// eine Erinnerung eingeschaltet ist.
+    private var showsReminderPermissionNotice: Bool {
+        reminderPermissionDenied
+            || (reminderCenter.isDenied && (weekStartReminderOn || reviewReminderOn))
+    }
+
+    private func reminderRow(
+        _ kind: RitualReminderKind,
+        title: LocalizedStringKey,
+        isOn: Binding<Bool>,
+        minutes: Binding<Int>
+    ) -> some View {
+        VStack(alignment: .leading, spacing: AnkerSpacing.s2) {
+            Toggle(isOn: Binding(
+                get: { isOn.wrappedValue },
+                set: { newValue in setReminder(isOn: isOn, to: newValue) }
+            )) {
+                Text(title)
+                    .ankerType(AnkerType.caption)
+                    .foregroundStyle(AnkerColor.ink)
+            }
+            .frame(minHeight: 44)
+
+            if isOn.wrappedValue {
+                HStack(spacing: AnkerSpacing.s3) {
+                    Text("Uhrzeit")
+                        .ankerType(AnkerType.caption)
+                        .foregroundStyle(AnkerColor.inkSecond)
+                    Spacer(minLength: 0)
+                    DatePicker(
+                        "Uhrzeit",
+                        selection: Binding(
+                            get: {
+                                RitualReminderPlanner.date(
+                                    fromMinutes: minutes.wrappedValue,
+                                    on: Date(),
+                                    calendar: RitualReminderPlanner.currentCalendar
+                                )
+                            },
+                            set: { date in
+                                minutes.wrappedValue = RitualReminderPlanner.minutes(
+                                    from: date,
+                                    calendar: RitualReminderPlanner.currentCalendar
+                                )
+                                reminderCenter.scheduleSoon()
+                            }
+                        ),
+                        displayedComponents: .hourAndMinute
+                    )
+                    .labelsHidden()
+                    .tint(AnkerColor.accentInk)
+#if os(macOS)
+                    .datePickerStyle(.stepperField)
+#else
+                    .datePickerStyle(.compact)
+#endif
+                }
+            }
+        }
+    }
+
+    /// Erst beim Einschalten nach der Berechtigung fragen. Wird sie verweigert, springt der
+    /// Schalter zurück und der Hinweis zeigt den Weg in die Systemeinstellungen.
+    private func setReminder(isOn: Binding<Bool>, to newValue: Bool) {
+        guard newValue else {
+            isOn.wrappedValue = false
+            reminderCenter.scheduleSoon(delay: .zero)
+            return
+        }
+        isOn.wrappedValue = true
+        Task {
+            let granted = await reminderCenter.requestAuthorizationIfNeeded()
+            if granted {
+                reminderPermissionDenied = false
+                reminderCenter.scheduleSoon(delay: .zero)
+            } else {
+                isOn.wrappedValue = false
+                reminderPermissionDenied = true
+            }
+        }
+    }
+
+    private var reminderPermissionNotice: some View {
+        VStack(alignment: .leading, spacing: AnkerSpacing.s2) {
+            Text("Mitteilungen für Anchorit sind ausgeschaltet. Erinnerungen kommen erst, wenn du sie in den Systemeinstellungen erlaubst.")
+                .ankerType(AnkerType.caption)
+                .foregroundStyle(AnkerColor.inkSecond)
+                .fixedSize(horizontal: false, vertical: true)
+
+            Button("Systemeinstellungen öffnen") {
+                RitualReminderCenter.openSystemSettings()
+            }
+            .ankerType(AnkerType.caption)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(AnkerSpacing.s3)
+        .ankerCard(fill: AnkerColor.neutral[500].opacity(0.12), elevated: false)
+    }
+
     // MARK: - Daten
 
     private var dataSection: some View {
@@ -287,6 +428,34 @@ struct SettingsView: View {
             }
             .buttonStyle(.plain)
             .accessibilityLabel("Daten und Datenschutz öffnen")
+
+            if RemindersImportModel.isAvailable {
+                AnkerRule(color: AnkerColor.cardDivider, weight: .row)
+                Button {
+                    showingRemindersImport = true
+                } label: {
+                    HStack(spacing: AnkerSpacing.s3) {
+                        Image(.checkCircle)
+                            .ankerType(AnkerType.meta)
+                            .foregroundStyle(AnkerColor.accentInk)
+                        VStack(alignment: .leading, spacing: AnkerSpacing.s1) {
+                            Text("Aus Erinnerungen importieren …")
+                                .ankerType(AnkerType.caption)
+                                .foregroundStyle(AnkerColor.ink)
+                            Text("Offene Erinnerungen einmalig als Aufgaben übernehmen")
+                                .ankerType(AnkerType.caption)
+                                .foregroundStyle(AnkerColor.inkSecond)
+                        }
+                        Spacer(minLength: 0)
+                        Image(.chevronRight)
+                            .ankerType(AnkerType.caption)
+                            .foregroundStyle(AnkerColor.inkSecond)
+                    }
+                    .frame(minHeight: 44)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+            }
 
             AnkerRule(color: AnkerColor.cardDivider, weight: .row)
             legalRow(.privacy, icon: .privacy, title: "Datenschutzerklärung", detail: "Was Anchorit speichert und warum")

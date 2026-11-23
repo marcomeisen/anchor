@@ -6,7 +6,9 @@ import SwiftUI
 ///
 /// Das Popover beginnt **leer** und ohne Anker — eine stille Vorauswahl verankerte jede schnell
 /// erfasste Aufgabe am ersten Anker, auch wenn sie dort nicht hingehört. Die Aufgabe landet auf
-/// heute. Woche und Tag entstehen erst beim Sichern; das Öffnen ist noch kein Schreiben.
+/// heute — oder auf dem Tag, den die Zeile am Ende nennt (`morgen`, `Fr`, `24.11.`, wie in der
+/// Erfassungszeile). Liegt der in einer anderen Woche, bleibt sie ohne Anker. Woche und Tag
+/// entstehen erst beim Sichern; das Öffnen ist noch kein Schreiben.
 ///
 /// `onClose` schließt das Popover. `@Environment(\.dismiss)` greift in einem `NSPopover`
 /// nicht, deshalb reicht der Besitzer des Popovers den Weg herein.
@@ -22,15 +24,30 @@ struct QuickCapturePopover: View {
 
     /// Nur nachsehen, nicht anlegen — über ISO-Jahr und -Woche, nie über `monday`.
     private var currentWeek: Week? {
-        WeekPlanning.week(startingAt: AnkerCalendar.weekInterval(containing: Date()).monday, in: weeks)
+        WeekPlanning.week(startingAt: currentMonday, in: weeks)
+    }
+
+    private var currentMonday: Date {
+        AnkerCalendar.weekInterval(containing: Date()).monday
     }
 
     private var anchors: [Goal] {
         currentWeek.map(GoalOrdering.anchors(in:)) ?? []
     }
 
-    private var cleanTitle: String {
-        title.trimmingCharacters(in: .whitespacesAndNewlines)
+    /// Die Zeile mit den Kürzeln der Erfassung. Ein getipptes `#n` geht vor dem gewählten Chip.
+    private var input: CaptureInput {
+        var input = CaptureSyntax.parse(title)
+        if input.anchorNumber == nil, let index = anchors.firstIndex(where: { $0.id == selectedGoalID }) {
+            input.anchorNumber = index + 1
+        }
+        return input
+    }
+
+    private var hint: String? {
+        guard !title.trimmingCharacters(in: .whitespaces).isEmpty else { return nil }
+        let target = CaptureSyntax.resolve(input, weekStart: currentMonday, fallbackDate: Date())
+        return CaptureSyntax.hint(raw: title, target: target, anchorCount: anchors.count)
     }
 
     var body: some View {
@@ -48,6 +65,14 @@ struct QuickCapturePopover: View {
                 .padding(.vertical, AnkerSpacing.s2)
                 .ankerField()
                 .accessibilityIdentifier("quickCapture.title")
+
+            if let hint {
+                Text(verbatim: hint)
+                    .ankerType(AnkerType.caption)
+                    .foregroundStyle(AnkerColor.inkSecond)
+                    .lineLimit(1)
+                    .accessibilityIdentifier("quickCapture.hint")
+            }
 
             Text("Anker")
                 .ankerType(AnkerType.eyebrow)
@@ -72,7 +97,7 @@ struct QuickCapturePopover: View {
                 Button("Sichern", action: save)
                     .buttonStyle(AnkerButtonStyle.primary)
                     .keyboardShortcut(.defaultAction)
-                    .disabled(cleanTitle.isEmpty)
+                    .disabled(input.isEmpty)
             }
             .padding(.top, AnkerSpacing.s1)
         }
@@ -95,15 +120,12 @@ struct QuickCapturePopover: View {
     }
 
     private func save() {
-        guard !cleanTitle.isEmpty else { return }
-        let week = TaskActions.ensureWeek(containing: Date(), weeks: weeks, modelContext: modelContext)
-        let today = TaskActions.ensureDay(containing: Date(), in: week)
-        let goal = GoalOrdering.anchors(in: week).first { $0.id == selectedGoalID }
+        guard !input.isEmpty else { return }
         guard TaskActions.create(
-            title: cleanTitle,
-            priority: CaptureSyntax.defaultPriority,
-            on: today,
-            linkedGoal: goal,
+            input,
+            weekStart: currentMonday,
+            fallbackDate: Date(),
+            weeks: weeks,
             modelContext: modelContext
         ) != nil else { return }
 

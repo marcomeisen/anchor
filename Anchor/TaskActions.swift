@@ -18,6 +18,11 @@ struct TaskSnapshot: Identifiable {
     /// Zusammenführen von Sync-Duplikaten aufgegangen ist — dann gibt es seine ID nicht mehr,
     /// den Kalendertag aber schon. Additiv, damit ältere Aufrufer weiter kompilieren.
     var dayDate: Date? = nil
+    /// Wiederholregel und Folgeinstanz. Muss mit: ein Undo von „Wiederholen ▸" setzt die Regel
+    /// zurück, und ein Undo des Abhakens erkennt an der abweichenden `recurrenceNextID`, dass
+    /// es eine Folgeinstanz wieder entfernen muss.
+    var recurrenceRaw: String? = nil
+    var recurrenceNextID: UUID? = nil
 }
 
 struct TaskUndoNotice: Identifiable {
@@ -88,7 +93,10 @@ final class TaskUndoCoordinator: ObservableObject {
 }
 
 enum TaskActions {
-    static func toggleDone(_ task: AnkerTask, now: Date = Date(), modelContext: ModelContext) {
+    /// Gibt die Folgeinstanz zurück, falls das Abhaken einer wiederkehrenden Aufgabe eine
+    /// erzeugt hat.
+    @discardableResult
+    static func toggleDone(_ task: AnkerTask, now: Date = Date(), modelContext: ModelContext) -> AnkerTask? {
         setDone(task, !task.isDone, now: now, modelContext: modelContext)
     }
 
@@ -99,11 +107,95 @@ enum TaskActions {
     /// Wochentag" verfaelscht.
     ///
     /// `save: false` für Sammelaktionen: der Aufrufer speichert einmal am Ende, statt N-mal.
-    static func setDone(_ task: AnkerTask, _ isDone: Bool, now: Date = Date(), save: Bool = true, modelContext: ModelContext) {
-        guard task.isDone != isDone else { return }
+    ///
+    /// Abhaken einer wiederkehrenden Aufgabe erzeugt ihre Folgeinstanz (`spawnNextOccurrence`)
+    /// und gibt sie zurück. Das Undo braucht sie nicht zu kennen: `restore` erkennt sie an der
+    /// `recurrenceNextID` des Schnappschusses — so ist auch die Sammelaktion der
+    /// Mehrfachauswahl ohne eigenen Code korrekt.
+    @discardableResult
+    static func setDone(_ task: AnkerTask, _ isDone: Bool, now: Date = Date(), save: Bool = true, modelContext: ModelContext) -> AnkerTask? {
+        guard task.isDone != isDone else { return nil }
         task.isDone = isDone
         task.completedAt = isDone ? now : nil
+        let next = isDone ? spawnNextOccurrence(of: task, modelContext: modelContext) : nil
         finishToggle(task, save: save, modelContext: modelContext)
+        return next
+    }
+
+    // MARK: - Wiederkehrende Aufgaben
+
+    /// Legt die nächste Instanz einer wiederkehrenden Aufgabe an — am nächsten Termin nach dem
+    /// **gemeinten** Tag der erledigten Instanz, nicht nach heute.
+    ///
+    /// Nur die neueste Instanz trägt die Kette: hat die Aufgabe schon eine Folgeinstanz
+    /// (`recurrenceNextID`), entsteht keine zweite — auch nicht, wenn sie wieder geöffnet und
+    /// erneut abgehakt wird, und auch nicht, wenn die Folgeinstanz inzwischen gelöscht ist (sie
+    /// kann auf diesem Gerät auch nur noch nicht aus iCloud angekommen sein).
+    ///
+    /// Ohne Tag wirkt die Regel nicht: es gibt keinen Termin, von dem aus gerechnet würde. Sie
+    /// bleibt stehen und greift, sobald die Aufgabe eingeplant und abgehakt wird.
+    ///
+    /// Der Anker: in derselben Woche derselbe, in einer anderen Woche der gleichnamige Anker
+    /// dort (`WeekActions.matchingAnchor`), sonst ohne Anker. Wochen und Tag entstehen hier,
+    /// weil geschrieben wird.
+    @discardableResult
+    static func spawnNextOccurrence(of task: AnkerTask, modelContext: ModelContext) -> AnkerTask? {
+        guard task.isDone,
+              task.recurrenceNextID == nil,
+              let rule = task.recurrence,
+              let stored = task.day?.date else { return nil }
+
+        let source = AnkerCalendar.nominalDate(ofStored: stored)
+        let target = rule.nextDate(after: source)
+        let week = ensureWeek(containing: target, weeks: [], modelContext: modelContext)
+        let day = ensureDay(containing: target, in: week)
+
+        var goal: Goal?
+        if let current = task.linkedGoal, !current.isDeleted {
+            if isSameISOWeek(current.week, week) {
+                goal = current
+            } else {
+                goal = WeekActions.matchingAnchor(titled: current.title, in: week)
+            }
+        }
+
+        let next = AnkerTask(
+            title: task.title,
+            priority: task.priority,
+            order: day.taskList.count,
+            day: day,
+            linkedGoal: goal
+        )
+        next.recurrenceRaw = task.recurrenceRaw
+        modelContext.insert(next)
+        day.appendTask(next)
+        normalizeOrders(in: day)
+        task.recurrenceNextID = next.id
+        return next
+    }
+
+    /// Setzt oder löscht die Wiederholregel. Gibt zurück, ob sich etwas geändert hat.
+    ///
+    /// Eine bereits erzeugte Folgeinstanz bleibt stehen: sie ist eine eigene Aufgabe. Die
+    /// Regel einer erledigten Instanz zu ändern wirkt deshalb erst an der Folgeinstanz.
+    @discardableResult
+    static func setRecurrence(_ task: AnkerTask, to recurrence: TaskRecurrence?, save: Bool = true, modelContext: ModelContext) -> Bool {
+        guard task.recurrenceRaw != recurrence?.rawValue else { return false }
+        task.recurrence = recurrence
+        if save { modelContext.saveChanges() }
+        return true
+    }
+
+    /// Die erzeugte Folgeinstanz, falls es sie (hier) gibt.
+    static func nextOccurrence(of task: AnkerTask, modelContext: ModelContext) -> AnkerTask? {
+        guard let id = task.recurrenceNextID else { return nil }
+        return fetchTask(id: id, modelContext: modelContext)
+    }
+
+    private static func fetchTask(id: UUID, modelContext: ModelContext) -> AnkerTask? {
+        var descriptor = FetchDescriptor<AnkerTask>(predicate: #Predicate { $0.id == id })
+        descriptor.fetchLimit = 1
+        return (try? modelContext.fetch(descriptor))?.first { !$0.isDeleted }
     }
 
     /// Erledigtes wandert ans Ende des Tages — der Zustand ist zu dem Zeitpunkt schon gesetzt.
@@ -142,6 +234,7 @@ enum TaskActions {
                 order: (task.linkedGoal?.taskList.count ?? 0),
                 linkedGoal: task.linkedGoal
             )
+            copy.recurrenceRaw = task.recurrenceRaw
             modelContext.insert(copy)
             modelContext.saveChanges()
             return copy
@@ -155,6 +248,8 @@ enum TaskActions {
             day: day,
             linkedGoal: task.linkedGoal
         )
+        // Die Regel gehört zur Aufgabe, die Kette nicht: die Kopie beginnt eine eigene.
+        copy.recurrenceRaw = task.recurrenceRaw
         modelContext.insert(copy)
         day.appendTask(copy)
         normalizeOrders(in: day)
@@ -261,7 +356,9 @@ enum TaskActions {
             carryOverCount: task.carryOverCount,
             dayID: task.day?.id,
             goalID: task.linkedGoal?.id,
-            dayDate: task.day?.date
+            dayDate: task.day?.date,
+            recurrenceRaw: task.recurrenceRaw,
+            recurrenceNextID: task.recurrenceNextID
         )
     }
 
@@ -314,12 +411,14 @@ enum TaskActions {
             }
 
             if let existingTask = existingTasks[snapshot.id] {
+                rollBackSpawnedOccurrence(of: existingTask, to: snapshot, modelContext: modelContext)
                 existingTask.title = snapshot.title
                 existingTask.priority = snapshot.priority
                 existingTask.isDone = snapshot.isDone
                 existingTask.order = snapshot.order
                 existingTask.completedAt = snapshot.completedAt
                 existingTask.carryOverCount = snapshot.carryOverCount
+                existingTask.recurrenceRaw = snapshot.recurrenceRaw
                 existingTask.linkedGoal = goal
 
                 if existingTask.day?.id != day?.id {
@@ -342,6 +441,8 @@ enum TaskActions {
                     day: day,
                     linkedGoal: goal
                 )
+                task.recurrenceRaw = snapshot.recurrenceRaw
+                task.recurrenceNextID = snapshot.recurrenceNextID
                 modelContext.insert(task)
                 restoredTasksByID[task.id] = task
             }
@@ -360,6 +461,24 @@ enum TaskActions {
         }
 
         modelContext.saveChanges()
+    }
+
+    /// Nimmt die Folgeinstanz zurück, die seit dem Schnappschuss entstanden ist — das Undo des
+    /// Abhakens, einzeln wie gesammelt.
+    ///
+    /// Nur eine **offene** Folgeinstanz wird entfernt. Ist sie inzwischen selbst erledigt, hat
+    /// der Nutzer mit ihr gearbeitet; dann bleibt sie, und die Verknüpfung auch — sonst entstünde
+    /// beim nächsten Abhaken eine zweite.
+    private static func rollBackSpawnedOccurrence(of task: AnkerTask, to snapshot: TaskSnapshot, modelContext: ModelContext) {
+        guard let spawnedID = task.recurrenceNextID, spawnedID != snapshot.recurrenceNextID else {
+            task.recurrenceNextID = snapshot.recurrenceNextID
+            return
+        }
+        if let spawned = fetchTask(id: spawnedID, modelContext: modelContext) {
+            guard !spawned.isDone else { return }
+            delete(spawned, save: false, modelContext: modelContext)
+        }
+        task.recurrenceNextID = snapshot.recurrenceNextID
     }
 
     private static func fetchGoal(id: UUID, modelContext: ModelContext) -> Goal? {

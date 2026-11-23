@@ -79,6 +79,9 @@ enum WeekActions {
         var carriedOverTasks = 0
         var droppedTasks = 0
         var reanchoredTasks = 0
+        /// Offene wiederkehrende Aufgaben, deren Folgeinstanz es schon gibt. Mitnehmen hätte
+        /// sie verdoppelt; sie bleiben in ihrer Woche stehen.
+        var supersededTasks = 0
         var targetISOWeek = 0
         var didSave = true
     }
@@ -175,6 +178,13 @@ enum WeekActions {
             guard let decision = decisions[task.id] ?? fallback else { continue }
             let sourceTitle = task.linkedGoal?.title
 
+            // Wieder geöffnet, nachdem das Abhaken schon die Folgeinstanz erzeugt hatte: die
+            // Wiederholung steht drüben bereits. Mitnehmen hieße zweimal dieselbe Aufgabe.
+            if decision != .drop, TaskActions.nextOccurrence(of: task, modelContext: modelContext) != nil {
+                report.supersededTasks += 1
+                continue
+            }
+
             switch decision {
             case .drop:
                 TaskActions.delete(task, save: false, modelContext: modelContext)
@@ -238,9 +248,25 @@ enum WeekActions {
     /// Ab dem **gemeinten** Kalendertag: `Day.date` ist Mitternacht in der Zone des anlegenden
     /// Geräts. Ein Freitag aus Tokio ist in Berlin Donnerstag 16 Uhr — direkt darauf eine Woche
     /// addiert, wäre die Aufgabe drüben eine Donnerstagsaufgabe.
+    ///
+    /// Eine wiederkehrende Aufgabe landet auf ihrem ersten Termin in der Folgewoche — eine
+    /// tägliche Aufgabe vom Sonntag am Montag, nicht am nächsten Sonntag. Fällt kein Termin in
+    /// die Folgewoche (alle 2 Wochen, monatlich), bleibt es beim selben Wochentag.
     private static func nextWeekDate(for task: AnkerTask, in week: Week) -> Date? {
         let source = AnkerCalendar.nominalDate(ofStored: task.day?.date ?? week.monday)
-        return AnkerCalendar.iso.date(byAdding: .weekOfYear, value: 1, to: source)
+        let sameWeekday = AnkerCalendar.iso.date(byAdding: .weekOfYear, value: 1, to: source)
+
+        guard let rule = task.recurrence, task.day != nil else { return sameWeekday }
+        let nextKey = AnkerCalendar.weekKey(containing: AnkerCalendar.nominalDate(ofStored: week.monday)).next
+        var candidate = source
+        // Höchstens zwei Wochen weit: weiter reicht keine Regel, die in die Folgewoche trifft.
+        for _ in 0..<14 {
+            candidate = rule.nextDate(after: candidate)
+            let key = AnkerCalendar.weekKey(containing: candidate)
+            if key == nextKey { return candidate }
+            if key > nextKey { break }
+        }
+        return sameWeekday
     }
 
     static func reopen(_ week: Week, modelContext: ModelContext) {

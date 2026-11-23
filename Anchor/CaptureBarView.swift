@@ -4,6 +4,8 @@ import SwiftUI
 /// Die Erfassungszeile: tippen, Enter, fertig.
 ///
 /// `Angebot prüfen #2 mi` — Anker und Wochentag als Kürzel, der Wochentag am Ende der Zeile.
+/// Statt des Wochentags geht auch ein Datum: `morgen`, `in 3 Tagen`, `24.11.` — es darf in eine
+/// andere Woche zeigen, dann entfällt der Anker, und die Hinweiszeile sagt das.
 /// Darunter steht der **aufgelöste** Stand, also wo die Aufgabe ohne weitere Angabe landet.
 ///
 /// Die Woche darf fehlen: sie entsteht erst beim Sichern. Vorher legte schon das Anzeigen eine
@@ -15,7 +17,7 @@ struct CaptureBar: View {
     let week: Week?
     let weekStart: Date
     let fallbackDate: Date
-    var placeholder = String(localized: "Was steht an?  ·  #1–#4 Anker, mo–so Tag")
+    var placeholder = String(localized: "Was steht an?  ·  #1–#4 Anker, morgen, Fr, 24.11.")
     var onCommitted: (AnkerTask) -> Void = { _ in }
 
     @State private var raw = ""

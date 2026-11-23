@@ -165,6 +165,12 @@ enum AnkerDateFormat {
         date.formatted(.dateTime.weekday(.abbreviated).day(.twoDigits).month(.twoDigits))
     }
 
+    /// `Do, 26.11.` — knapp und mit Datum, für die Hinweiszeile der Erfassung. Ein Datum dort
+    /// kann in eine andere Woche zeigen; der Wochentag allein sagte dann zu wenig.
+    static func weekdayShortCommaDayMonth(_ date: Date) -> String {
+        "\(weekdayShort(date)), \(dayMonth(date))"
+    }
+
     /// `Montag, 3. August` — die ausgeschriebene Form fuer Titel und Accessibility-Labels.
     static func weekdayLongWithDayMonth(_ date: Date) -> String {
         date.formatted(.dateTime.weekday(.wide).day().month())

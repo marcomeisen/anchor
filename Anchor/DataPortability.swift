@@ -21,7 +21,9 @@ enum DataPortability {
     /// muessen in einer Auskunft nach Art. 15 auftauchen.
     struct Snapshot: Codable, Sendable {
         /// 3: Anker tragen ihren Warum-Satz (`why`) und die Rückblickantwort (`verdict`).
-        var formatVersion = 3
+        /// 4: Aufgaben tragen ihre Wiederholregel (`recurrence`) und die ID ihrer
+        /// Folgeinstanz (`recurrenceNextID`).
+        var formatVersion = 4
         var exportedAt: Date
         var application: String
         var weeks: [ExportedWeek]
@@ -81,6 +83,9 @@ enum DataPortability {
         var carryOverCount: Int
         var dayID: UUID?
         var linkedGoalID: UUID?
+        /// Rohtext der Regel (`daily`, `weekdays`, `weekly`, `biweekly`, `monthly`), `nil` einmalig.
+        var recurrence: String?
+        var recurrenceNextID: UUID?
     }
 
     struct ExportedTimeBlock: Codable, Sendable {
@@ -177,7 +182,9 @@ enum DataPortability {
             completedAt: task.completedAt,
             carryOverCount: task.carryOverCount,
             dayID: task.day?.id,
-            linkedGoalID: task.linkedGoal?.id
+            linkedGoalID: task.linkedGoal?.id,
+            recurrence: task.recurrenceRaw,
+            recurrenceNextID: task.recurrenceNextID
         )
     }
 

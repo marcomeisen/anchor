@@ -1,18 +1,18 @@
 {
   "sourceLanguage" : "de",
   "strings" : {
-    "#1–#4 Anker · mo–so Tag am Ende" : {
+    "#1–#4 Anker · am Ende: morgen, Fr, 24.11." : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "#1–#4 Anker · mo–so Tag am Ende"
+            "value" : "#1–#4 Anker · am Ende: morgen, Fr, 24.11."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "#1–#4 anchor · mo–su day at the end"
+            "value" : "#1–#4 anchor · at the end: tomorrow, fri, Nov 24"
           }
         }
       }
@@ -561,6 +561,22 @@
         }
       }
     },
+    "%lld Aufgaben auf heute gelegt" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld Aufgaben auf heute gelegt"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld tasks moved to today"
+          }
+        }
+      }
+    },
     "%lld Aufgaben einplanen" : {
       "localizations" : {
         "de" : {
@@ -609,6 +625,22 @@
         }
       }
     },
+    "%lld Aufgaben importieren" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld Aufgaben importieren"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Import %lld tasks"
+          }
+        }
+      }
+    },
     "%lld Aufgaben löschen" : {
       "localizations" : {
         "de" : {
@@ -653,6 +685,38 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%lld tasks moved"
+          }
+        }
+      }
+    },
+    "%lld Aufgaben übernommen" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld Aufgaben übernommen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld tasks imported"
+          }
+        }
+      }
+    },
+    "%lld Aufgaben: %lld mit Datum in dieser oder nächster Woche, %lld in den Eingang" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld Aufgaben: %2$lld mit Datum in dieser oder nächster Woche, %3$lld in den Eingang"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$lld tasks: %2$lld dated this or next week, %3$lld to the inbox"
           }
         }
       }
@@ -865,6 +929,22 @@
         }
       }
     },
+    "%lld schon vorhanden, werden übersprungen" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld schon vorhanden, werden übersprungen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld already there, will be skipped"
+          }
+        }
+      }
+    },
     "%lld seit Start" : {
       "localizations" : {
         "de" : {
@@ -1037,6 +1117,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "1 task"
+          }
+        }
+      }
+    },
+    "1 Aufgabe auf heute gelegt" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1 Aufgabe auf heute gelegt"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1 task moved to today"
           }
         }
       }
@@ -1265,6 +1361,22 @@
         }
       }
     },
+    "Alle 2 Wochen" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alle 2 Wochen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Every 2 weeks"
+          }
+        }
+      }
+    },
     "Alle Daten als JSON-Datei exportieren" : {
       "localizations" : {
         "de" : {
@@ -1325,6 +1437,38 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Delete all data permanently"
+          }
+        }
+      }
+    },
+    "Alle auf heute" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alle auf heute"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "All to today"
+          }
+        }
+      }
+    },
+    "Alle offenen Aufgaben früherer Tage auf heute legen" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alle offenen Aufgaben früherer Tage auf heute legen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Move all open tasks from earlier days to today"
           }
         }
       }
@@ -1421,6 +1565,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Anchorit saved a local change and is waiting for the CloudKit export."
+          }
+        }
+      }
+    },
+    "Anchorit hat keinen Zugriff auf deine Erinnerungen." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anchorit hat keinen Zugriff auf deine Erinnerungen."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anchorit has no access to your reminders."
           }
         }
       }
@@ -2337,6 +2497,22 @@
         }
       }
     },
+    "Aufgaben mit Datum stehen an ihrem Tag, die übrigen im Eingang unter „noch ohne Tag“. Deine Erinnerungen in Apple Erinnerungen sind unverändert." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aufgaben mit Datum stehen an ihrem Tag, die übrigen im Eingang unter „noch ohne Tag“. Deine Erinnerungen in Apple Erinnerungen sind unverändert."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dated tasks are on their day, the rest in the inbox under “no day yet”. Your reminders in Apple Reminders are unchanged."
+          }
+        }
+      }
+    },
     "Aufgeräumt" : {
       "localizations" : {
         "de" : {
@@ -2353,18 +2529,34 @@
         }
       }
     },
-    "Aus dem Kalender übernommen" : {
+    "Aus Erinnerungen importieren" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Aus dem Kalender übernommen"
+            "value" : "Aus Erinnerungen importieren"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "From your calendar"
+            "value" : "Import from Reminders"
+          }
+        }
+      }
+    },
+    "Aus Erinnerungen importieren …" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aus Erinnerungen importieren …"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Import from Reminders…"
           }
         }
       }
@@ -2461,6 +2653,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ends the selection"
+          }
+        }
+      }
+    },
+    "Beim Abhaken entsteht die nächste Aufgabe am nächsten Termin." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Beim Abhaken entsteht die nächste Aufgabe am nächsten Termin."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Checking it off creates the next task on the next date."
           }
         }
       }
@@ -2977,6 +3185,22 @@
         }
       }
     },
+    "Der Zugriff lässt sich in den Systemeinstellungen unter Datenschutz → Erinnerungen erlauben. Anchorit liest nur und ändert dort nichts." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Der Zugriff lässt sich in den Systemeinstellungen unter Datenschutz → Erinnerungen erlauben. Anchorit liest nur und ändert dort nichts."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You can allow access in System Settings under Privacy → Reminders. Anchorit only reads and changes nothing there."
+          }
+        }
+      }
+    },
     "Der iCloud-Account ist eingeschränkt, etwa durch Bildschirmzeit oder eine Geräteverwaltung." : {
       "localizations" : {
         "de" : {
@@ -3101,6 +3325,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "The data couldn’t be deleted. Nothing was removed."
+          }
+        }
+      }
+    },
+    "Die Erinnerung am Montag kommt nur, solange die Woche noch keine Anker hat. Die am Sonntag nur, wenn die Woche Anker hat und noch offen ist." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die Erinnerung am Montag kommt nur, solange die Woche noch keine Anker hat. Die am Sonntag nur, wenn die Woche Anker hat und noch offen ist."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The Monday reminder only comes while the week has no anchors yet. The Sunday one only if the week has anchors and is still open."
           }
         }
       }
@@ -3489,6 +3729,38 @@
         }
       }
     },
+    "Erinnerungen" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Erinnerungen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reminders"
+          }
+        }
+      }
+    },
+    "Erinnerungen werden gelesen …" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Erinnerungen werden gelesen …"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reading reminders…"
+          }
+        }
+      }
+    },
     "Erledigt" : {
       "localizations" : {
         "de" : {
@@ -3501,6 +3773,38 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Done"
+          }
+        }
+      }
+    },
+    "Erledigt – wieder am %@" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Erledigt – wieder am %@"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Done – back on %@"
+          }
+        }
+      }
+    },
+    "Erledigte Erinnerungen werden nicht übernommen. Hohe Priorität wird zu „wichtig“, ein Datum außerhalb dieser und der nächsten Woche landet im Eingang." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Erledigte Erinnerungen werden nicht übernommen. Hohe Priorität wird zu „wichtig“, ein Datum außerhalb dieser und der nächsten Woche landet im Eingang."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Completed reminders are not imported. High priority becomes “important”; a date outside this and next week goes to the inbox."
           }
         }
       }
@@ -3777,22 +4081,6 @@
         }
       }
     },
-    "Für diesen Tag sind keine Zeitblöcke eingetragen." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Für diesen Tag sind keine Zeitblöcke eingetragen."
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "No time blocks for this day."
-          }
-        }
-      }
-    },
     "Für heute ist nichts geplant. Schreib unten, was ansteht — oder hol dir etwas aus der Woche." : {
       "localizations" : {
         "de" : {
@@ -3985,6 +4273,38 @@
         }
       }
     },
+    "Import rückgängig gemacht" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Import rückgängig gemacht"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Import undone"
+          }
+        }
+      }
+    },
+    "Import rückgängig machen" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Import rückgängig machen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Undo import"
+          }
+        }
+      }
+    },
     "In die nächste Woche" : {
       "localizations" : {
         "de" : {
@@ -4146,6 +4466,22 @@
         }
       }
     },
+    "Keine Listen gefunden." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keine Listen gefunden."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No lists found."
+          }
+        }
+      }
+    },
     "Keine Treffer in Aufgaben, Ankern, Notizen oder Zeitblöcken." : {
       "localizations" : {
         "de" : {
@@ -4194,6 +4530,22 @@
         }
       }
     },
+    "Legt alle offenen Aufgaben früherer Tage dieser Woche auf heute" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Legt alle offenen Aufgaben früherer Tage dieser Woche auf heute"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Moves all open tasks from earlier days this week to today"
+          }
+        }
+      }
+    },
     "Legt eine JSON-Datei mit allen gespeicherten Daten an — vollständig und maschinenlesbar, für ein eigenes Backup oder den Umzug in eine andere App." : {
       "localizations" : {
         "de" : {
@@ -4238,6 +4590,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Not held last week"
+          }
+        }
+      }
+    },
+    "Listen" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Listen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lists"
           }
         }
       }
@@ -4382,6 +4750,54 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Carry over"
+          }
+        }
+      }
+    },
+    "Mitteilungen für Anchorit sind ausgeschaltet. Erinnerungen kommen erst, wenn du sie in den Systemeinstellungen erlaubst." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mitteilungen für Anchorit sind ausgeschaltet. Erinnerungen kommen erst, wenn du sie in den Systemeinstellungen erlaubst."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Notifications for Anchorit are turned off. Reminders will only arrive once you allow them in System Settings."
+          }
+        }
+      }
+    },
+    "Monatlich" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Monatlich"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Monthly"
+          }
+        }
+      }
+    },
+    "Montags: Anker setzen" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Montags: Anker setzen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mondays: set anchors"
           }
         }
       }
@@ -4610,6 +5026,22 @@
         }
       }
     },
+    "Nicht mehr wiederholen" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nicht mehr wiederholen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stop repeating"
+          }
+        }
+      }
+    },
     "Nicht registriert" : {
       "localizations" : {
         "de" : {
@@ -4638,6 +5070,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Nothing to send"
+          }
+        }
+      }
+    },
+    "Nie" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nie"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Never"
           }
         }
       }
@@ -4702,6 +5150,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "No closed week yet"
+          }
+        }
+      }
+    },
+    "Noch offen aus dieser Woche" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Noch offen aus dieser Woche"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Still open this week"
           }
         }
       }
@@ -4894,6 +5358,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Still open"
+          }
+        }
+      }
+    },
+    "Offene Erinnerungen einmalig als Aufgaben übernehmen" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Offene Erinnerungen einmalig als Aufgaben übernehmen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bring open reminders in as tasks, once"
           }
         }
       }
@@ -5474,6 +5954,22 @@
         }
       }
     },
+    "Sonntags: Rückblick" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sonntags: Rückblick"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sundays: review"
+          }
+        }
+      }
+    },
     "Sprache" : {
       "localizations" : {
         "de" : {
@@ -5762,6 +6258,22 @@
         }
       }
     },
+    "Systemeinstellungen öffnen" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Systemeinstellungen öffnen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open System Settings"
+          }
+        }
+      }
+    },
     "Tag" : {
       "localizations" : {
         "de" : {
@@ -6002,6 +6514,38 @@
         }
       }
     },
+    "Täglich" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Täglich"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Daily"
+          }
+        }
+      }
+    },
+    "Uhrzeit" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Uhrzeit"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Time"
+          }
+        }
+      }
+    },
     "Umgebung" : {
       "localizations" : {
         "de" : {
@@ -6226,6 +6770,22 @@
         }
       }
     },
+    "Vorschau" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vorschau"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Preview"
+          }
+        }
+      }
+    },
     "Vorübergehend nicht verfügbar" : {
       "localizations" : {
         "de" : {
@@ -6322,6 +6882,22 @@
         }
       }
     },
+    "Was hast du gehalten? Ein kurzer Blick auf deine Anker dieser Woche." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Was hast du gehalten? Ein kurzer Blick auf deine Anker dieser Woche."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "What did you hold? A quick look at this week’s anchors."
+          }
+        }
+      }
+    },
     "Was hat diese Woche getragen?" : {
       "localizations" : {
         "de" : {
@@ -6370,6 +6946,22 @@
         }
       }
     },
+    "Was steht an?  ·  #1–#4 Anker, morgen, Fr, 24.11." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Was steht an?  ·  #1–#4 Anker, morgen, Fr, 24.11."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "What’s next?  ·  #1–#4 anchor, tomorrow, fri, Nov 24"
+          }
+        }
+      }
+    },
     "Was steht an?  ·  #1–#4 Anker, mo–so Tag" : {
       "localizations" : {
         "de" : {
@@ -6398,6 +6990,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "What matters this week?"
+          }
+        }
+      }
+    },
+    "Was zählt diese Woche? Bis zu vier Anker, jeder mit einem Satz, warum." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Was zählt diese Woche? Bis zu vier Anker, jeder mit einem Satz, warum."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "What matters this week? Up to four anchors, each with one sentence on why."
           }
         }
       }
@@ -6446,6 +7054,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Fewer than four is fine. More isn’t."
+          }
+        }
+      }
+    },
+    "Werktags" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Werktags"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Weekdays"
           }
         }
       }
@@ -6530,6 +7154,70 @@
         }
       }
     },
+    "Wiederholen" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wiederholen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Repeat"
+          }
+        }
+      }
+    },
+    "Wiederholen: %@" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wiederholen: %@"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Repeat: %@"
+          }
+        }
+      }
+    },
+    "Wiederholung beendet" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wiederholung beendet"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Repeat stopped"
+          }
+        }
+      }
+    },
+    "Wiederholung gesetzt" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wiederholung gesetzt"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Repeat set"
+          }
+        }
+      }
+    },
     "Wird gelöscht …" : {
       "localizations" : {
         "de" : {
@@ -6558,6 +7246,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Checking"
+          }
+        }
+      }
+    },
+    "Wirkt, sobald die Aufgabe einen Tag hat." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wirkt, sobald die Aufgabe einen Tag hat."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Takes effect once the task has a day."
           }
         }
       }
@@ -6722,6 +7426,22 @@
         }
       }
     },
+    "Wöchentlich" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wöchentlich"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Weekly"
+          }
+        }
+      }
+    },
     "Zeitblock" : {
       "localizations" : {
         "de" : {
@@ -6750,22 +7470,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Time blocks"
-          }
-        }
-      }
-    },
-    "Zeitplan" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Zeitplan"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Schedule"
           }
         }
       }
@@ -7250,6 +7954,22 @@
         }
       }
     },
+    "ohne Anker — andere Woche" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ohne Anker — andere Woche"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "no anchor — other week"
+          }
+        }
+      }
+    },
     "weitere vorhanden" : {
       "localizations" : {
         "de" : {
@@ -7278,6 +7998,86 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "important"
+          }
+        }
+      }
+    },
+    "wiederholt sich alle 2 Wochen" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "wiederholt sich alle 2 Wochen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "repeats every 2 weeks"
+          }
+        }
+      }
+    },
+    "wiederholt sich monatlich" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "wiederholt sich monatlich"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "repeats monthly"
+          }
+        }
+      }
+    },
+    "wiederholt sich täglich" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "wiederholt sich täglich"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "repeats daily"
+          }
+        }
+      }
+    },
+    "wiederholt sich werktags" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "wiederholt sich werktags"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "repeats on weekdays"
+          }
+        }
+      }
+    },
+    "wiederholt sich wöchentlich" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "wiederholt sich wöchentlich"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "repeats weekly"
           }
         }
       }
@@ -7406,6 +8206,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Take over"
+          }
+        }
+      }
+    },
+    "Übernimmt offene Erinnerungen einmalig als Aufgaben. Apple Erinnerungen bleibt dabei unverändert, und es wird nichts abgeglichen." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Übernimmt offene Erinnerungen einmalig als Aufgaben. Apple Erinnerungen bleibt dabei unverändert, und es wird nichts abgeglichen."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Brings open reminders in as tasks, once. Apple Reminders stays unchanged, and nothing is kept in sync."
           }
         }
       }

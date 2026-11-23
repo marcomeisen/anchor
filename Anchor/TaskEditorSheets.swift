@@ -21,6 +21,8 @@ struct TaskEditorSheet: View {
     /// `nil` heißt „ohne Tag".
     @State private var selectedDate: Date?
     @State private var selectedGoalID: UUID?
+    /// `nil` heißt „Nie".
+    @State private var recurrence: TaskRecurrence?
     @State private var hasLoadedTask = false
     @State private var confirmsDelete = false
 
@@ -49,6 +51,7 @@ struct TaskEditorSheet: View {
                     weekPicker
                     dayPicker
                     goalPicker
+                    recurrencePicker
                     destructiveActions
                 }
                 .padding(AnkerSpacing.s4)
@@ -202,6 +205,42 @@ struct TaskEditorSheet: View {
         }
     }
 
+    /// Wiederholen nach Plan: der nächste Termin rechnet ab dem geplanten Tag, nicht ab heute.
+    /// Wählbar auch ohne Tag — die Regel wartet dann, bis die Aufgabe eingeplant ist.
+    private var recurrencePicker: some View {
+        VStack(alignment: .leading, spacing: AnkerSpacing.s2) {
+            Text("Wiederholen")
+                .ankerType(AnkerType.eyebrow)
+                .foregroundStyle(AnkerColor.inkSecond)
+
+            FlowLayout(spacing: AnkerSpacing.s2) {
+                CaptureChip(title: String(localized: "Nie"), isSelected: recurrence == nil, selectedColor: AnkerColor.accentFill) {
+                    recurrence = nil
+                }
+                .accessibilityAddTraits(recurrence == nil ? [.isButton, .isSelected] : .isButton)
+
+                ForEach(TaskRecurrence.allCases) { rule in
+                    CaptureChip(title: rule.label, isSelected: recurrence == rule, selectedColor: AnkerColor.accentFill) {
+                        recurrence = rule
+                    }
+                    .accessibilityAddTraits(recurrence == rule ? [.isButton, .isSelected] : .isButton)
+                }
+            }
+
+            if recurrence != nil {
+                Group {
+                    if selectedDate == nil {
+                        Text("Wirkt, sobald die Aufgabe einen Tag hat.")
+                    } else {
+                        Text("Beim Abhaken entsteht die nächste Aufgabe am nächsten Termin.")
+                    }
+                }
+                .ankerType(AnkerType.caption)
+                .foregroundStyle(AnkerColor.inkSecond)
+            }
+        }
+    }
+
     private var destructiveActions: some View {
         Button(role: .destructive) {
             confirmsDelete = true
@@ -242,6 +281,7 @@ struct TaskEditorSheet: View {
             ?? Date()
         selectedWeekStart = AnkerCalendar.weekInterval(containing: anchorDate).monday
         selectedGoalID = task.linkedGoal?.id
+        recurrence = task.recurrence
         hasLoadedTask = true
     }
 
@@ -290,6 +330,15 @@ struct TaskEditorSheet: View {
         if isImportant != (task.priority == .a) {
             TaskActions.setPriority(task, to: isImportant ? .a : .b, modelContext: modelContext)
             changed = true
+        }
+
+        // Vor dem Abhaken: wer Regel und Haken zugleich setzt, meint eine Folgeinstanz. Eine
+        // unbekannte Regel einer neueren Version liest sich hier als „Nie" und bleibt stehen,
+        // solange keine andere gewählt wird.
+        if recurrence != task.recurrence {
+            if TaskActions.setRecurrence(task, to: recurrence, modelContext: modelContext) {
+                changed = true
+            }
         }
 
         if isDone != task.isDone {

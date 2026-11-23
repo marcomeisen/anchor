@@ -117,6 +117,32 @@ struct WeekSheet {
         lanes.flatMap { tasks(in: $0, on: nil) }.filter { !$0.isDone }
     }
 
+    /// Offene Aufgaben **dieser** Woche, deren Tag vor dem Kalendertag von `date` liegt —
+    /// „Noch offen aus dieser Woche" auf Heute.
+    ///
+    /// Verglichen wird der **gemeinte** Tag (`nominalDate(ofStored:)`): ein Montag aus Tokio
+    /// ist in Berlin noch Sonntagnachmittag und läge sonst in der Vorwoche. Aufgaben anderer
+    /// Wochen gehören nicht dazu, auch wenn ein Anker sie noch hält; die Vorwoche hat ihren
+    /// Rückblick. Am Montag ist die Liste deshalb leer. Sortiert nach Tag, dann Ankernummer.
+    func overdueTasks(before date: Date) -> [AnkerTask] {
+        let calendar = AnkerCalendar.iso
+        let today = calendar.startOfDay(for: date)
+        let thisWeek = AnkerCalendar.weekKey(containing: monday)
+
+        let candidates: [(index: Int, day: Date, task: AnkerTask)] = lanes
+            .flatMap(\.tasks)
+            .enumerated()
+            .compactMap { index, task in
+                guard !task.isDone, !task.isDeleted, let stored = task.day?.date else { return nil }
+                let day = AnkerCalendar.nominalDate(ofStored: stored)
+                guard day < today, AnkerCalendar.weekKey(containing: day) == thisWeek else { return nil }
+                return (index, day, task)
+            }
+        return candidates
+            .sorted { ($0.day, $0.index) < ($1.day, $1.index) }
+            .map(\.task)
+    }
+
     func anchorNumber(of task: AnkerTask) -> Int? {
         guard let goal = task.linkedGoal else { return nil }
         return anchorLanes.first { $0.goal?.id == goal.id }?.number

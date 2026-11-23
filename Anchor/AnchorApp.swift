@@ -11,6 +11,7 @@ import SwiftData
 import CoreData
 import OSLog
 import Security
+import UserNotifications
 #if os(macOS)
 import AppKit
 #elseif os(iOS)
@@ -343,6 +344,7 @@ struct AnchorApp: App {
 #endif
 
     @StateObject private var holder = AnkerStoreHolder.shared
+    @Environment(\.scenePhase) private var scenePhase
 
     private var store: AnkerStore { holder.store }
     private var sharedModelContainer: ModelContainer { store.container }
@@ -361,6 +363,14 @@ struct AnchorApp: App {
                 }
                 .task {
                     await CloudSyncStatusCenter.shared.refreshAccountStatus()
+                }
+                // Erinnerungen an das Ritual: beim Start neu planen (Sprache, Zeitzone, Stand
+                // der Woche), danach nach jedem Speichern und bei jedem Wechsel nach vorn.
+                .task(id: ObjectIdentifier(sharedModelContainer)) {
+                    RitualReminderCenter.shared.start(container: sharedModelContainer)
+                }
+                .onChange(of: scenePhase) { _, phase in
+                    if phase == .active { RitualReminderCenter.shared.scheduleSoon(delay: .zero) }
                 }
 #if os(macOS)
                 .onAppear {
@@ -404,6 +414,11 @@ final class AnchorIOSAppDelegate: NSObject, UIApplicationDelegate {
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
     ) -> Bool {
         CloudSyncConfiguration.registerForRemoteNotifications()
+        // Vor dem Ende des Starts, sonst geht das Tippen auf eine Erinnerung verloren, die
+        // die App erst startet.
+        if !RitualReminderCenter.isInactiveInThisProcess {
+            UNUserNotificationCenter.current().delegate = RitualNotificationDelegate.shared
+        }
         return true
     }
 
@@ -445,6 +460,9 @@ final class AnchorAppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         CloudSyncConfiguration.registerForRemoteNotifications()
+        if !RitualReminderCenter.isInactiveInThisProcess {
+            UNUserNotificationCenter.current().delegate = RitualNotificationDelegate.shared
+        }
     }
 
     func application(

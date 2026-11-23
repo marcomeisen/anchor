@@ -44,7 +44,7 @@ Englisch.
 | [Anchor/DataPortability.swift](Anchor/DataPortability.swift) | JSON-Export und vollständige Löschung (DSGVO Art. 15, 17, 20) |
 | [Anchor/AppSettings.swift](Anchor/AppSettings.swift) | `AppearanceMode`, `CloudSyncPreference`, `UITestMode` (inkl. `-AnchoritDemoData`, `-AnchoritTab`) |
 | [Anchor/CalendarLogic.swift](Anchor/CalendarLogic.swift) | `AnkerCalendar` — **immer** ISO-8601; `nominalDay(ofStored:)` für Tage aus anderen Zeitzonen; `AnkerDateFormat` |
-| [Anchor/CaptureSyntax.swift](Anchor/CaptureSyntax.swift) | Erfassungssyntax `!a` / `#2` / `mo…so` — reiner Parser |
+| [Anchor/CaptureSyntax.swift](Anchor/CaptureSyntax.swift) | Erfassungssyntax `!a` / `#2` / `mo…so` und Datumswörter (`morgen`, `24.11.`, `next week`) am Zeilenende — reiner Parser, zweisprachig |
 | [Anchor/GoalOrdering.swift](Anchor/GoalOrdering.swift) | Ankernummer 1–4 aus `Goal.order` — **nie** über `week.goalList` sortieren |
 | [Anchor/WeekActions.swift](Anchor/WeekActions.swift) | Woche schließen/öffnen, Rückblickantwort, `ReviewReadiness`, `CarryDecision` pro Aufgabe |
 | [Anchor/SidebarTimeline.swift](Anchor/SidebarTimeline.swift) | Wochenzeilen der Seitenleiste: sieben Tagesmarken, offene Aufgaben (von `BlattSidebar` benutzt) |
@@ -57,7 +57,7 @@ Englisch.
 | **Views** | |
 | [Anchor/SidebarScreen.swift](Anchor/SidebarScreen.swift) | `BlattSidebar`: Wochenliste mit Tagesquadraten, Ablegen einer Aufgabe auf eine Woche (gleicher Wochentag), Archiv, Sync-Status |
 | [Anchor/AnkerRootView.swift](Anchor/AnkerRootView.swift) | Onboarding, iPhone-Tabs, Fensterkopf (Mac/iPad), Sheets für Setzen und Rückblick, Aufräumen nach dem Sync |
-| [Anchor/TodayScreen.swift](Anchor/TodayScreen.swift) | Heute: Ankerleiste mit Punkten, Aufgaben des Tages, „noch ohne Tag", Erfassungszeile |
+| [Anchor/TodayScreen.swift](Anchor/TodayScreen.swift) | Heute: Ankerleiste mit Punkten, Aufgaben des Tages, „Noch offen aus dieser Woche", „noch ohne Tag", Erfassungszeile |
 | [Anchor/WeekScreen.swift](Anchor/WeekScreen.swift) | Woche in zwei Ansichten mit denselben Daten: iPhone *nach Tag / nach Anker*, Mac und iPad *Raster / nach Anker* |
 | [Anchor/AnchorScreen.swift](Anchor/AnchorScreen.swift) | Ein Anker: große Nummer, Warum-Satz, Fortschritt, seine Woche Tag für Tag; `AnchorEditSheet` |
 | [Anchor/WeekStartScreen.swift](Anchor/WeekStartScreen.swift) | Montag: „Was zählt diese Woche?" — bis zu vier Anker mit Warum, Übernahme aus der Vorwoche |
@@ -66,12 +66,14 @@ Englisch.
 | [Anchor/BlattSelection.swift](Anchor/BlattSelection.swift) | Mehrfachauswahl: `TaskSelectionModel`, „Auswählen"-Knopf, `BlattBulkActionBar` (Erledigt, Verschieben, Anker, Löschen) |
 | [Anchor/BlattComponents.swift](Anchor/BlattComponents.swift) | `BlattHeading`, `BlattAnchorStrip`, `TaskChip`, `BlattDrop`, `BlattUndoBar`, `BlattBackBar`, `BlattIconButton` |
 | [Anchor/CaptureBarView.swift](Anchor/CaptureBarView.swift) | Erfassungszeile: tippen, Enter, fertig — legt die Woche erst beim Sichern an |
-| [Anchor/DayDetailView.swift](Anchor/DayDetailView.swift) | Tagesdetail: Fokus, Zeitplan, Aufgaben, Notizen |
+| [Anchor/DayDetailView.swift](Anchor/DayDetailView.swift) | Tagesdetail: Fokus, Aufgaben, Notizen, Erfassungszeile (Zeitblöcke bleiben im Modell, werden nicht angezeigt) |
 | [Anchor/OnboardingView.swift](Anchor/OnboardingView.swift) | Zwei Schritte: iCloud-Entscheidung, dann bis zu vier Anker |
 | [Anchor/SettingsView.swift](Anchor/SettingsView.swift), [Anchor/DataPrivacyView.swift](Anchor/DataPrivacyView.swift) | Einstellungen, Daten und Datenschutz |
 | [Anchor/TaskCaptureSheets.swift](Anchor/TaskCaptureSheets.swift), [Anchor/TaskEditorSheets.swift](Anchor/TaskEditorSheets.swift) | Schnellerfassung in der Menüleiste, Aufgaben- und Zieleditor |
 | [Anchor/AnkerComponents.swift](Anchor/AnkerComponents.swift) | `TaskCard` (**die** Aufgabenzeile, mit Kontextmenü, Swipe, Undo), `TaskTitleField`, `TaskCheckmark`, `ankerTapTarget` |
 | [Anchor/TaskDropHandling.swift](Anchor/TaskDropHandling.swift), [Anchor/AnkerTabBar.swift](Anchor/AnkerTabBar.swift) | Ziehen und Ablegen von Aufgaben (UUID-Text); die Tableiste des iPhones |
+| [Anchor/RitualReminders.swift](Anchor/RitualReminders.swift) | Lokale Erinnerungen montags/sonntags: `RitualReminderPlanner` (reine Rechnung) und `RitualReminderCenter` |
+| [Anchor/RemindersImport.swift](Anchor/RemindersImport.swift) | Einmaliger, lesender Import aus Apple Erinnerungen (EventKit); Zuordnung als reine Funktion |
 | [Anchor/LegalScreens.swift](Anchor/LegalScreens.swift) | Datenschutzerklärung und Hilfe in der App, deutsch und englisch; `LegalInfo` (Name, Kontakt) |
 | [Anchor/AppCommands.swift](Anchor/AppCommands.swift) | Mac-Menü „Gehe zu“ (⌘1–3, ⌘[ / ⌘], ⌘F) über `FocusedValue` |
 | [Anchor/AnkerPhoneChrome.swift](Anchor/AnkerPhoneChrome.swift) | Die eigene Kopfzeile des iPhones statt der Systemleiste |
@@ -156,7 +158,7 @@ Unter [.claude/skills/](.claude/skills/):
   (`StoreMaintenance.run`), nicht auf dem `@Query`-Schnappschuss einer View.
 - **Aufgaben ohne Tag sind gültig:** mit Anker heißt das „noch nicht eingeplant" (sie gehören über
   den Anker zur Woche), ohne Anker liegen sie im Eingang. Nie als Datenmüll behandeln.
-- **Neue Felder sind optional und additiv** (`Goal.why`, `Goal.verdictRaw`). Enums als Rohtext
+- **Neue Felder sind optional und additiv** (`Goal.why`, `Goal.verdictRaw`, `AnkerTask.recurrenceRaw`, `AnkerTask.recurrenceNextID`). Enums als Rohtext
   speichern, damit ein unbekannter Wert auf einem älteren Gerät den Import nicht bricht.
 - **Nach Modelländerungen** das Schema nach Production bringen — Ablauf in
   [CloudKit_Schema_Anleitung.md](CloudKit_Schema_Anleitung.md). Ohne das gilt: läuft in Xcode, tot in

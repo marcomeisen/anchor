@@ -1,0 +1,24 @@
+{
+  "sourceLanguage" : "de",
+  "strings" : {
+    "NSRemindersFullAccessUsageDescription" : {
+      "comment" : "Begründung für den Zugriff auf Apple Erinnerungen (einmaliger Import, nur lesen).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anchorit liest deine offenen Erinnerungen nur, wenn du sie importierst, und übernimmt sie als Aufgaben. In Apple Erinnerungen wird nichts geändert."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anchorit reads your open reminders only when you import them, and adds them as tasks. Nothing is changed in Apple Reminders."
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}
