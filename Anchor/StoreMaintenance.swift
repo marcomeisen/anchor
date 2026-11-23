@@ -4,11 +4,10 @@ import SwiftData
 
 /// Fuehrt Datensaetze zusammen, die durch den iCloud-Sync doppelt entstehen.
 ///
-/// CloudKit unterstuetzt keine Unique-Constraints. `AnkerRootView` legt beim Start ueber
-/// `ensureCurrentWeek()` die laufende Woche an — machen das zwei Geraete unabhaengig
-/// voneinander, existiert dieselbe Kalenderwoche nach dem Sync zweimal, mit je sieben
-/// Tagen und auf beide Kopien verteilten Aufgaben. Sichtbar wird das als doppelte
-/// Tagesliste in der Sidebar und als scheinbar verschwundene Aufgaben.
+/// CloudKit unterstuetzt keine Unique-Constraints. Schreiben zwei Geraete offline in dieselbe
+/// neue Kalenderwoche, existiert sie nach dem Sync zweimal. Seit Wochen und Tage erst beim
+/// Schreiben entstehen (nicht mehr beim Start und beim Blaettern), ist das selten — aber
+/// moeglich, und dann muss das Aufraeumen auf allen Geraeten **dasselbe** Ergebnis haben.
 /// Empfaenger fuer das Protokoll einer Zusammenfuehrung.
 ///
 /// `StoreMaintenance` rief vorher `CloudSyncStatusCenter.shared` direkt an. Ueber das
@@ -35,8 +34,10 @@ enum StoreMaintenance {
         WeekKey(isoYear: week.isoYear, isoWeek: week.isoWeek)
     }
 
+    /// Ueber den gemeinten Kalendertag statt ueber das rohe Datum — siehe
+    /// `AnkerCalendar.nominalDay(ofStored:)`.
     static func dayKey(_ day: Day) -> String {
-        let components = AnkerCalendar.iso.dateComponents([.year, .month, .day], from: day.date)
+        let components = AnkerCalendar.nominalDay(ofStored: day.date)
         return "\(components.year ?? 0)-\(components.month ?? 0)-\(components.day ?? 0)"
     }
 
@@ -62,6 +63,8 @@ enum StoreMaintenance {
     struct MergeReport: Sendable, Equatable {
         var removedWeeks = 0
         var removedDays = 0
+        /// Tage, Ziele und Zeitbloecke ohne Woche bzw. ohne Tag, die wieder eingehaengt wurden.
+        var adoptedOrphans = 0
         /// Wochen, deren Ankerreihenfolge korrigiert wurde. Altbestand hat durchweg `order == 0`.
         var reorderedGoalWeeks: [String] = []
         /// Betroffene Kalenderwochen als `2026-KW31`, damit im Log nachvollziehbar ist,
@@ -69,7 +72,7 @@ enum StoreMaintenance {
         var affectedWeeks: [String] = []
 
         var removedTotal: Int { removedWeeks + removedDays }
-        var isEmpty: Bool { removedTotal == 0 && reorderedGoalWeeks.isEmpty }
+        var isEmpty: Bool { removedTotal == 0 && reorderedGoalWeeks.isEmpty && adoptedOrphans == 0 }
 
         var summary: String {
             guard !isEmpty else { return "Keine Duplikate" }
@@ -77,6 +80,7 @@ enum StoreMaintenance {
             var parts: [String] = []
             if removedWeeks > 0 { parts.append("\(removedWeeks) doppelte Wochen") }
             if removedDays > 0 { parts.append("\(removedDays) doppelte Tage") }
+            if adoptedOrphans > 0 { parts.append("\(adoptedOrphans) verwaiste Einträge") }
             if !parts.isEmpty {
                 var text = "\(parts.joined(separator: ", ")) zusammengeführt"
                 if !reorderedGoalWeeks.isEmpty {
@@ -97,6 +101,19 @@ enum StoreMaintenance {
         reporter: StoreMaintenanceReporting? = CloudSyncStatusCenter.shared
     ) -> Int {
         merge(weeks: weeks, modelContext: modelContext, reporter: reporter).removedTotal
+    }
+
+    /// Aufraeumen auf dem **aktuellen** Bestand statt auf dem Schnappschuss einer View.
+    ///
+    /// `@Query` aktualisiert verzoegert; mit dem alten Array blieben frisch importierte
+    /// Duplikate bis zum naechsten Durchlauf liegen.
+    @discardableResult
+    static func run(
+        modelContext: ModelContext,
+        reporter: StoreMaintenanceReporting? = CloudSyncStatusCenter.shared
+    ) -> MergeReport {
+        let weeks = (try? modelContext.fetch(FetchDescriptor<Week>())) ?? []
+        return merge(weeks: weeks.filter { !$0.isDeleted }, modelContext: modelContext, reporter: reporter)
     }
 
     /// Wie `normalize`, aber mit vollem Protokoll.
@@ -141,6 +158,11 @@ enum StoreMaintenance {
             }
         }
 
+        report.adoptedOrphans = adoptOrphans(
+            weeks: weeks.filter { !$0.isDeleted },
+            modelContext: modelContext
+        )
+
         report.affectedWeeks.sort()
 
         if !report.isEmpty {
@@ -154,45 +176,25 @@ enum StoreMaintenance {
         return report
     }
 
-    /// Deterministische Auswahl, damit beide Geraete unabhaengig voneinander denselben
-    /// Datensatz behalten und das Ergebnis konvergiert statt hin und her zu schwingen.
-    /// Absichtlich nicht generisch: `@Model`-Typen erben aus `PersistentModel` ein
-    /// `id: PersistentIdentifier`, das hier von der eigenen `id: UUID` verdeckt wird —
-    /// in generischem Code ist dann nicht mehr eindeutig, welches `id` gemeint ist.
-    /// Wer bei doppelten Wochen überlebt: **die inhaltsreichere**, bei Gleichstand die kleinere
-    /// UUID.
+    /// Wer bei Duplikaten ueberlebt: **immer die kleinste UUID.**
     ///
-    /// Vorher entschied allein die UUID, also der Zufall. Das war der Kern eines gemeldeten
-    /// Datenfehlers: installiert man die App neu, legt das Onboarding eine eigene Woche für
-    /// denselben Montag an, während der iCloud-Erstimport dieselbe Woche noch bringt. Gewann die
-    /// Onboarding-Woche, belegten ihre vier frischen Anker die sichtbaren Plätze und die echten
-    /// rutschten in den Überschuss — von außen nicht von „überschrieben" zu unterscheiden.
+    /// Vorher gewann die inhaltsreichere Kopie. Das konvergiert nicht: der Inhalt wird lokal
+    /// gezaehlt, und waehrend eines Imports kommen Wochen vor ihren Tagen an. Zwei Geraete
+    /// sahen dieselben zwei Kopien verschieden schwer, jedes loeschte die jeweils andere —
+    /// und mit der frueheren Kaskade gingen dabei Aufgaben verloren. Die UUID sieht auf jedem
+    /// Geraet gleich aus, egal wie weit der Import ist.
     ///
-    /// Der Gleichstandsentscheid muss geräteunabhängig sein: sonst führen zwei Geräte dieselben
-    /// Duplikate verschieden zusammen und laufen auseinander.
+    /// Dass dabei eine leere Kopie gewinnen kann, ist kein Verlust: die Kinder werden vor dem
+    /// Loeschen umgehaengt, und was spaeter noch an die geloeschte Kopie gebunden ankommt,
+    /// sammelt `adoptOrphans` ein. Das alte Problem, dass frische Onboarding-Anker die echten
+    /// verdraengten, loest jetzt die Zielreihenfolge in `merge(_:into:)`: Anker mit Aufgaben
+    /// kommen vor leeren.
     private static func electSurvivor(_ candidates: [Week]) -> Week? {
-        candidates.min { left, right in
-            let leftWeight = contentWeight(left), rightWeight = contentWeight(right)
-            if leftWeight != rightWeight { return leftWeight > rightWeight }
-            return left.id.uuidString < right.id.uuidString
-        }
+        candidates.min { $0.id.uuidString < $1.id.uuidString }
     }
 
-    private static func contentWeight(_ week: Week) -> Int {
-        week.goalList.filter(WeekPlanning.isUserCreated).count
-            + week.dayList.reduce(0) { $0 + $1.taskList.count }
-            + (week.reflection?.isEmpty == false ? 1 : 0)
-    }
-
-    /// Dieselbe Regel für doppelte Tage: der mit mehr Aufgaben führt, damit Notizen und Fokus
-    /// des benutzten Tages die Grundlage bleiben.
     private static func electSurvivor(_ candidates: [Day]) -> Day? {
-        candidates.min { left, right in
-            if left.taskList.count != right.taskList.count {
-                return left.taskList.count > right.taskList.count
-            }
-            return left.id.uuidString < right.id.uuidString
-        }
+        candidates.min { $0.id.uuidString < $1.id.uuidString }
     }
 
     private static func merge(_ duplicate: Week, into survivor: Week, modelContext: ModelContext) {
@@ -201,19 +203,25 @@ enum StoreMaintenance {
         // welche vier sichtbar bleiben — der Nutzer sähe seine echten Anker verschwinden und
         // fremde an ihrer Stelle. Die Ziele der überlebenden Woche behalten deshalb ihre
         // Plätze, die der doppelten kommen dahinter.
-        let offset = (survivor.goalList.map(\.order).max() ?? -1) + 1
-        for (index, goal) in GoalOrdering.sorted(duplicate.goalList).enumerated() {
-            goal.order = offset + index
+        // Beide Wochen numerieren ihre Anker ab 0. Gemeinsam neu ordnen: zuerst Anker, die
+        // schon benutzt werden (Aufgaben oder Warum-Satz), dann leere — so verdraengen vier
+        // frisch angelegte Onboarding-Anker nicht die echten. Innerhalb derselben Stufe die
+        // bisherige Nummer, dann die UUID: auf jedem Geraet dieselbe Folge.
+        let combined = (survivor.goalList + duplicate.goalList).filter { !$0.isDeleted }
+        var seen = Set<UUID>()
+        let unique = combined.filter { seen.insert($0.id).inserted }
+        let ordered = unique.sorted { left, right in
+            let leftUsed = isInUse(left), rightUsed = isInUse(right)
+            if leftUsed != rightUsed { return leftUsed }
+            if left.order != right.order { return left.order < right.order }
+            return left.id.uuidString < right.id.uuidString
+        }
+        for (index, goal) in ordered.enumerated() {
+            goal.order = index
             goal.week = survivor
-            if !survivor.goalList.contains(where: { $0.id == goal.id }) {
-                survivor.appendGoal(goal)
-            }
         }
         duplicate.goals = []
-        // Anders als Tage wurden Ziele bisher nur angehaengt und nie nachsortiert — damit war
-        // die Ankernummer nach jedem Zusammenfuehren eine andere.
-        survivor.goals = GoalOrdering.sorted(survivor.goalList.filter { !$0.isDeleted })
-        GoalOrdering.normalize(survivor)
+        survivor.goals = ordered
 
         // Beide Rueckblicke behalten, wie bei den Tagesnotizen: Datenverlust beim Aufraeumen
         // waere schlimmer als eine doppelte Zeile.
@@ -283,6 +291,73 @@ enum StoreMaintenance {
         survivor.notes = mergedNotes(survivor.notes, duplicate.notes)
 
         modelContext.delete(duplicate)
+    }
+
+    private static func isInUse(_ goal: Goal) -> Bool {
+        !goal.taskList.isEmpty || (goal.why?.isEmpty == false) || goal.verdict != nil
+    }
+
+    // MARK: - Verwaistes einsammeln
+
+    /// Haengt Tage ohne Woche, Ziele ohne Woche und Zeitbloecke ohne Tag wieder ein.
+    ///
+    /// Verwaist wird ein Datensatz, wenn sein Elternteil geloescht wurde, bevor er selbst
+    /// ankam oder umgehaengt war — typischerweise ein Tag, dessen doppelte Woche ein anderes
+    /// Geraet schon zusammengefuehrt hat. Seit den `.nullify`-Regeln geht dabei nichts mehr
+    /// verloren, es ist nur unsichtbar, bis es hier wieder einen Platz bekommt.
+    ///
+    /// Aufgaben ohne Tag sind **kein** Waisenfall: mit Ziel heissen sie „noch nicht
+    /// eingeplant", ohne Ziel liegen sie im Eingang. Sie bleiben, wie sie sind.
+    @discardableResult
+    static func adoptOrphans(weeks: [Week], modelContext: ModelContext) -> Int {
+        var adopted = 0
+        var known = weeks
+
+        let orphanDays = ((try? modelContext.fetch(FetchDescriptor<Day>())) ?? [])
+            .filter { !$0.isDeleted && $0.week == nil }
+        for day in orphanDays {
+            let key = AnkerCalendar.weekKey(ofStored: day.date)
+            let monday = AnkerCalendar.weekInterval(containing: day.date.addingTimeInterval(12 * 60 * 60)).monday
+            let week = WeekPlanning.week(startingAt: monday, in: known)
+                ?? TaskActions.ensureWeek(containing: monday, weeks: known, modelContext: modelContext)
+            if !known.contains(where: { $0 === week }) { known.append(week) }
+
+            if let twin = WeekPlanning.existingDay(on: day.date.addingTimeInterval(12 * 60 * 60), in: week), twin !== day {
+                // Den Tag gibt es in der Woche schon: Inhalt hinueber, Waise loeschen.
+                merge(day, into: twin, modelContext: modelContext)
+                TaskActions.normalizeOrders(in: twin)
+            } else {
+                day.week = week
+                week.days = week.dayList + [day]
+            }
+            cloudSyncLog.notice("Verwaister Tag \(dayKey(day), privacy: .public) in \(key.isoYear, privacy: .public)-KW\(key.isoWeek, privacy: .public) eingehaengt")
+            adopted += 1
+        }
+
+        // Ziele haben kein Datum. Ihre Woche ergibt sich aus ihren Aufgaben; ein Ziel ohne
+        // eingeplante Aufgabe bleibt liegen, bis eine kommt — sichtbar ist es dann ohnehin nicht.
+        let orphanGoals = ((try? modelContext.fetch(FetchDescriptor<Goal>())) ?? [])
+            .filter { !$0.isDeleted && $0.week == nil }
+        for goal in orphanGoals {
+            guard let week = goal.taskList.compactMap({ $0.day?.week }).first(where: { !$0.isDeleted }) else { continue }
+            goal.order = GoalOrdering.nextOrder(in: week)
+            goal.week = week
+            week.appendGoal(goal)
+            adopted += 1
+        }
+
+        let orphanBlocks = ((try? modelContext.fetch(FetchDescriptor<TimeBlock>())) ?? [])
+            .filter { !$0.isDeleted && $0.day == nil }
+        for block in orphanBlocks {
+            let week = TaskActions.ensureWeek(containing: block.startTime, weeks: known, modelContext: modelContext)
+            if !known.contains(where: { $0 === week }) { known.append(week) }
+            let day = TaskActions.ensureDay(containing: block.startTime, in: week)
+            block.day = day
+            day.timeBlocks = day.timeBlockList + [block]
+            adopted += 1
+        }
+
+        return adopted
     }
 
     private static func firstFilled(_ lhs: String?, _ rhs: String?) -> String? {

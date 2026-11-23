@@ -1,5 +1,5 @@
 import XCTest
-@testable import Daivento
+@testable import Anchorit
 
 /// Der Parser der Ein-Zeilen-Erfassung. Ohne Container und ohne View — genau deshalb steht er
 /// als eigener Typ und nicht in einer Ansicht.

@@ -78,6 +78,8 @@ struct AnkerIcon: Sendable, Hashable {
     /// Das Archiv als eigener Ort. Radius aus dem Original entfernt — `rx="1"` waere die
     /// einzige gerundete Ecke der App gewesen.
     static let archive = AnkerIcon("lucide-archive")
+    /// Seitenleiste ein- und ausklappen.
+    static let sidebar = AnkerIcon("lucide-panel-left")
     static let share = AnkerIcon("lucide-share-2")
     static let appearanceLight = AnkerIcon("lucide-sun")
     static let appearanceDark = AnkerIcon("lucide-moon")
@@ -102,7 +104,7 @@ struct AnkerIcon: Sendable, Hashable {
         add, addCircle, goal, check, checkCircle, checkCircleLarge, open,
         delete, edit, duplicate, move, undo, priority, clear,
         nextMonth, previousMonth, pickDate, tomorrow, time,
-        search, settings, privacy, note, archive, share,
+        search, settings, privacy, note, archive, sidebar, share,
         appearanceLight, appearanceDark, appearanceSystem,
         cloud, cloudSynced, cloudUploading, cloudOff, refresh,
         warning, info,

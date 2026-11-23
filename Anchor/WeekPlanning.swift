@@ -16,9 +16,17 @@ enum WeekPlanning {
         weeks.sorted { $0.monday < $1.monday }.first { contains(date, in: $0) }
     }
 
-    /// Die Woche, die genau an `monday` beginnt.
+    /// Die Woche, die an `monday` beginnt — über ISO-Jahr und -Woche, nicht über das Datum.
+    ///
+    /// `monday` ist Mitternacht in der Zeitzone des anlegenden Geräts. Ein Vergleich darauf fand
+    /// eine Woche aus einer anderen Zone nicht, und die App legte daneben eine zweite an.
+    /// Bei mehreren Treffern (Sync-Duplikat vor dem Aufräumen) gewinnt dieselbe Kopie wie in
+    /// `StoreMaintenance`, die kleinste UUID — sonst sprängen Ansicht und Aufräumen auseinander.
     static func week(startingAt monday: Date, in weeks: [Week]) -> Week? {
-        weeks.first { AnkerCalendar.isSameDay($0.monday, monday) }
+        let key = AnkerCalendar.weekKey(containing: monday)
+        return weeks
+            .filter { !$0.isDeleted && $0.isoYear == key.isoYear && $0.isoWeek == key.isoWeek }
+            .min { $0.id.uuidString < $1.id.uuidString }
     }
 
     /// Vergleich über `monday ..< monday + 7` statt `monday ... sunday`.
@@ -36,9 +44,17 @@ enum WeekPlanning {
     /// der bisher gewählte Tag verschwunden sein, und ohne Tag zeigt die App nur einen Spinner.
     static func day(on date: Date, in week: Week?, now: Date = Date()) -> Day? {
         let sortedDays = week?.dayList.sorted { $0.date < $1.date }
-        return sortedDays?.first { AnkerCalendar.isSameDay($0.date, date) }
-            ?? sortedDays?.first { AnkerCalendar.isSameDay($0.date, now) }
+        return sortedDays?.first { AnkerCalendar.storedDay($0.date, isOn: date) }
+            ?? sortedDays?.first { AnkerCalendar.storedDay($0.date, isOn: now) }
             ?? sortedDays?.first
+    }
+
+    /// Der Tag zu genau diesem Datum, ohne Rückfall. Seit Tage erst beim ersten Schreiben
+    /// entstehen, heißt `nil` schlicht „an diesem Tag liegt noch nichts".
+    static func existingDay(on date: Date, in week: Week?) -> Day? {
+        week?.dayList
+            .filter { !$0.isDeleted && AnkerCalendar.storedDay($0.date, isOn: date) }
+            .min { $0.id.uuidString < $1.id.uuidString }
     }
 
     /// Der Tag hinter einer ID, über alle Wochen. Für Suchtreffer.
@@ -83,6 +99,15 @@ enum WeekPlanning {
             week.goalList.contains(where: isUserCreated)
                 || week.dayList.contains { !$0.taskList.isEmpty }
         }
+    }
+
+    /// Wie `hasContent(in:)`, zusätzlich mit Aufgaben, die an keiner Woche hängen — der
+    /// Eingang. Wer nur dort arbeitet, ist kein neuer Nutzer.
+    static func hasContent(in weeks: [Week], modelContext: ModelContext) -> Bool {
+        if hasContent(in: weeks) { return true }
+        var descriptor = FetchDescriptor<AnkerTask>()
+        descriptor.fetchLimit = 1
+        return ((try? modelContext.fetchCount(descriptor)) ?? 0) > 0
     }
 
     static func isUserCreated(_ goal: Goal) -> Bool {

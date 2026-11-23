@@ -131,7 +131,7 @@ private struct PersistenceFailureAlert: ViewModifier {
     }
 
     private func message(for failure: PersistenceFailure) -> String {
-        var text = "Daivento konnte die letzte Änderung nicht auf diesem Gerät sichern. "
+        var text = "Anchorit konnte die letzte Änderung nicht auf diesem Gerät sichern. "
             + "Sie geht verloren, wenn die App beendet wird.\n\n\(failure.message)"
 
         if center.failureCount > 1 {

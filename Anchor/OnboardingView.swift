@@ -79,7 +79,7 @@ struct OnboardingView: View {
                 .ankerType(AnkerType.title2)
                 .foregroundStyle(AnkerColor.ink)
 
-            Text(verbatim: "Daivento kann deine Wochen, Ziele, Aufgaben und Notizen über deinen iCloud-Account zwischen iPhone, iPad und Mac gleich halten. Die Daten liegen in deiner privaten iCloud-Datenbank; niemand sonst hat Zugriff darauf.")
+            Text(verbatim: "Anchorit kann deine Wochen, Ziele, Aufgaben und Notizen über deinen iCloud-Account zwischen iPhone, iPad und Mac gleich halten. Die Daten liegen in deiner privaten iCloud-Datenbank; niemand sonst hat Zugriff darauf.")
                 .ankerType(AnkerType.body)
                 .foregroundStyle(AnkerColor.inkSecond)
                 .fixedSize(horizontal: false, vertical: true)
@@ -131,7 +131,7 @@ struct OnboardingView: View {
                 .ankerType(AnkerType.title2)
                 .foregroundStyle(AnkerColor.ink)
 
-            Text(verbatim: "Auf diesem Gerät ist noch nichts gespeichert. Wenn du Daivento schon benutzt, kommen deine Anker und Aufgaben gleich von selbst — dann brauchst du hier nichts einzugeben.")
+            Text(verbatim: "Auf diesem Gerät ist noch nichts gespeichert. Wenn du Anchorit schon benutzt, kommen deine Anker und Aufgaben gleich von selbst — dann brauchst du hier nichts einzugeben.")
                 .ankerType(AnkerType.body)
                 .foregroundStyle(AnkerColor.inkSecond)
                 .fixedSize(horizontal: false, vertical: true)

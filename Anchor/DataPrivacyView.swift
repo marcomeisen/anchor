@@ -95,7 +95,7 @@ struct DataPrivacyView: View {
 
     private var storedDataSection: some View {
         card {
-            sectionTitle("Was Daivento speichert")
+            sectionTitle("Was Anchorit speichert")
 
             Text("Wochen, Wochenziele, Aufgaben, Zeitblöcke, Tagesfokus und Notizen — also nur das, "
                  + "was du selbst eingibst. Es gibt keine Analyse, keine Werbung und keine Weitergabe "

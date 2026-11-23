@@ -91,7 +91,7 @@ final class CloudSyncStatusCenter: ObservableObject {
 
     @Published private(set) var phase: Phase = .starting
     @Published private(set) var detail = "CloudKit wird vorbereitet"
-    @Published private(set) var tooltip = "Daivento verbindet sich mit iCloud."
+    @Published private(set) var tooltip = "Anchorit verbindet sich mit iCloud."
 
     /// Getrennt vom `phase`-Text, damit die Diagnose den Accountzustand auch dann zeigt,
     /// wenn der Status gerade einen Import oder Export meldet.
@@ -122,6 +122,10 @@ final class CloudSyncStatusCenter: ObservableObject {
     @Published private(set) var isShowingManualSync = false
 
     private var isSyncDisabled = false
+    /// Der CloudKit-Store konnte nicht geoeffnet werden und dieser Prozess speichert nur
+    /// lokal. Danach darf keine Meldung mehr „wartet auf Export" behaupten — es wird nie
+    /// exportiert, solange der Prozess laeuft.
+    private var isCloudUnavailable = false
 
     /// Zaehlt jedes CloudKit-Ereignis. `requestSync` erkennt daran, ob waehrend des Wartens
     /// wirklich etwas passiert ist — eine Phase abzufragen reicht nicht, weil sie danach
@@ -299,7 +303,7 @@ final class CloudSyncStatusCenter: ObservableObject {
         isShowingManualSync = true
         phase = .syncing
         detail = "Abgleich angefordert"
-        tooltip = "Daivento prüft den iCloud-Account und wartet auf den nächsten Abgleich."
+        tooltip = "Anchorit prüft den iCloud-Account und wartet auf den nächsten Abgleich."
 
         await refreshAccountStatus()
 
@@ -360,9 +364,10 @@ final class CloudSyncStatusCenter: ObservableObject {
     func markCloudUnavailable(_ error: Error) {
         pendingExportWatchdog?.cancel()
         pendingExportWatchdog = nil
+        isCloudUnavailable = true
         phase = .issue
         detail = "Nur lokal gespeichert"
-        tooltip = "\(CloudSyncErrorFormatter.describe(error)) — Daivento arbeitet lokal weiter; Änderungen werden nicht synchronisiert. Prüfe iCloud-Account, Entitlements und Provisioning."
+        tooltip = "\(CloudSyncErrorFormatter.describe(error)) — Anchorit arbeitet lokal weiter; Änderungen werden nicht synchronisiert. Prüfe iCloud-Account, Entitlements und Provisioning."
         cloudSyncLog.error("CloudKit-Store nicht verfuegbar — \(CloudSyncErrorFormatter.describe(error), privacy: .public)")
     }
 
@@ -383,7 +388,7 @@ final class CloudSyncStatusCenter: ObservableObject {
     }
 
     private func apply(_ update: CloudSyncEventUpdate) {
-        guard !isSyncDisabled else { return }
+        guard !isSyncDisabled, !isCloudUnavailable else { return }
 
         syncEventCount += 1
         pendingExportWatchdog?.cancel()
@@ -394,11 +399,11 @@ final class CloudSyncStatusCenter: ObservableObject {
     }
 
     private func markLocalChangeSaved() {
-        guard !isSyncDisabled, phase != .syncing else { return }
+        guard !isSyncDisabled, !isCloudUnavailable, phase != .syncing else { return }
 
         phase = .pendingExport
         detail = "Lokale Änderung gesichert"
-        tooltip = "Daivento hat eine lokale Änderung gespeichert und wartet auf den CloudKit-Export."
+        tooltip = "Anchorit hat eine lokale Änderung gespeichert und wartet auf den CloudKit-Export."
         startPendingExportWatchdog()
     }
 
@@ -408,7 +413,7 @@ final class CloudSyncStatusCenter: ObservableObject {
         remoteChangeCount += 1
         syncEventCount += 1
 
-        guard !isSyncDisabled, phase != .syncing else { return }
+        guard !isSyncDisabled, !isCloudUnavailable, phase != .syncing else { return }
 
         pendingExportWatchdog?.cancel()
         pendingExportWatchdog = nil

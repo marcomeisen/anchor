@@ -63,7 +63,7 @@ struct SettingsView: View {
 
             Text(appearance == .system
                  ? "Folgt der Systemeinstellung dieses Geräts."
-                 : "Gilt nur für Daivento, unabhängig vom System.")
+                 : "Gilt nur für Anchorit, unabhängig vom System.")
                 .ankerType(AnkerType.caption)
                 .foregroundStyle(AnkerColor.inkSecond)
                 .fixedSize(horizontal: false, vertical: true)
@@ -127,8 +127,8 @@ struct SettingsView: View {
         VStack(alignment: .leading, spacing: AnkerSpacing.s2) {
             Label(
                 CloudSyncPreference.isEnabled()
-                    ? "Der Sync startet beim nächsten Start von Daivento."
-                    : "Der Sync endet beim nächsten Start von Daivento.",
+                    ? "Der Sync startet beim nächsten Start von Anchorit."
+                    : "Der Sync endet beim nächsten Start von Anchorit.",
                 ankerIcon: AnkerIcon.refresh
             )
             .ankerType(AnkerType.caption)
@@ -140,7 +140,7 @@ struct SettingsView: View {
                 CloudSyncPreference.relaunch()
             }
             .ankerType(AnkerType.caption)
-            .accessibilityLabel("Daivento jetzt neu starten, damit die Sync-Einstellung greift")
+            .accessibilityLabel("Anchorit jetzt neu starten, damit die Sync-Einstellung greift")
 #endif
         }
         .frame(maxWidth: .infinity, alignment: .leading)

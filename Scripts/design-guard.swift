@@ -24,17 +24,17 @@ let rules = [
     // anfasst oder was schwebt; scharf bleibt die Struktur. Deshalb prueft die Schranke jetzt
     // nicht mehr *ob*, sondern *wie*.
     Rule(label: "Roher Radius", pattern: #"cornerRadius: (?!AnkerRadius)"#,
-         reason: "Radius kommt aus AnkerRadius (control/card/check/tile) — eine Rolle, keine Zahl."),
+         reason: "Radius kommt aus AnkerRadius (control/card/check/chip/cell/mark/inlineButton/bar/tile) — eine Rolle, keine Zahl."),
     Rule(label: "Eckenform", pattern: #"cornerRadius:(?!.*continuous)"#,
          reason: "Immer style: .continuous. Ein Kreisbogen ist auf Apple-Flaechen sichtbar kantiger."),
     Rule(label: "Kreisbogenecke", pattern: #"style: \.circular"#,
          reason: "Nie .circular — der Entwurf verlangt ausdruecklich .continuous."),
     Rule(label: "Material", pattern: "Material",
-         reason: "Nichts schwebt. AnkerColor.surface plus ankerPanel() benutzen."),
+         reason: "Blatt ist flach: weisse Flaeche, Haarlinie. ankerCard()/ankerPanel() benutzen."),
     Rule(label: "Gradient", pattern: "Gradient",
          reason: "Keine Verlaeufe. Flache Fuellung aus der Rampe benutzen."),
     Rule(label: "shadow", pattern: #"\.shadow\("#,
-         reason: "Kein Schatten. Die Kante macht AnkerBorder.rule sichtbar."),
+         reason: "Kein Schatten. Die Haarlinie macht die Ebene sichtbar; nur Gezogenes schwebt (ankerLifted())."),
     Rule(label: "blur", pattern: #"\.blur\("#,
          reason: "Keine Weichzeichnung."),
     Rule(label: "font(.system", pattern: #"font\(\.system\("#,
@@ -42,7 +42,7 @@ let rules = [
     Rule(label: "tracking", pattern: #"\.tracking\("#,
          reason: "Die Laufweite gehoert zum Typo-Token."),
     Rule(label: "textCase", pattern: #"\.textCase\("#,
-         reason: "Grossschreibung gehoert zum Typo-Token (overline, eyebrow, microLabel)."),
+         reason: "Blatt schreibt Beschriftungen in normaler Schreibung; Versalien gehoeren nicht in die Views."),
     Rule(label: "SF Symbols", pattern: "systemName:|systemImage:",
          reason: "Icons kommen aus AnkerIcon (Lucide)."),
     // Bewusst auch das blosse `? .white :` — genau in dieser Form standen die Faelle, die im
@@ -69,7 +69,7 @@ let rules = [
     // Negative Werte auch: `.padding(-4)` ist ein Ueberstand, kein Raster.
     Rule(label: "Roher Abstand",
          pattern: #"(?:spacing: |Spacer\(minLength: |\.padding\((?:\.(?:horizontal|vertical|top|bottom|leading|trailing), )?)(?!0\b)\d"#,
-         reason: "Abstaende kommen aus AnkerSpacing (4/8/12/16/24/32)."),
+         reason: "Abstaende kommen aus AnkerSpacing (2/4/6/8/12/16/24/32)."),
 ]
 
 /// Hier entstehen die Tokens — die Grundbausteine muessen darin vorkommen.

@@ -1,6 +1,6 @@
 import SwiftData
 import XCTest
-@testable import Daivento
+@testable import Anchorit
 
 /// Die Zellenzuordnung der Matrix. Eigener Typ genau deshalb: welche Aufgabe in welche Zelle
 /// gehoert, ist die Aussage der Ansicht und muss ohne View pruefbar sein.
@@ -121,7 +121,7 @@ final class AnkerMatrixTests: XCTestCase {
         let nextWeekDate = try XCTUnwrap(
             AnkerCalendar.iso.date(byAdding: .weekOfYear, value: 1, to: week.monday)
         )
-        let nextWeek = TaskActions.ensureWeek(containing: nextWeekDate, weeks: [week], modelContext: context)
+        let nextWeek = TaskActions.ensureFullWeek(containing: nextWeekDate, weeks: [week], modelContext: context)
         let targetGoal = Goal(title: "Ziel der Folgewoche", colorHex: "#DD2B0F", week: nextWeek)
         context.insert(targetGoal)
         nextWeek.appendGoal(targetGoal)

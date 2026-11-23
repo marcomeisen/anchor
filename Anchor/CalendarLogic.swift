@@ -71,6 +71,35 @@ enum AnkerCalendar {
         let interval = weekInterval(containing: date)
         return WeekKey(isoYear: interval.isoYear, isoWeek: interval.isoWeek)
     }
+
+    // MARK: - Gespeicherte Tage über Zeitzonen hinweg
+
+    /// Der Kalendertag, den ein **gespeichertes** Tagesdatum meint.
+    ///
+    /// `Day.date` ist Mitternacht in der Zeitzone des Geräts, das den Tag angelegt hat. Auf
+    /// einem Gerät in einer westlicheren Zone ist derselbe Zeitpunkt noch der Vorabend —
+    /// `isSameDay` ordnete den Montag dort dem Sonntag zu, und das Zusammenführen legte
+    /// fremde Tage aufeinander. Zwölf Stunden Versatz landen für jede Zonendifferenz unter
+    /// zwölf Stunden sicher in der Tagesmitte des gemeinten Tages.
+    ///
+    /// Nur für gespeicherte Tagesdaten verwenden, nie für „jetzt" — 13 Uhr plus zwölf Stunden
+    /// ist morgen.
+    static func nominalDay(ofStored date: Date, calendar: Calendar = iso) -> DateComponents {
+        let middle = date.addingTimeInterval(12 * 60 * 60)
+        return calendar.dateComponents([.year, .month, .day], from: middle)
+    }
+
+    /// Meint das gespeicherte Tagesdatum `stored` den Kalendertag von `date`?
+    static func storedDay(_ stored: Date, isOn date: Date, calendar: Calendar = iso) -> Bool {
+        let target = calendar.dateComponents([.year, .month, .day], from: date)
+        let nominal = nominalDay(ofStored: stored, calendar: calendar)
+        return nominal.year == target.year && nominal.month == target.month && nominal.day == target.day
+    }
+
+    /// Die Woche, in die ein gespeichertes Tagesdatum gehört — für verwaiste Tage aus dem Sync.
+    static func weekKey(ofStored date: Date) -> WeekKey {
+        weekKey(containing: date.addingTimeInterval(12 * 60 * 60))
+    }
 }
 
 /// Alle Datums- und Zeitformate der Oberflaeche an einer Stelle.

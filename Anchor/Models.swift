@@ -14,6 +14,20 @@ final class Goal {
     var order: Int = 0
     var week: Week?
 
+    /// Ein Satz, warum dieser Anker diese Woche zaehlt. Optional und additiv — aeltere
+    /// Datensaetze und aeltere App-Versionen kommen ohne aus.
+    var why: String?
+
+    /// Die Antwort im Wochenrueckblick: `GoalVerdict.rawValue`. `nil` heisst noch nicht
+    /// beantwortet. Als Text statt als Enum gespeichert, damit ein unbekannter Wert einer
+    /// neueren Version auf einem aelteren Geraet nicht den Import bricht.
+    var verdictRaw: String?
+
+    var verdict: GoalVerdict? {
+        get { verdictRaw.flatMap(GoalVerdict.init(rawValue:)) }
+        set { verdictRaw = newValue?.rawValue }
+    }
+
     @Relationship(deleteRule: .nullify, inverse: \AnkerTask.linkedGoal)
     var tasks: [AnkerTask]? = []
 
@@ -40,10 +54,15 @@ final class Week {
     var monday: Date = Date()
     var sunday: Date = Date()
 
-    @Relationship(deleteRule: .cascade, inverse: \Goal.week)
+    // `.nullify` statt `.cascade`, bewusst: eine Woche wird nur beim Zusammenfuehren von
+    // Sync-Duplikaten und beim vollstaendigen Loeschen entfernt. Kommt die Loeschung eines
+    // Duplikats von einem anderen Geraet an, bevor dieses Geraet die Kinder umgehaengt hat,
+    // haette die Kaskade Tage, Ziele und Aufgaben mitgenommen — und die Loeschung danach
+    // exportiert. Verwaiste Kinder sammelt `StoreMaintenance.adoptOrphans` wieder ein.
+    @Relationship(deleteRule: .nullify, inverse: \Goal.week)
     var goals: [Goal]? = []
 
-    @Relationship(deleteRule: .cascade, inverse: \Day.week)
+    @Relationship(deleteRule: .nullify, inverse: \Day.week)
     var days: [Day]? = []
 
     /// Antwort auf die eine Frage des Wochenrueckblicks.
@@ -89,10 +108,12 @@ final class Day {
     var focusNote: String?
     var week: Week?
 
-    @Relationship(deleteRule: .cascade, inverse: \AnkerTask.day)
+    // Aus demselben Grund `.nullify`: eine Aufgabe ohne Tag ist kein Datenmuell, sondern
+    // „noch nicht eingeplant" — sie gehoert ueber `linkedGoal` weiter zu ihrer Woche.
+    @Relationship(deleteRule: .nullify, inverse: \AnkerTask.day)
     var tasks: [AnkerTask]? = []
 
-    @Relationship(deleteRule: .cascade, inverse: \TimeBlock.day)
+    @Relationship(deleteRule: .nullify, inverse: \TimeBlock.day)
     var timeBlocks: [TimeBlock]? = []
 
     var notes: String?
@@ -118,6 +139,26 @@ final class Day {
         self.focusNote = focusNote
         self.week = week
         self.notes = notes
+    }
+}
+
+/// Die Antwort auf „Wie lief dieser Anker?" im Wochenrueckblick.
+///
+/// Bewusst vom Nutzer gegeben statt aus den Haken errechnet: „1 von 2 erledigt" kann trotzdem
+/// gehalten sein. Die Zahl ist ein Hinweis, die Antwort ist die Aussage.
+enum GoalVerdict: String, CaseIterable, Identifiable, Sendable {
+    case held
+    case partial
+    case missed
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .held: "Gehalten"
+        case .partial: "Teilweise"
+        case .missed: "Nicht"
+        }
     }
 }
 

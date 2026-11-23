@@ -1,6 +1,6 @@
 import SwiftData
 import XCTest
-@testable import Daivento
+@testable import Anchorit
 
 /// Neuinstallation neben bestehendem iCloud-Bestand.
 ///
@@ -18,10 +18,10 @@ final class OnboardingSyncTests: XCTestCase {
 
         // Der Bestand eines echten Nutzers, gerade per iCloud angekommen: die Vorwoche ist
         // geplant, die laufende noch nicht — das ist am Montagmorgen der Normalfall.
-        let past = TaskActions.ensureWeek(containing: AnkerCalendar.date(year: 2026, month: 7, day: 27),
+        let past = TaskActions.ensureFullWeek(containing: AnkerCalendar.date(year: 2026, month: 7, day: 27),
                                          weeks: [], modelContext: context)
         _ = GoalActions.create(title: "Vertragsprüfung", colorHex: "#DD2B0F", in: past, modelContext: context)
-        let current = TaskActions.ensureWeek(containing: AnkerCalendar.date(year: 2026, month: 8, day: 3),
+        let current = TaskActions.ensureFullWeek(containing: AnkerCalendar.date(year: 2026, month: 8, day: 3),
                                              weeks: [past], modelContext: context)
         try context.save()
 
@@ -40,7 +40,7 @@ final class OnboardingSyncTests: XCTestCase {
     func testNoOnboardingWhenOnlyTasksExist() throws {
         let container = try makeContainer()
         let context = container.mainContext
-        let week = TaskActions.ensureWeek(containing: AnkerCalendar.date(year: 2026, month: 8, day: 3),
+        let week = TaskActions.ensureFullWeek(containing: AnkerCalendar.date(year: 2026, month: 8, day: 3),
                                           weeks: [], modelContext: context)
         let day = try XCTUnwrap(week.dayList.first)
         _ = TaskActions.create(title: "Ohne Anker erfasst", priority: .b, on: day,
@@ -61,7 +61,7 @@ final class OnboardingSyncTests: XCTestCase {
         XCTAssertTrue(WeekPlanning.needsOnboarding(in: [], hasCompletedOnboarding: false))
 
         // Eine leere Woche allein macht daraus keinen Bestand.
-        let week = TaskActions.ensureWeek(containing: AnkerCalendar.date(year: 2026, month: 8, day: 3),
+        let week = TaskActions.ensureFullWeek(containing: AnkerCalendar.date(year: 2026, month: 8, day: 3),
                                           weeks: [], modelContext: context)
         try context.save()
         XCTAssertTrue(WeekPlanning.needsOnboarding(in: [week], hasCompletedOnboarding: false,
@@ -76,7 +76,7 @@ final class OnboardingSyncTests: XCTestCase {
     func testPlaceholderAloneDoesNotCountAsContent() throws {
         let container = try makeContainer()
         let context = container.mainContext
-        let week = TaskActions.ensureWeek(containing: AnkerCalendar.date(year: 2026, month: 8, day: 3),
+        let week = TaskActions.ensureFullWeek(containing: AnkerCalendar.date(year: 2026, month: 8, day: 3),
                                           weeks: [], modelContext: context)
         WeekPlanning.upsertOnboardingGoal(title: WeekPlanning.placeholderGoalTitle, in: week, modelContext: context)
         try context.save()
@@ -92,7 +92,7 @@ final class OnboardingSyncTests: XCTestCase {
     func testOnboardingAnchorsAreNotAddedOnTopOfSyncedOnes() throws {
         let container = try makeContainer()
         let context = container.mainContext
-        let week = TaskActions.ensureWeek(containing: AnkerCalendar.date(year: 2026, month: 8, day: 3),
+        let week = TaskActions.ensureFullWeek(containing: AnkerCalendar.date(year: 2026, month: 8, day: 3),
                                           weeks: [], modelContext: context)
         let existing = try XCTUnwrap(GoalActions.create(title: "Aus iCloud", colorHex: "#DD2B0F",
                                                        in: week, modelContext: context))
@@ -108,19 +108,20 @@ final class OnboardingSyncTests: XCTestCase {
         XCTAssertEqual(week.goalList.map(\.id), [existing.id])
     }
 
-    // MARK: - D3: nach dem Zusammenführen entschied die UUID über die sichtbaren vier
+    // MARK: - D3: Zusammenführen muss auf allen Geräten dasselbe Ergebnis haben
 
+    /// Die kleinste UUID überlebt — **auch** wenn die andere Kopie mehr Inhalt hat.
+    ///
+    /// Vorher gewann die inhaltsreichere Kopie. Inhalt wird aber lokal gezählt, und mitten in
+    /// einem Import sehen zwei Geräte dieselben Kopien verschieden schwer: jedes löschte die
+    /// andere. Die Aussage dieses Tests ist deshalb zweiteilig: die UUID entscheidet, und die
+    /// benutzten Anker bleiben trotzdem die sichtbaren vier.
     @MainActor
-    func testMergingKeepsTheRicherWeekEvenWhenItsUUIDIsHigher() throws {
+    func testMergingKeepsSmallestUUIDAndUsedAnchorsStayVisible() throws {
         let container = try makeContainer()
         let context = container.mainContext
         let interval = AnkerCalendar.weekInterval(containing: AnkerCalendar.date(year: 2026, month: 8, day: 3))
 
-        // Zwei Wochen für denselben Montag — genau das entsteht, wenn ein neu installiertes Gerät
-        // eine Woche anlegt, während der iCloud-Erstimport dieselbe Woche noch bringt.
-        //
-        // Die UUIDs sind bewusst gesetzt: die **Onboarding**-Woche hat die kleinere. Die alte
-        // Wahl nahm die kleinere UUID und hätte damit den echten Bestand zur Nebensache gemacht.
         let onboarding = Week(id: UUID(uuidString: "00000000-0000-0000-0000-000000000001")!,
                               isoYear: interval.isoYear, isoWeek: interval.isoWeek,
                               monday: interval.monday, sunday: interval.sunday)
@@ -130,17 +131,17 @@ final class OnboardingSyncTests: XCTestCase {
         context.insert(onboarding)
         context.insert(synced)
 
+        let day = Day(date: interval.monday, week: synced)
+        context.insert(day)
+        synced.days = [day]
         for (index, title) in ["Echt 1", "Echt 2", "Echt 3", "Echt 4"].enumerated() {
             let goal = Goal(title: title, colorHex: "#DD2B0F", order: index, week: synced)
             context.insert(goal)
             synced.appendGoal(goal)
+            let task = AnkerTask(title: "Aufgabe \(index)", priority: .b, order: index, day: day, linkedGoal: goal)
+            context.insert(task)
+            day.appendTask(task)
         }
-        let day = Day(date: interval.monday, week: synced)
-        context.insert(day)
-        synced.days = [day]
-        let task = AnkerTask(title: "Aus iCloud", priority: .b, isDone: false, order: 0, day: day)
-        context.insert(task)
-        day.appendTask(task)
 
         for (index, title) in ["Onboarding 1", "Onboarding 2"].enumerated() {
             let goal = Goal(title: title, colorHex: "#2D2B2B", order: index, week: onboarding)
@@ -149,44 +150,145 @@ final class OnboardingSyncTests: XCTestCase {
         }
         try context.save()
 
-        StoreMaintenance.merge(weeks: [onboarding, synced], modelContext: context, reporter: nil)
+        StoreMaintenance.merge(weeks: [synced, onboarding], modelContext: context, reporter: nil)
 
         let survivor = try XCTUnwrap(try context.fetch(FetchDescriptor<Week>()).first { !$0.isDeleted })
-        XCTAssertEqual(survivor.id, synced.id, "Die inhaltsreichere Woche muss überleben")
+        XCTAssertEqual(survivor.id, onboarding.id, "Die kleinste UUID muss überleben, unabhängig vom Inhalt")
         XCTAssertEqual(survivor.goalList.count, 6, "Zusammenführen darf nichts verlieren")
-
-        // Das ist die Aussage des gemeldeten Fehlers: die echten Anker bleiben die sichtbaren.
+        XCTAssertEqual(survivor.dayList.flatMap(\.taskList).count, 4)
         XCTAssertEqual(GoalOrdering.anchors(in: survivor).map(\.title),
                        ["Echt 1", "Echt 2", "Echt 3", "Echt 4"])
-        // Der Überschuss ist sichtbar benannt, nicht verschluckt.
         XCTAssertEqual(GoalOrdering.excess(in: survivor).map(\.title),
                        ["Onboarding 1", "Onboarding 2"])
-        // Lückenlos, damit die Ankernummern stabil bleiben.
         XCTAssertEqual(GoalOrdering.sorted(survivor.goalList).map(\.order), Array(0..<6))
     }
 
+    /// Zwei Geräte, die dieselben Kopien in verschiedenem Importzustand sehen, wählen
+    /// denselben Gewinner.
     @MainActor
-    func testElectionFallsBackToTheUUIDOnEqualContent() throws {
+    func testElectionIgnoresLocallyVisibleContent() throws {
+        let interval = AnkerCalendar.weekInterval(containing: AnkerCalendar.date(year: 2026, month: 8, day: 3))
+        let lowID = UUID(uuidString: "00000000-0000-0000-0000-000000000001")!
+        let highID = UUID(uuidString: "FFFFFFFF-FFFF-FFFF-FFFF-FFFFFFFFFFFF")!
+
+        var survivors: [UUID] = []
+        for fullCopy in [lowID, highID] {
+            let container = try makeContainer()
+            let context = container.mainContext
+            let low = Week(id: lowID, isoYear: interval.isoYear, isoWeek: interval.isoWeek,
+                           monday: interval.monday, sunday: interval.sunday)
+            let high = Week(id: highID, isoYear: interval.isoYear, isoWeek: interval.isoWeek,
+                            monday: interval.monday, sunday: interval.sunday)
+            context.insert(low)
+            context.insert(high)
+            // Auf diesem „Gerät" ist nur eine der beiden Kopien schon vollständig importiert.
+            let full = fullCopy == lowID ? low : high
+            let day = Day(date: interval.monday, week: full)
+            context.insert(day)
+            full.days = [day]
+            let task = AnkerTask(title: "Inhalt", priority: .b, order: 0, day: day)
+            context.insert(task)
+            day.appendTask(task)
+            try context.save()
+
+            StoreMaintenance.merge(weeks: [low, high], modelContext: context, reporter: nil)
+            let survivor = try XCTUnwrap(try context.fetch(FetchDescriptor<Week>()).first { !$0.isDeleted })
+            survivors.append(survivor.id)
+            XCTAssertEqual(try context.fetch(FetchDescriptor<AnkerTask>()).count, 1, "Nichts darf verloren gehen")
+        }
+
+        XCTAssertEqual(survivors, [lowID, lowID], "Beide Geräte müssen dieselbe Kopie behalten")
+    }
+
+    /// Kommt die Löschung der doppelten Woche an, bevor dieses Gerät ihre Tage umgehängt hat,
+    /// bleiben die Tage als Waisen stehen — und werden wieder eingehängt.
+    @MainActor
+    func testDeletingAWeekKeepsItsDaysAndMaintenanceAdoptsThem() throws {
         let container = try makeContainer()
         let context = container.mainContext
-        let interval = AnkerCalendar.weekInterval(containing: AnkerCalendar.date(year: 2026, month: 8, day: 3))
-
-        // Gleich viel Inhalt: dann muss die Wahl trotzdem eindeutig sein, sonst führen zwei
-        // Geräte dieselben Duplikate verschieden zusammen und laufen auseinander.
-        let low = Week(id: UUID(uuidString: "00000000-0000-0000-0000-000000000001")!,
-                       isoYear: interval.isoYear, isoWeek: interval.isoWeek,
-                       monday: interval.monday, sunday: interval.sunday)
-        let high = Week(id: UUID(uuidString: "FFFFFFFF-FFFF-FFFF-FFFF-FFFFFFFFFFFF")!,
-                        isoYear: interval.isoYear, isoWeek: interval.isoWeek,
-                        monday: interval.monday, sunday: interval.sunday)
-        context.insert(low)
-        context.insert(high)
+        let date = AnkerCalendar.date(year: 2026, month: 8, day: 4)
+        let week = TaskActions.ensureWeek(containing: date, weeks: [], modelContext: context)
+        let day = TaskActions.ensureDay(containing: date, in: week)
+        let task = AnkerTask(title: "Überlebt", priority: .b, order: 0, day: day)
+        context.insert(task)
+        day.appendTask(task)
         try context.save()
 
-        StoreMaintenance.merge(weeks: [high, low], modelContext: context, reporter: nil)
+        // So wirkt eine Löschung, die von einem anderen Gerät kommt.
+        context.delete(week)
+        try context.save()
 
-        let survivor = try XCTUnwrap(try context.fetch(FetchDescriptor<Week>()).first { !$0.isDeleted })
-        XCTAssertEqual(survivor.id, low.id)
+        let orphan = try XCTUnwrap(try context.fetch(FetchDescriptor<Day>()).first)
+        XCTAssertNil(orphan.week, "Mit `.nullify` bleibt der Tag als Waise erhalten")
+        XCTAssertEqual(orphan.taskList.map(\.title), ["Überlebt"])
+
+        let report = StoreMaintenance.run(modelContext: context, reporter: nil)
+        XCTAssertEqual(report.adoptedOrphans, 1)
+        let adopted = try XCTUnwrap(try context.fetch(FetchDescriptor<Day>()).first)
+        let home = try XCTUnwrap(adopted.week)
+        XCTAssertEqual(home.isoWeek, AnkerCalendar.weekKey(containing: date).isoWeek)
+        XCTAssertEqual(adopted.taskList.map(\.title), ["Überlebt"])
+    }
+
+    /// Ein Tag, den ein Gerät eine Stunde östlich angelegt hat, gehört trotzdem zu seinem Tag.
+    func testStoredDayFromAnEasternZoneMapsToTheSameDay() throws {
+        var berlin = Calendar(identifier: .iso8601)
+        berlin.timeZone = try XCTUnwrap(TimeZone(identifier: "Europe/Berlin"))
+        var london = Calendar(identifier: .iso8601)
+        london.timeZone = try XCTUnwrap(TimeZone(identifier: "Europe/London"))
+
+        let berlinMonday = try XCTUnwrap(berlin.date(from: DateComponents(year: 2026, month: 8, day: 3)))
+        // In London ist das noch Sonntag 23 Uhr.
+        XCTAssertFalse(london.isDate(berlinMonday, inSameDayAs: london.date(from: DateComponents(year: 2026, month: 8, day: 3))!))
+
+        let nominal = AnkerCalendar.nominalDay(ofStored: berlinMonday, calendar: london)
+        XCTAssertEqual([nominal.year, nominal.month, nominal.day], [2026, 8, 3])
+    }
+
+    /// Wochen entstehen erst beim Schreiben — und dann ohne die sieben Tage.
+    @MainActor
+    func testEnsureWeekCreatesNoDaysAndEnsureDayCreatesExactlyOne() throws {
+        let container = try makeContainer()
+        let context = container.mainContext
+        let date = AnkerCalendar.date(year: 2026, month: 8, day: 5)
+        let week = TaskActions.ensureWeek(containing: date, weeks: [], modelContext: context)
+        XCTAssertTrue(week.dayList.isEmpty)
+
+        let day = TaskActions.ensureDay(containing: date, in: week)
+        XCTAssertEqual(week.dayList.count, 1)
+        XCTAssertTrue(TaskActions.ensureDay(containing: date, in: week) === day, "Kein zweiter Tag für dasselbe Datum")
+    }
+
+    /// Aufgaben ohne Tag: einplanen, ausplanen, rückgängig machen.
+    @MainActor
+    func testUnscheduledTasksRoundTrip() throws {
+        let container = try makeContainer()
+        let context = container.mainContext
+        let date = AnkerCalendar.date(year: 2026, month: 8, day: 5)
+        let week = TaskActions.ensureWeek(containing: date, weeks: [], modelContext: context)
+        let goal = Goal(title: "Laufen", colorHex: "#000000", order: 0, week: week)
+        context.insert(goal)
+        week.appendGoal(goal)
+
+        let task = try XCTUnwrap(TaskActions.createUnscheduled(title: "Schuhe kaufen", goal: goal, modelContext: context))
+        XCTAssertNil(task.day)
+        XCTAssertEqual(TaskActions.unscheduledTasks(in: week).map(\.id), [task.id])
+        XCTAssertTrue(TaskActions.inboxTasks(modelContext: context).isEmpty)
+
+        TaskActions.move(task, to: date, weeks: [week], modelContext: context)
+        XCTAssertNotNil(task.day)
+        XCTAssertEqual(task.linkedGoal?.id, goal.id, "Einplanen in derselben Woche behält den Anker")
+
+        TaskActions.unschedule(task, modelContext: context)
+        XCTAssertNil(task.day)
+
+        let inbox = try XCTUnwrap(TaskActions.createUnscheduled(title: "Arzttermin", goal: nil, modelContext: context))
+        XCTAssertEqual(TaskActions.inboxTasks(modelContext: context).map(\.id), [inbox.id])
+        let inboxSnapshot = TaskActions.snapshot(inbox)
+        TaskActions.delete(inbox, modelContext: context)
+        TaskActions.restore([inboxSnapshot], weeks: [week], modelContext: context)
+        XCTAssertEqual(TaskActions.inboxTasks(modelContext: context).map(\.title), ["Arzttermin"],
+                       "Löschen einer Aufgabe ohne Tag muss rückgängig zu machen sein")
     }
 
     // MARK: - Hilfen

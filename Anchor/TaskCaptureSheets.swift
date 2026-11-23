@@ -304,9 +304,11 @@ struct QuickCapturePopover: View {
             .padding(.top, AnkerSpacing.s1)
         }
         .onAppear {
-            let week = ensureCurrentWeek()
-            selectedGoalID = selectedGoalID ?? GoalOrdering.anchors(in: week).first?.id
-            modelContext.saveChanges()
+            // Nur nachsehen, nicht anlegen: das Öffnen des Popovers ist noch kein Schreiben.
+            let monday = AnkerCalendar.weekInterval(containing: Date()).monday
+            if let week = WeekPlanning.week(startingAt: monday, in: weeks) {
+                selectedGoalID = selectedGoalID ?? GoalOrdering.anchors(in: week).first?.id
+            }
         }
         .padding(AnkerSpacing.s4)
         .frame(width: 300)
@@ -314,9 +316,8 @@ struct QuickCapturePopover: View {
     }
 
     private func save() {
-        let week = ensureCurrentWeek()
-        guard let currentDay = week.dayList.first(where: { AnkerCalendar.isSameDay($0.date, Date()) })
-            ?? week.dayList.sorted(by: { $0.date < $1.date }).first else { return }
+        let week = TaskActions.ensureWeek(containing: Date(), weeks: weeks, modelContext: modelContext)
+        let currentDay = TaskActions.ensureDay(containing: Date(), in: week)
         guard TaskActions.create(
             title: title,
             priority: priority,
@@ -327,36 +328,6 @@ struct QuickCapturePopover: View {
 
         title = ""
         selectedGoalID = GoalOrdering.anchors(in: week).first?.id
-    }
-
-    @discardableResult
-    private func ensureCurrentWeek() -> Week {
-        let interval = AnkerCalendar.weekInterval(containing: Date())
-
-        if let existingWeek = weeks.first(where: { AnkerCalendar.isSameDay($0.monday, interval.monday) }) {
-            ensureWeekDays(in: existingWeek)
-            return existingWeek
-        }
-
-        let week = Week(
-            isoYear: interval.isoYear,
-            isoWeek: interval.isoWeek,
-            monday: interval.monday,
-            sunday: interval.sunday
-        )
-        week.days = AnkerCalendar.daysInWeek(starting: interval.monday).map { date in
-            Day(date: date, week: week)
-        }
-        modelContext.insert(week)
-        return week
-    }
-
-    private func ensureWeekDays(in week: Week) {
-        if week.dayList.isEmpty {
-            week.days = AnkerCalendar.daysInWeek(starting: week.monday).map { date in
-                Day(date: date, week: week)
-            }
-        }
     }
 }
 #endif

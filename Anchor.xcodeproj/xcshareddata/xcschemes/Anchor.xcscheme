@@ -16,7 +16,7 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "561D77DA301D46CC0050FA37"
-               BuildableName = "Daivento.app"
+               BuildableName = "Anchorit.app"
                BlueprintName = "Anchor"
                ReferencedContainer = "container:Anchor.xcodeproj">
             </BuildableReference>
@@ -70,11 +70,17 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "561D77DA301D46CC0050FA37"
-            BuildableName = "Daivento.app"
+            BuildableName = "Anchorit.app"
             BlueprintName = "Anchor"
             ReferencedContainer = "container:Anchor.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
+      <CommandLineArguments>
+         <CommandLineArgument
+            argument = "- AnchoritInitializeCloudKitSchema"
+            isEnabled = "YES">
+         </CommandLineArgument>
+      </CommandLineArguments>
    </LaunchAction>
    <ProfileAction
       buildConfiguration = "Release"
@@ -87,7 +93,7 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "561D77DA301D46CC0050FA37"
-            BuildableName = "Daivento.app"
+            BuildableName = "Anchorit.app"
             BlueprintName = "Anchor"
             ReferencedContainer = "container:Anchor.xcodeproj">
          </BuildableReference>

@@ -27,64 +27,50 @@ struct AnkerTextStyle: Sendable, Hashable {
         self.isTabular = tabular
     }
 
-    var font: Font { AnkerFont.archivo(weight, size: size, tabular: isTabular) }
+    var font: Font { AnkerFont.system(weight, size: size, tabular: isTabular) }
     var tracking: CGFloat { size * trackingEm }
 }
 
 /// Die Typo-Skala des Entwurfs. Sie ersetzt 191 einzelne `.font(.system(size:))`-Stellen.
 enum AnkerType {
+    // MARK: Schlagzeilen — schwer, eng gesetzt
 
-    // MARK: - Display
+    static let poster = AnkerTextStyle(size: 72, weight: .extraBold, trackingEm: -0.04, tabular: true)
+    static let display = AnkerTextStyle(size: 48, weight: .extraBold, trackingEm: -0.035, tabular: true)
+    static let title1 = AnkerTextStyle(size: 40, weight: .extraBold, trackingEm: -0.035, tabular: true)
+    static let title2 = AnkerTextStyle(size: 34, weight: .extraBold, trackingEm: -0.035, tabular: true)
+    static let title3 = AnkerTextStyle(size: 30, weight: .extraBold, trackingEm: -0.03, tabular: true)
 
-    /// 96/900 — die eine grosse Zahl auf dem Rueckblick-Plakat.
-    static let poster = AnkerTextStyle(size: 96, weight: .black, trackingEm: -0.05, tabular: true)
-    /// 56/900
-    static let display = AnkerTextStyle(size: 56, weight: .black, trackingEm: -0.025, tabular: true)
-    /// 40/900 — Kopfzeile der Matrix.
-    static let title1 = AnkerTextStyle(size: 40, weight: .black, trackingEm: -0.03, tabular: true)
-    /// 34/900
-    static let title2 = AnkerTextStyle(size: 34, weight: .black, trackingEm: -0.03, tabular: true)
-    /// 29/900 — Bildschirmtitel auf dem iPhone.
-    static let title3 = AnkerTextStyle(size: 29, weight: .black, trackingEm: -0.02, tabular: true)
+    // MARK: Text
 
-    // MARK: - Fliesstext
-
-    /// 20/900
-    static let headline = AnkerTextStyle(size: 20, weight: .black, trackingEm: -0.01)
-    /// 17/800
-    static let subheadline = AnkerTextStyle(size: 17, weight: .extraBold, trackingEm: -0.005)
-    /// 17/700 — Aufgabentitel.
-    static let taskTitle = AnkerTextStyle(size: 17, weight: .bold, trackingEm: -0.005)
-    /// 15/700
-    static let bodyStrong = AnkerTextStyle(size: 15, weight: .bold)
-    /// 15/500 — der Grundtext.
+    static let headline = AnkerTextStyle(size: 22, weight: .bold, trackingEm: -0.01)
+    static let subheadline = AnkerTextStyle(size: 17, weight: .semibold)
+    /// Der Titel einer Aufgabe. Mittel, nicht fett — die Liste soll ruhig bleiben.
+    static let taskTitle = AnkerTextStyle(size: 16, weight: .medium)
+    static let bodyStrong = AnkerTextStyle(size: 15, weight: .semibold)
     static let body = AnkerTextStyle(size: 15, weight: .medium)
-    /// 14/800 — Beschriftung in Schaltflaechen.
-    static let label = AnkerTextStyle(size: 14, weight: .extraBold)
-    /// 13/800
-    static let metaStrong = AnkerTextStyle(size: 13, weight: .extraBold)
-    /// 13/600
-    static let meta = AnkerTextStyle(size: 13, weight: .semibold)
-    /// 12/700
-    static let caption = AnkerTextStyle(size: 12, weight: .bold)
+    static let label = AnkerTextStyle(size: 14, weight: .semibold)
+    static let metaStrong = AnkerTextStyle(size: 13, weight: .semibold)
+    static let meta = AnkerTextStyle(size: 13, weight: .medium)
+    static let caption = AnkerTextStyle(size: 12, weight: .semibold)
 
-    // MARK: - Mikrobeschriftungen, immer in Grossbuchstaben
+    // MARK: Beschriftungen — in „Blatt" in normaler Schreibung, nicht in Versalien
 
-    /// 11/800, +0,12 em
-    static let overline = AnkerTextStyle(size: 11, weight: .extraBold, trackingEm: 0.12, uppercase: true)
-    /// 10/800, +0,16 em — die Abschnittsmarken des Entwurfs.
-    static let eyebrow = AnkerTextStyle(size: 10, weight: .extraBold, trackingEm: 0.16, uppercase: true)
-    /// 9/800, +0,08 em — Prioritaetsbuchstabe.
-    static let microLabel = AnkerTextStyle(size: 9, weight: .extraBold, trackingEm: 0.08, uppercase: true)
+    static let overline = AnkerTextStyle(size: 13, weight: .semibold)
+    static let eyebrow = AnkerTextStyle(size: 12, weight: .semibold)
+    static let microLabel = AnkerTextStyle(size: 11, weight: .semibold)
 
-    // MARK: - Zahlenspalten
+    // MARK: Zahlen — tabellarisch, damit Spalten stehen
 
-    /// 15/700, tabellarisch
-    static let numeric = AnkerTextStyle(size: 15, weight: .bold, tabular: true)
-    /// 12/700, tabellarisch
-    static let numericSmall = AnkerTextStyle(size: 12, weight: .bold, tabular: true)
-    /// 32/900, tabellarisch — Kennzahlen in Rastern.
-    static let statValue = AnkerTextStyle(size: 32, weight: .black, trackingEm: -0.03, tabular: true)
+    /// Die Ankernummer neben einem Titel.
+    static let anchorNumber = AnkerTextStyle(size: 22, weight: .heavyNumber, trackingEm: -0.02, tabular: true)
+    static let numeric = AnkerTextStyle(size: 15, weight: .semibold, tabular: true)
+    static let numericSmall = AnkerTextStyle(size: 12, weight: .semibold, tabular: true)
+    static let statValue = AnkerTextStyle(size: 28, weight: .extraBold, trackingEm: -0.03, tabular: true)
+}
+
+private extension AnkerFontWeight {
+    static let heavyNumber = AnkerFontWeight.extraBold
 }
 
 extension View {

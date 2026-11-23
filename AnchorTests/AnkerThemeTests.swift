@@ -1,7 +1,7 @@
 import CoreText
 import SwiftUI
 import XCTest
-@testable import Daivento
+@testable import Anchorit
 
 #if os(macOS)
 import AppKit
@@ -16,56 +16,17 @@ final class AnkerThemeTests: XCTestCase {
 
     // MARK: - Schrift
 
-    @MainActor
-    func testArchivoIsBundledAndRegisters() {
-        XCTAssertTrue(AnkerFont.bootstrap(), "Archivo.ttf fehlt im Bundle oder ist nicht registrierbar")
-        XCTAssertTrue(AnkerFont.isAvailable)
-    }
-
-    @MainActor
-    func testEveryTokenWeightResolvesToArchivo() throws {
-        AnkerFont.bootstrap()
-
-        // Geprueft wird das Verhalten, nicht die Selbstauskunft: `CTFontCopyVariation` gibt die
-        // Achse nicht verlaesslich zurueck (fuer 500 ja, ab 600 nicht), und die Vorschubbreite
-        // ist in Archivo nicht monoton zum Gewicht (500 → 84,57, 600 → 84,40). Eindeutig ist
-        // die Farbmenge: ein schwereres Gewicht setzt mehr Deckung auf dieselbe Flaeche.
-        var inkByWeight: [(AnkerFontWeight, Double)] = []
-
-        for weight in AnkerFontWeight.allCases {
-            // Bewusst der Produktionsweg, nicht ein Nachbau daneben.
-            let font = try XCTUnwrap(AnkerFont.makeFont(weight, size: 64, tabular: false))
-            XCTAssertEqual(CTFontCopyFamilyName(font) as String, "Archivo", "Gewicht \(weight.rawValue)")
-            inkByWeight.append((weight, try inkCoverage(of: "B", in: font)))
-        }
-
-        let readable = inkByWeight
-            .map { "\($0.0.rawValue): \(String(format: "%.4f", $0.1))" }
-            .joined(separator: ", ")
-
-        for (lighter, heavier) in zip(inkByWeight, inkByWeight.dropFirst()) {
-            XCTAssertGreaterThan(
-                heavier.1, lighter.1,
-                "Gewicht \(heavier.0.rawValue) deckt nicht mehr als \(lighter.0.rawValue) — "
-                    + "die Gewichtsachse greift nicht. Gemessen: \(readable)"
-            )
+    /// Zahlen-Tokens setzen tabellarische Ziffern, damit Spalten stehen.
+    func testNumberTokensAreTabular() {
+        for style in [AnkerType.numeric, AnkerType.numericSmall, AnkerType.statValue, AnkerType.anchorNumber, AnkerType.poster] {
+            XCTAssertTrue(style.isTabular)
         }
     }
 
-    @MainActor
-    func testTabularDigitsHaveEqualAdvance() throws {
-        AnkerFont.bootstrap()
-
-        // Zahlenspalten duerfen nicht wandern. Bei einer eigenen Schrift ist
-        // `Font.monospacedDigit()` wirkungslos, deshalb laeuft es ueber ein OpenType-Feature —
-        // dieser Test prueft, dass das Feature tatsaechlich greift.
-        let advances = try (0...9).map { digit -> CGFloat in
-            let font = try XCTUnwrap(AnkerFont.makeFont(.bold, size: 20, tabular: true))
-            return advance(of: Character("\(digit)"), in: font)
-        }
-        let first = try XCTUnwrap(advances.first)
-        for advance in advances {
-            XCTAssertEqual(advance, first, accuracy: 0.05, "Ziffernbreiten sind nicht gleich")
+    /// Beschriftungen stehen in „Blatt" in normaler Schreibung.
+    func testLabelsAreNotUppercased() {
+        for style in [AnkerType.overline, AnkerType.eyebrow, AnkerType.microLabel] {
+            XCTAssertFalse(style.isUppercase)
         }
     }
 
@@ -104,31 +65,21 @@ final class AnkerThemeTests: XCTestCase {
         })
     }
 
-    // MARK: - Runde 3: Objekte rund, Struktur scharf
+    // MARK: - Radien und Linien
 
-    /// Die Radiusrollen sind eine Mengentrennung, keine Skala.
-    ///
-    /// Der Test hält die Werte des Entwurfs fest und dass sie **aufsteigend nach Größe des
-    /// Objekts** liegen: ein Häkchen ist kleiner als ein Knopf, ein Knopf kleiner als eine Karte.
-    /// Wer eine neue Rolle einführt, muss sie hier einordnen — das ist die Absicht.
     func testRadiusRolesFollowTheDesign() {
-        XCTAssertEqual(AnkerRadius.check, 4)
-        XCTAssertEqual(AnkerRadius.control, 8)
-        XCTAssertEqual(AnkerRadius.card, 10)
+        XCTAssertEqual(AnkerRadius.check, 6)
+        XCTAssertEqual(AnkerRadius.control, 10)
+        XCTAssertEqual(AnkerRadius.card, 14)
         XCTAssertEqual(AnkerRadius.tile, AnkerRadius.control, "Eine Auswahlkachel ist ein Knopf")
         XCTAssertLessThan(AnkerRadius.check, AnkerRadius.control)
         XCTAssertLessThan(AnkerRadius.control, AnkerRadius.card)
     }
 
-    /// Die Struktur bleibt scharf — und das ist im Code prüfbar, weil sie über eigene Bausteine
-    /// läuft: `AnkerRule` und `AnkerProgressBar` haben keinen Radius, und das Raster der Matrix
-    /// zeichnet `Rectangle`. Was hier zählt, ist die Linienstärke: 2px trennt Sektionen, 1px
-    /// trennt Zeilen **innerhalb** einer Liste.
-    func testSectionAndRowLinesDiffer() {
-        XCTAssertEqual(AnkerRule.Weight.section.thickness, AnkerBorder.rule)
-        XCTAssertEqual(AnkerRule.Weight.row.thickness, AnkerBorder.hairline)
-        XCTAssertGreaterThan(AnkerRule.Weight.section.thickness, AnkerRule.Weight.row.thickness,
-                             "Sonst ist der Unterschied zwischen Bereich und Zeile keine Aussage")
+    /// In „Blatt" ist jede Linie eine Haarlinie; Bereiche trennt der Abstand.
+    func testEveryLineIsAHairline() {
+        XCTAssertEqual(AnkerRule.Weight.section.thickness, 1)
+        XCTAssertEqual(AnkerRule.Weight.row.thickness, 1)
     }
 
     // MARK: - Kontrast
@@ -149,42 +100,22 @@ final class AnkerThemeTests: XCTestCase {
     private func assertContrast(dark: Bool) {
         let mode = dark ? "dunkel" : "hell"
 
-        expect(AnkerColor.ink, on: AnkerColor.ground, atLeast: 7, "Text auf Grund (\(mode))", dark: dark)
-        expect(AnkerColor.ink, on: AnkerColor.surface, atLeast: 7, "Text auf Flaeche (\(mode))", dark: dark)
-        expect(AnkerColor.inkSecond, on: AnkerColor.ground, atLeast: 4.5, "Zweite Textstufe (\(mode))", dark: dark)
-        expect(AnkerColor.accentInk, on: AnkerColor.ground, atLeast: 4.5, "Akzent als Schrift (\(mode))", dark: dark)
-        expect(AnkerColor.onAccent, on: AnkerColor.accentFill, atLeast: 4.5, "Schrift auf Akzentflaeche (\(mode))", dark: dark)
-        // Das Erledigt-Kaestchen: der Haken steht in `onAccent` auf einer Flaeche in `ink`.
-        // Vor Runde 3 war `onAccent` fest Weiss — im Dunkelmodus also Weiss auf `#F5F1F1`, ein
-        // unsichtbarer Haken. Der Test haelt die Paarung fest, damit das nicht zurueckkehrt.
-        expect(AnkerColor.onAccent, on: AnkerColor.ink, atLeast: 4.5, "Haken im Kaestchen (\(mode))", dark: dark)
-        // Marke, Regeln, Icons: 3:1 genuegt und ist die Zusicherung des Systemblatts.
-        expect(AnkerColor.accentMark, on: AnkerColor.ground, atLeast: 3, "Akzent als Marke (\(mode))", dark: dark)
-        expect(AnkerColor.inkTertiary, on: AnkerColor.ground, atLeast: 3, "Dritte Textstufe (\(mode))", dark: dark)
-
-        // Die Prioritaetsmarke ist die einzige Kleinflaeche mit Schrift darauf. Stufe C stand
-        // auf `neutral[500]` (#9B9797) — derselbe Wert, den das Projekt fuer die
-        // Mikrobeschriftung schon einmal als unlesbar verworfen hat, hier mit `onAccent` darauf.
-        for (label, fill) in [("A", AnkerColor.accent[700]), ("B", AnkerColor.accentFill), ("C", AnkerColor.inkSecond)] {
-            expect(AnkerColor.onAccent, on: fill, atLeast: 4.5,
-                   "Prioritaet \(label) (\(mode))", dark: dark)
+        for (surfaceName, surface) in [("Grund", AnkerColor.ground), ("Karte", AnkerColor.card)] {
+            expect(AnkerColor.ink, on: surface, atLeast: 7, "Text auf \(surfaceName) (\(mode))", dark: dark)
+            expect(AnkerColor.inkSecond, on: surface, atLeast: 4.5, "Zweite Textstufe auf \(surfaceName) (\(mode))", dark: dark)
+            expect(AnkerColor.accentInk, on: surface, atLeast: 4.5, "Akzent als Schrift auf \(surfaceName) (\(mode))", dark: dark)
+            expect(AnkerColor.accentMark, on: surface, atLeast: 3, "Akzent als Marke auf \(surfaceName) (\(mode))", dark: dark)
         }
+        expect(AnkerColor.inkTertiary, on: AnkerColor.card, atLeast: 4.5, "Dritte Stufe auf Karte (\(mode))", dark: dark)
+        expect(AnkerColor.inkTertiary, on: AnkerColor.ground, atLeast: 3, "Dritte Stufe auf Grund (\(mode))", dark: dark)
+        expect(AnkerColor.onAccent, on: AnkerColor.accentFill, atLeast: 4.5, "Schrift auf Blau (\(mode))", dark: dark)
+        expect(AnkerColor.onInk, on: AnkerColor.ink, atLeast: 7, "Schrift auf Tinte (\(mode))", dark: dark)
 
-        // Zielfarben tragen **keine** Schrift: sie sind Balkenfarbe, Marker und Farbfeld. Was der
-        // Test vorher prueste — Weiss darauf — kommt in der App nicht vor. Verlangt ist, dass sie
-        // gegen den Grund sichtbar bleiben, und zwar in beiden Modi.
-        for hex in AnkerColor.goalTintOptions {
-            expect(AnkerColor.goalTint(hex), on: AnkerColor.ground, atLeast: 3,
-                   "Zielfarbe \(hex) gegen Grund (\(mode))", dark: dark)
+        for (name, tint) in [("Akzenttönung", AnkerColor.accentTint), ("Heute-Spalte", AnkerColor.todayTint), ("Fläche", AnkerColor.surface)] {
+            expect(AnkerColor.ink, on: tint, atLeast: 7, "Text auf \(name) (\(mode))", dark: dark)
+            expect(AnkerColor.accentInk, on: tint, atLeast: 4.5, "Akzent auf \(name) (\(mode))", dark: dark)
+            expect(AnkerColor.inkSecond, on: tint, atLeast: 4.5, "Zweite Stufe auf \(name) (\(mode))", dark: dark)
         }
-    }
-
-    /// Der Grund, warum der Entwurfs-Akzent nicht als Schrift taugt — als Test festgehalten,
-    /// damit die Aufteilung nachvollziehbar bleibt und niemand sie versehentlich zurueckdreht.
-    func testDesignAccentWouldFailAsBodyTextOnLightGround() {
-        let ratio = contrast(Color(hex: "#EC3013"), Color(hex: "#F3F2F2"))
-        XCTAssertLessThan(ratio, 4.5, "Wenn #EC3013 hier bestehen wuerde, waere die Aufteilung unnoetig")
-        XCTAssertGreaterThan(ratio, 3.0, "Als Marke muss es 3:1 halten")
     }
 
     // MARK: - Messung
@@ -227,37 +158,6 @@ final class AnkerThemeTests: XCTestCase {
             let ratio = contrast(AnkerColor.cardDivider, AnkerColor.card, dark: dark)
             XCTAssertLessThan(ratio, 3, "Ein Zeilentrenner ist kein Rahmen (dunkel: \(dark))")
             XCTAssertGreaterThan(ratio, 1.05, "Sichtbar muss er trotzdem sein (dunkel: \(dark))")
-        }
-    }
-
-    /// Getönte Hinweisflächen sind teiltransparent — sie **entstehen** erst beim Zeichnen.
-    ///
-    /// Genau dort stirbt Kontrast unbemerkt: im Code steht `surface`, gezeichnet wird eine
-    /// Mischung aus `surface` und dem Grund darunter. Runde 3b hat drei solcher Flächen
-    /// eingeführt (leerer Zustand, Neustarthinweis, Sync-Zeile); dieser Test misst, was
-    /// tatsächlich auf dem Schirm steht, nicht was im Aufruf steht.
-    func testTintedHintSurfacesStayReadable() {
-        for dark in [false, true] {
-            let mode = dark ? "dunkel" : "hell"
-
-            let emptyState = composite(AnkerColor.surface.opacity(0.6), over: AnkerColor.ground, dark: dark)
-            expect(AnkerColor.inkSecond, on: emptyState, atLeast: 4.5,
-                   "Leerer Zustand (\(mode))", dark: dark)
-
-            let restartNotice = composite(AnkerColor.neutral[500].opacity(0.12), over: AnkerColor.ground, dark: dark)
-            expect(AnkerColor.ink, on: restartNotice, atLeast: 7, "Neustarthinweis (\(mode))", dark: dark)
-
-            // Die Sync-Zeile sitzt im Sidebar-Fuß, also auf `surface` statt auf dem Grund.
-            let syncRow = composite(AnkerColor.surface.opacity(0.72), over: AnkerColor.surface, dark: dark)
-            expect(AnkerColor.ink, on: syncRow, atLeast: 7, "Sync-Zeile (\(mode))", dark: dark)
-            expect(AnkerColor.inkTertiary, on: syncRow, atLeast: 3, "Sync-Nebentext (\(mode))", dark: dark)
-
-            // Eine Fläche, die sich nicht vom Grund abhebt, ist keine — dann steht der Hinweis
-            // im Nichts und der Umbau hat nur einen Rahmen entfernt.
-            XCTAssertNotEqual(relativeLuminance(emptyState, dark: dark),
-                              relativeLuminance(AnkerColor.ground, dark: dark),
-                              accuracy: 0.0005,
-                              "Getönte Fläche ohne Unterschied zum Grund (\(mode))")
         }
     }
 

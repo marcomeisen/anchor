@@ -4,9 +4,6 @@
     "—" : {
 
     },
-    "·" : {
-
-    },
     "%@" : {
 
     },
@@ -16,16 +13,6 @@
           "stringUnit" : {
             "state" : "new",
             "value" : "%1$@ - %2$@"
-          }
-        }
-      }
-    },
-    "%@ – %@" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "%1$@ – %2$@"
           }
         }
       }
@@ -50,55 +37,25 @@
         }
       }
     },
-    "%@ hat noch keine Anker" : {
+    "%@ auf %@ legen" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ auf %2$@ legen"
+          }
+        }
+      }
+    },
+    "%@ öffnen" : {
 
     },
-    "%@ von %@ %@" : {
+    "%@: %@" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "new",
-            "value" : "%1$@ von %2$@ %3$@"
-          }
-        }
-      }
-    },
-    "%@, %@" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "%1$@, %2$@"
-          }
-        }
-      }
-    },
-    "%@, %@, %lld Aufgaben" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "%1$@, %2$@, %3$lld Aufgaben"
-          }
-        }
-      }
-    },
-    "%@, %lld Prozent erreicht" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "%1$@, %2$lld Prozent erreicht"
-          }
-        }
-      }
-    },
-    "%@, %lld von %lld erledigt" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "%1$@, %2$lld von %3$lld erledigt"
+            "value" : "%1$@: %2$@"
           }
         }
       }
@@ -109,16 +66,6 @@
           "stringUnit" : {
             "state" : "new",
             "value" : "%1$@: %2$@, %3$@%4$@"
-          }
-        }
-      }
-    },
-    "%@%@" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "%1$@%2$@"
           }
         }
       }
@@ -136,16 +83,13 @@
         }
       }
     },
+    "%lld Aufgaben löschen" : {
+
+    },
     "%lld Aufgaben verschieben" : {
 
     },
-    "%lld Aufgaben werden entfernt." : {
-
-    },
     "%lld ausgewählt" : {
-
-    },
-    "%lld offene Aufgaben" : {
 
     },
     "%lld Prozent" : {
@@ -167,13 +111,23 @@
         }
       }
     },
+    "%lld von %lld erledigt" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld von %2$lld erledigt"
+          }
+        }
+      }
+    },
     "%lld/4 Wochenziele" : {
 
     },
     "Abbrechen" : {
 
     },
-    "Abgeschlossene Wochen" : {
+    "Alle" : {
 
     },
     "Alle Daten als JSON-Datei exportieren" : {
@@ -194,11 +148,40 @@
     "Als offen markieren" : {
 
     },
+    "Anchorit" : {
+
+    },
+    "Anchorit jetzt neu starten, damit die Sync-Einstellung greift" : {
+
+    },
     "Änderung nicht gespeichert" : {
 
     },
     "Anker" : {
 
+    },
+    "Anker %@" : {
+
+    },
+    "Anker %@, %@, %lld von %lld erledigt" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Anker %1$@, %2$@, %3$lld von %4$lld erledigt"
+          }
+        }
+      }
+    },
+    "Anker %lld · %@" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Anker %1$lld · %2$@"
+          }
+        }
+      }
     },
     "Anker %lld, %@, %lld von %lld erledigt" : {
       "localizations" : {
@@ -210,16 +193,28 @@
         }
       }
     },
-    "Antwort auf die Wochenfrage" : {
+    "Anker bearbeiten" : {
+
+    },
+    "Anker löschen" : {
+
+    },
+    "Anker setzen" : {
+
+    },
+    "Antippen, um die Aufgabe loszulassen" : {
+
+    },
+    "Antippen, um sie mitzunehmen" : {
 
     },
     "Archiv" : {
 
     },
-    "Archiv, %lld Wochen" : {
+    "Aufgabe" : {
 
     },
-    "Aufgabe" : {
+    "Aufgabe anlegen" : {
 
     },
     "Aufgabe bearbeiten" : {
@@ -237,7 +232,7 @@
     "Aufgabe verschieben" : {
 
     },
-    "Aufgaben streichen?" : {
+    "Aufgabe zu diesem Anker" : {
 
     },
     "Aufgabenaktionen" : {
@@ -261,13 +256,13 @@
     "Bearbeiten …" : {
 
     },
-    "Daivento" : {
+    "Beendet die Auswahl" : {
 
     },
-    "Daivento — Heute" : {
+    "Bis zu vier Anker, jeder mit einem Satz, warum. Aufgaben hängst du daran — oder lässt sie ohne." : {
 
     },
-    "Daivento jetzt neu starten, damit die Sync-Einstellung greift" : {
+    "Das lässt sich direkt danach rückgängig machen." : {
 
     },
     "Daten und Datenschutz" : {
@@ -279,19 +274,25 @@
     "Datum wählen ..." : {
 
     },
+    "Deine Anker" : {
+
+    },
     "Der Schalter überträgt keine Löschung: bereits in iCloud gespeicherte Daten bleiben dort. Zum Entfernen die vollständige Löschung unter Daten und Datenschutz nutzen." : {
 
     },
-    "Der Sync endet beim nächsten Start von Daivento." : {
+    "Der Sync endet beim nächsten Start von Anchorit." : {
 
     },
-    "Der Sync startet beim nächsten Start von Daivento." : {
+    "Der Sync startet beim nächsten Start von Anchorit." : {
 
     },
     "Die Woche wird beim Sichern angelegt. Wochenziele kannst du danach direkt für diese Woche erstellen." : {
 
     },
     "Die Woche wird beim Sichern angelegt. Ziele kannst du anschließend zuordnen." : {
+
+    },
+    "Die Zahlen sind ein Hinweis. Die Antwort gibst du." : {
 
     },
     "Diese Aufgabe wird dauerhaft entfernt." : {
@@ -301,6 +302,9 @@
 
     },
     "Duplizieren" : {
+
+    },
+    "Ein Satz genügt" : {
 
     },
     "Einstellungen" : {
@@ -321,7 +325,7 @@
     "Erscheinungsbild wählen" : {
 
     },
-    "Erscheinungsbild, iCloud-Sync, Daten und Datenschutz" : {
+    "Ersten Anker setzen" : {
 
     },
     "Export sichern" : {
@@ -336,9 +340,6 @@
     "Fertig" : {
 
     },
-    "Filter aus" : {
-
-    },
     "Fokus des Tages" : {
 
     },
@@ -348,10 +349,13 @@
     "Geräte synchronisieren nur bei gleichem iCloud-Account und gleicher Umgebung. Development und Production sind getrennte Datenbestände." : {
 
     },
-    "Gilt nur für Daivento, unabhängig vom System." : {
+    "Gilt nur für Anchorit, unabhängig vom System." : {
 
     },
     "Heute" : {
+
+    },
+    "Hierher" : {
 
     },
     "iCloud-Status: %@, %@. Antippen für Details." : {
@@ -377,16 +381,7 @@
         }
       }
     },
-    "In Zielen, Aufgaben, Notizen und Zeitblöcken suchen, auch im Archiv" : {
-
-    },
-    "Jahresübersicht" : {
-
-    },
     "Jetzt neu starten" : {
-
-    },
-    "Kein Eintrag für diesen Anker." : {
 
     },
     "Kein Ziel" : {
@@ -395,13 +390,13 @@
     "Löschen" : {
 
     },
-    "Maximal 4 Wochenziele pro Woche" : {
+    "Loslassen" : {
+
+    },
+    "Mehrere Aufgaben auf einmal bearbeiten" : {
 
     },
     "Mit iCloud synchronisieren" : {
-
-    },
-    "Mit Rückblickantwort" : {
 
     },
     "Mit Sync sind Wochen, Ziele, Aufgaben und Notizen auf allen Geräten mit demselben Apple-Account gleich. Ohne Sync bleibt alles auf diesem Gerät." : {
@@ -410,19 +405,19 @@
     "Mit Ziel verknüpfen" : {
 
     },
+    "Mitnehmen" : {
+
+    },
     "Morgen" : {
+
+    },
+    "Muss sein, zählt nicht zur Woche." : {
 
     },
     "Nächste Woche" : {
 
     },
     "Neu" : {
-
-    },
-    "Neu verankern" : {
-
-    },
-    "Neue Aufgabe erstellen" : {
 
     },
     "Neue Aufgabe für diesen Tag" : {
@@ -434,13 +429,10 @@
     "Neues Wochenziel" : {
 
     },
-    "Neues Wochenziel erstellen" : {
-
-    },
     "Nicht ausgewählt" : {
 
     },
-    "Nichts hier. Unten eintippen." : {
+    "Noch ohne Tag" : {
 
     },
     "Notizen zum Tag" : {
@@ -452,13 +444,19 @@
     "Offen" : {
 
     },
-    "Öffnet die Woche" : {
+    "Öffnet die Woche. Aufgaben lassen sich hierher ziehen." : {
 
     },
     "Ohne Anker" : {
 
     },
     "Ohne iCloud, nur auf diesem Gerät speichern" : {
+
+    },
+    "ohne Tag" : {
+
+    },
+    "Ohne Tag" : {
 
     },
     "Planen" : {
@@ -473,7 +471,10 @@
     "Priorität %@" : {
 
     },
-    "Priorität ändern" : {
+    "Pro Anker eine ehrliche Antwort." : {
+
+    },
+    "Rückblick" : {
 
     },
     "Rückgängig" : {
@@ -488,6 +489,12 @@
     "Schritt %lld von 2" : {
 
     },
+    "Seitenleiste ausblenden" : {
+
+    },
+    "Seitenleiste einblenden" : {
+
+    },
     "Sichern" : {
 
     },
@@ -497,31 +504,13 @@
     "Status" : {
 
     },
-    "Streichen und schließen" : {
-
-    },
-    "Suche zurücksetzen" : {
-
-    },
     "Suchen" : {
-
-    },
-    "Suchen · auch im Archiv" : {
 
     },
     "Tag" : {
 
     },
-    "Tag %@ öffnen" : {
-
-    },
-    "Tag öffnen oder Aufgabe auf diesen Tag ziehen" : {
-
-    },
-    "Tag öffnen oder Aufgabe hierher ziehen" : {
-
-    },
-    "Tastaturkurzbefehle: Command Punkt erledigt, Command Rückschritt löschen, Command Shift M verschieben, Command D duplizieren" : {
+    "Tag wählen" : {
 
     },
     "Titel" : {
@@ -533,16 +522,40 @@
     "Titel der Aufgabe" : {
 
     },
+    "Titel des %lld. Ankers" : {
+
+    },
+    "Titel des Ankers" : {
+
+    },
     "Trotzdem jetzt einrichten" : {
 
     },
     "Über iCloud synchronisieren" : {
 
     },
+    "Überblick: vier Anker über sieben Tage" : {
+
+    },
+    "Übernehmen" : {
+
+    },
     "Verschieben" : {
 
     },
+    "Vorherige Woche" : {
+
+    },
     "Wähle Woche und Zieltag." : {
+
+    },
+    "Warum zählt Anker %lld?" : {
+
+    },
+    "Warum zählt das diese Woche?" : {
+
+    },
+    "Was hat diese Woche getragen?" : {
 
     },
     "Was ist dein Wochenziel?" : {
@@ -551,34 +564,37 @@
     "Was steht an?" : {
 
     },
-    "Was steht an?  !a  #2" : {
+    "Was zählt diese Woche?" : {
 
     },
-    "Wieder öffnen" : {
+    "Weiteren Anker setzen" : {
+
+    },
+    "Weniger als vier ist erlaubt. Mehr nicht." : {
+
+    },
+    "Wie lief die Woche?" : {
 
     },
     "Woche" : {
 
     },
-    "Woche öffnen oder Aufgabe hierher ziehen" : {
+    "Woche abschließen" : {
 
     },
-    "Woche schließen" : {
+    "Woche beginnen" : {
 
     },
-    "Woche wird beim Ablegen angelegt" : {
+    "Woche setzen" : {
 
     },
-    "Wochenrückblick" : {
+    "Woche wieder öffnen" : {
 
     },
-    "Wochenübersicht" : {
+    "Wochen" : {
 
     },
     "Wochenziel" : {
-
-    },
-    "Wochenziel löschen" : {
 
     },
     "Wochenziel löschen?" : {
@@ -588,9 +604,6 @@
 
     },
     "Worauf kommt es heute an?" : {
-
-    },
-    "Ziel" : {
 
     },
     "Ziel %@, %lld Prozent erreicht, %lld von %lld Aufgaben an diesem Tag erledigt" : {
@@ -613,6 +626,9 @@
 
     },
     "Zielfarbe" : {
+
+    },
+    "Zur laufenden Woche" : {
 
     },
     "Zur Wochenübersicht" : {

@@ -113,7 +113,19 @@ enum TaskActions {
 
     @discardableResult
     static func duplicate(_ task: AnkerTask, modelContext: ModelContext) -> AnkerTask? {
-        guard let day = task.day else { return nil }
+        guard let day = task.day else {
+            // Ohne Tag: die Kopie bleibt ebenfalls uneingeplant, beim selben Anker.
+            let copy = AnkerTask(
+                title: task.title,
+                priority: task.priority,
+                isDone: false,
+                order: (task.linkedGoal?.taskList.count ?? 0),
+                linkedGoal: task.linkedGoal
+            )
+            modelContext.insert(copy)
+            modelContext.saveChanges()
+            return copy
+        }
 
         let copy = AnkerTask(
             title: task.title,
@@ -244,18 +256,21 @@ enum TaskActions {
     static func restore(_ snapshots: [TaskSnapshot], weeks: [Week], modelContext: ModelContext) {
         let allDays = weeks.flatMap(\.dayList)
         let allGoals = weeks.flatMap(\.goalList)
-        let existingTasks = allDays.flatMap(\.taskList)
+        // Aus dem Store statt aus den Tagen: Aufgaben ohne Tag haengen an keinem Tag.
+        let existingTasks = (try? modelContext.fetch(FetchDescriptor<AnkerTask>())) ?? allDays.flatMap(\.taskList)
         var targetDaysByID: [UUID: Day] = [:]
         var touchedOldDays: [UUID: Day] = [:]
         var restoredTasksByID: [UUID: AnkerTask] = [:]
         var snapshotsByTaskID: [UUID: TaskSnapshot] = [:]
 
         for snapshot in snapshots {
-            guard let dayID = snapshot.dayID,
-                  let day = allDays.first(where: { $0.id == dayID }) else { continue }
+            // `dayID == nil` heisst „ohne Tag" — das ist ein gueltiger Zustand, kein Fehlerfall.
+            // Nur ein Tag, der nicht mehr existiert, verhindert das Wiederherstellen.
+            let day = snapshot.dayID.flatMap { dayID in allDays.first { $0.id == dayID } }
+            if snapshot.dayID != nil && day == nil { continue }
             let goal = snapshot.goalID.flatMap { goalID in allGoals.first { $0.id == goalID } }
             snapshotsByTaskID[snapshot.id] = snapshot
-            targetDaysByID[day.id] = day
+            if let day { targetDaysByID[day.id] = day }
 
             if let existingTask = existingTasks.first(where: { $0.id == snapshot.id }) {
                 existingTask.title = snapshot.title
@@ -266,7 +281,7 @@ enum TaskActions {
                 existingTask.carryOverCount = snapshot.carryOverCount
                 existingTask.linkedGoal = goal
 
-                if existingTask.day?.id != day.id {
+                if existingTask.day?.id != day?.id {
                     if let oldDay = existingTask.day {
                         oldDay.tasks = oldDay.taskList.filter { $0.id != existingTask.id }
                         touchedOldDays[oldDay.id] = oldDay
@@ -308,8 +323,9 @@ enum TaskActions {
 
     private static func deleteCreatedTasks(_ snapshots: [TaskSnapshot], weeks: [Week], modelContext: ModelContext) {
         let createdIDs = Set(snapshots.map(\.id))
-        let allDays = weeks.flatMap(\.dayList)
-        let tasks = allDays.flatMap(\.taskList).filter { createdIDs.contains($0.id) }
+        let allTasks = (try? modelContext.fetch(FetchDescriptor<AnkerTask>()))
+            ?? weeks.flatMap(\.dayList).flatMap(\.taskList)
+        let tasks = allTasks.filter { createdIDs.contains($0.id) }
 
         for task in tasks {
             delete(task, modelContext: modelContext)
@@ -401,6 +417,76 @@ enum TaskActions {
         modelContext.saveChanges()
     }
 
+    // MARK: - In eine andere Woche
+
+    /// Derselbe Wochentag in der Woche, die an `monday` beginnt — eine Freitagsaufgabe bleibt
+    /// eine Freitagsaufgabe. Ohne Tag landet die Aufgabe am Montag. Ihr Anker gehört zur alten
+    /// Woche und wird dabei gelöst, das erledigt `move`.
+    @discardableResult
+    static func move(_ task: AnkerTask, toWeekStarting monday: Date, weeks: [Week], modelContext: ModelContext) -> Date {
+        var weekday = 0
+        if let stored = task.day?.date {
+            let nominal = AnkerCalendar.nominalDay(ofStored: stored)
+            if let date = AnkerCalendar.iso.date(from: nominal) {
+                let sourceMonday = AnkerCalendar.weekInterval(containing: date).monday
+                weekday = AnkerCalendar.iso.dateComponents([.day], from: sourceMonday, to: date).day ?? 0
+            }
+        }
+        let targetMonday = AnkerCalendar.weekInterval(containing: monday).monday
+        let target = AnkerCalendar.iso.date(byAdding: .day, value: max(0, min(6, weekday)), to: targetMonday) ?? targetMonday
+        move(task, to: target, weeks: weeks, modelContext: modelContext)
+        return target
+    }
+
+    // MARK: - Ohne Tag
+
+    /// Legt eine Aufgabe ohne Tag an: mit Anker „noch nicht eingeplant" (sie gehoert ueber den
+    /// Anker zu dessen Woche), ohne Anker im Eingang.
+    @discardableResult
+    static func createUnscheduled(
+        title: String,
+        priority: Priority = .b,
+        goal: Goal?,
+        modelContext: ModelContext
+    ) -> AnkerTask? {
+        let cleanTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !cleanTitle.isEmpty else { return nil }
+
+        let task = AnkerTask(
+            title: cleanTitle,
+            priority: priority,
+            order: goal?.taskList.count ?? 0,
+            linkedGoal: goal
+        )
+        modelContext.insert(task)
+        modelContext.saveChanges()
+        return task
+    }
+
+    /// Nimmt eine Aufgabe aus ihrem Tag heraus, der Anker bleibt.
+    static func unschedule(_ task: AnkerTask, modelContext: ModelContext) {
+        guard let day = task.day else { return }
+        day.tasks = day.taskList.filter { $0.id != task.id }
+        normalizeOrders(in: day)
+        task.day = nil
+        modelContext.saveChanges()
+    }
+
+    /// Aufgaben einer Woche, die keinen Tag haben — ueber ihren Anker.
+    static func unscheduledTasks(in week: Week) -> [AnkerTask] {
+        GoalOrdering.sorted(week.goalList)
+            .flatMap { goal in goal.taskList.filter { $0.day == nil && !$0.isDeleted } }
+    }
+
+    /// Der Eingang: Aufgaben ohne Tag und ohne Anker.
+    static func inboxTasks(modelContext: ModelContext) -> [AnkerTask] {
+        let descriptor = FetchDescriptor<AnkerTask>(
+            predicate: #Predicate { $0.day == nil && $0.linkedGoal == nil },
+            sortBy: [SortDescriptor(\.order)]
+        )
+        return (try? modelContext.fetch(descriptor)) ?? []
+    }
+
     /// Setzt Tag **und** Anker in einem Schritt — der Drop in der Matrix.
     ///
     /// Reihenfolge ist wesentlich: `move` loest bei einem Wochenwechsel `linkedGoal`, weil ein
@@ -430,17 +516,25 @@ enum TaskActions {
         move(task, to: targetDate, weeks: weeks, modelContext: modelContext)
     }
 
+    /// Die Woche zu `date` — vorhanden oder neu angelegt.
+    ///
+    /// **Nur aufrufen, wenn wirklich etwas geschrieben wird.** Früher legte schon das Blättern
+    /// und jeder Start eine Woche mit sieben Tagen an. Auf einem frisch eingerichteten Gerät
+    /// entstand so die laufende Woche, bevor der iCloud-Import sie brachte — jedes Mal ein
+    /// Duplikat, das danach zusammengeführt werden musste.
+    ///
+    /// Gesucht wird über ISO-Jahr und -Woche, nicht über das Montagsdatum: das ist Mitternacht
+    /// in der Zeitzone des anlegenden Geräts und auf anderen Geräten ein anderer Zeitpunkt.
+    /// Tage legt die Funktion **nicht** an; das macht `ensureDay` für genau den einen Tag.
     @discardableResult
     static func ensureWeek(containing date: Date, weeks: [Week], modelContext: ModelContext) -> Week {
         let interval = AnkerCalendar.weekInterval(containing: date)
 
-        if let existingWeek = weeks.first(where: { AnkerCalendar.isSameDay($0.monday, interval.monday) }) {
-            ensureWeekDays(in: existingWeek)
+        if let existingWeek = WeekPlanning.week(startingAt: interval.monday, in: weeks) {
             return existingWeek
         }
 
-        if let fetchedWeek = fetchWeek(starting: interval.monday, modelContext: modelContext) {
-            ensureWeekDays(in: fetchedWeek)
+        if let fetchedWeek = fetchWeek(isoYear: interval.isoYear, isoWeek: interval.isoWeek, modelContext: modelContext) {
             return fetchedWeek
         }
 
@@ -450,37 +544,34 @@ enum TaskActions {
             monday: interval.monday,
             sunday: interval.sunday
         )
-        week.days = AnkerCalendar.daysInWeek(starting: interval.monday).map { date in
-            Day(date: date, week: week)
-        }
         modelContext.insert(week)
         return week
     }
 
-    private static func fetchWeek(starting monday: Date, modelContext: ModelContext) -> Week? {
-        let descriptor = FetchDescriptor<Week>(sortBy: [SortDescriptor(\.monday)])
-        return (try? modelContext.fetch(descriptor))?.first {
-            AnkerCalendar.isSameDay($0.monday, monday)
-        }
+    private static func fetchWeek(isoYear: Int, isoWeek: Int, modelContext: ModelContext) -> Week? {
+        let descriptor = FetchDescriptor<Week>(
+            predicate: #Predicate { $0.isoYear == isoYear && $0.isoWeek == isoWeek }
+        )
+        return (try? modelContext.fetch(descriptor))?
+            .filter { !$0.isDeleted }
+            .min { $0.id.uuidString < $1.id.uuidString }
     }
 
+    /// Alle sieben Tage anlegen. Nur noch für Altbestand und Tests — die Oberfläche rechnet
+    /// die sieben Daten aus dem Kalender und legt Tage erst beim Schreiben an.
     static func ensureWeekDays(in week: Week) {
-        if week.dayList.isEmpty {
-            week.days = AnkerCalendar.daysInWeek(starting: week.monday).map { date in
-                Day(date: date, week: week)
-            }
+        for date in AnkerCalendar.daysInWeek(starting: week.monday) {
+            _ = ensureDay(containing: date, in: week)
         }
     }
 
     static func ensureDay(containing date: Date, in week: Week) -> Day {
-        ensureWeekDays(in: week)
-
-        if let day = week.dayList.first(where: { AnkerCalendar.isSameDay($0.date, date) }) {
+        if let day = WeekPlanning.existingDay(on: date, in: week) {
             return day
         }
 
-        let day = Day(date: date, week: week)
-        week.days = (week.days ?? []) + [day]
+        let day = Day(date: AnkerCalendar.iso.startOfDay(for: date), week: week)
+        week.days = week.dayList + [day]
         return day
     }
 

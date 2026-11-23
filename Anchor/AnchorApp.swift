@@ -1,6 +1,6 @@
 //
 //  AnchorApp.swift
-//  Daivento
+//  Anchorit
 //
 //  Created by Marco Meisen on 31.07.26.
 //
@@ -9,6 +9,7 @@ import SwiftUI
 import SwiftData
 import CoreData
 import OSLog
+import Security
 #if os(macOS)
 import AppKit
 #elseif os(iOS)
@@ -40,8 +41,36 @@ enum CloudSyncConfiguration {
     /// das ist per `do`/`catch` nicht abfangbar. Ein Testhost ohne Signatur bzw. ohne
     /// iCloud-Entitlements wuerde deshalb sofort abstuerzen — der Testlauf braucht also einen
     /// signierten Host, und CloudKit bleibt dabei trotzdem aussen vor.
+    ///
+    /// Nicht nur über `XCTestConfigurationFilePath`: seit Xcode 26.x setzt das Testsystem diese
+    /// Variable nicht mehr zuverlässig, bevor der Host startet. Der Host öffnete dann einen
+    /// CloudKit-Store und brach im unsignierten Lauf ab („test runner crashed before
+    /// establishing connection"). Gezählt wird jedes Zeichen der Testeinspritzung.
     static var isRunningTests: Bool {
-        ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
+        let environment = ProcessInfo.processInfo.environment
+        if environment["XCTestConfigurationFilePath"] != nil { return true }
+        if environment.keys.contains(where: { $0.hasPrefix("XCTest") || $0.hasPrefix("XCInject") }) {
+            return true
+        }
+        if let inserted = environment["DYLD_INSERT_LIBRARIES"], inserted.contains("XCTest") {
+            return true
+        }
+        return false
+    }
+
+    /// Trägt dieses Programm die iCloud-Berechtigung überhaupt?
+    ///
+    /// Ein unsignierter Build (`CODE_SIGNING_ALLOWED=NO`) hat sie nie. Ohne diese Prüfung
+    /// bricht CloudKit einen solchen Start asynchron ab, außerhalb jedes `catch`. Mit ihr
+    /// arbeitet er lokal und meldet das. Auf iOS startet ein Build ohne Berechtigungen gar
+    /// nicht erst auf dem Gerät; dort ist die Prüfung nicht nötig.
+    static var hasCloudKitEntitlement: Bool {
+#if os(macOS)
+        guard let task = SecTaskCreateFromSelf(nil) else { return false }
+        return SecTaskCopyValueForEntitlement(task, "com.apple.developer.icloud-services" as CFString, nil) != nil
+#else
+        return true
+#endif
     }
 
     /// Ist CloudKit in diesem Prozess angebunden?
@@ -57,7 +86,7 @@ enum CloudSyncConfiguration {
 #if DEBUG
         if UITestMode.isActive { return false }
 #endif
-        return !isRunningTests && CloudSyncPreference.activeAtLaunch
+        return !isRunningTests && hasCloudKitEntitlement && CloudSyncPreference.activeAtLaunch
     }
 
     @MainActor
@@ -76,7 +105,10 @@ enum CloudSyncConfiguration {
         }
 #endif
 
-        guard CloudSyncPreference.activeAtLaunch else {
+        // Ohne iCloud-Berechtigung (unsignierter Build) lokal arbeiten statt in CloudKit
+        // abzustürzen. Ein unsignierter Mac-Build läuft ohne Sandbox und damit ohnehin in
+        // einem anderen Verzeichnis als die installierte App — er berührt deren Daten nicht.
+        guard CloudSyncPreference.activeAtLaunch, hasCloudKitEntitlement else {
             // Bewusst dieselbe Store-Datei wie mit Sync, nur ohne Mirroring: wer den Sync
             // abschaltet, will nicht seine Daten verlieren, sondern sie nur nicht mehr
             // uebertragen. Beim Wiedereinschalten liest CloudKit denselben Store weiter.
@@ -107,8 +139,8 @@ enum CloudSyncConfiguration {
     /// Bei jedem Start ausgefuehrt legt `initializeCloudKitSchema` fuer jede Entity Beispielrecords
     /// an und wieder loescht sie, blockiert den Start und oeffnet einen zweiten CloudKit-Container
     /// auf derselben Store-Datei. Deshalb laeuft es nur noch auf Anforderung:
-    /// Scheme > Run > Arguments > `-DaiventoInitializeCloudKitSchema` setzen.
-    static let schemaInitializationArgument = "-DaiventoInitializeCloudKitSchema"
+    /// Scheme > Run > Arguments > `-AnchoritInitializeCloudKitSchema` setzen.
+    static let schemaInitializationArgument = "-AnchoritInitializeCloudKitSchema"
 
     static var shouldInitializeDevelopmentSchema: Bool {
         ProcessInfo.processInfo.arguments.contains(schemaInitializationArgument)
@@ -120,7 +152,7 @@ enum CloudSyncConfiguration {
         }
 
         let persistentContainer = NSPersistentCloudKitContainer(
-            name: "Daivento",
+            name: "Anchorit",
             managedObjectModel: managedObjectModel
         )
 
@@ -180,9 +212,6 @@ struct AnkerStore {
         UITestMode.prepare()
 #endif
 
-        // Vor der ersten View, damit keine Fassung in der Systemschrift aufblitzt.
-        AnkerFont.bootstrap()
-
         // Vor dem Container, sonst entstehen die CloudKit-Beobachter erst, wenn eine View den
         // Status anfasst — `setup` und der erste Import sind dann schon durchgelaufen.
         CloudSyncStatusCenter.startObserving()
@@ -192,7 +221,9 @@ struct AnkerStore {
         cloudSyncLog.notice("Store-Konfiguration: CloudKit=\(CloudSyncConfiguration.usesCloudKit, privacy: .public)")
 
 #if DEBUG
-        if CloudSyncConfiguration.shouldInitializeDevelopmentSchema {
+        // Nie im Testlauf und nie ohne iCloud-Berechtigung: die Initialisierung öffnet einen
+        // echten CloudKit-Container, und der bricht einen unsignierten Prozess ab.
+        if CloudSyncConfiguration.shouldInitializeDevelopmentSchema && CloudSyncConfiguration.usesCloudKit {
             do {
                 try CloudSyncConfiguration.initializeDevelopmentSchema(for: cloudConfiguration)
                 print("CloudKit schema initialized.")
@@ -204,6 +235,12 @@ struct AnkerStore {
 
         do {
             let container = try ModelContainer(for: schema, configurations: [cloudConfiguration])
+#if DEBUG
+            // Nur im UI-Testmodus — dort ist der Store im Speicher, es geht nichts in iCloud.
+            if UITestMode.isActive && ProcessInfo.processInfo.arguments.contains(UITestMode.demoDataArgument) {
+                SampleData.insertDemoWeek(in: container.mainContext)
+            }
+#endif
             return AnkerStore(container: container, cloudKitError: nil)
         } catch {
             print("CloudKit store unavailable, falling back to local store: \(error)")
@@ -256,10 +293,16 @@ struct AnchorApp: App {
 #endif
         }
         .modelContainer(sharedModelContainer)
+#if os(macOS)
+        // „Blatt" zeichnet seinen eigenen Fensterkopf; die Ampelknöpfe liegen darüber.
+        .windowStyle(.hiddenTitleBar)
+        .defaultSize(width: 1280, height: 820)
+        // Die Mindestgröße kommt aus dem Inhalt — Seitenleiste plus lesbares Raster.
+        .windowResizability(.contentMinSize)
+#endif
 
 #if os(macOS)
-        // Eigenes Fenster ueber Command-Komma, wie auf dem Mac erwartet. Der Eintrag in der
-        // Sidebar bleibt zusaetzlich, weil er auf dem iPad der einzige Weg ist.
+        // Eigenes Fenster ueber Command-Komma, wie auf dem Mac erwartet.
         Settings {
             SettingsView(showsDoneButton: false)
                 .frame(width: 460, height: 560)
@@ -294,7 +337,7 @@ private final class AnchorStatusItemController: NSObject {
             if let image = NSImage(named: "MenuBarTemplate") {
                 image.size = NSSize(width: 18, height: 18)
                 image.isTemplate = true
-                image.accessibilityDescription = "Daivento"
+                image.accessibilityDescription = "Anchorit"
                 button.image = image
                 button.imagePosition = .imageOnly
             } else {

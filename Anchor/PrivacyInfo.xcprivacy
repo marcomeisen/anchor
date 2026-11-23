@@ -2,7 +2,7 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<!-- Kein Tracking: Daivento hat keine Analytics, keine Werbe-SDKs und keine
+	<!-- Kein Tracking: Anchorit hat keine Analytics, keine Werbe-SDKs und keine
 	     Drittanbieter-Abhaengigkeiten. Der einzige Empfaenger ist Apple ueber die
 	     private CloudKit-Datenbank des Nutzers. -->
 	<key>NSPrivacyTracking</key>

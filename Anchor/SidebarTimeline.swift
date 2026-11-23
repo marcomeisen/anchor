@@ -77,7 +77,7 @@ enum SidebarTimeline {
 
     static func row(forWeekContaining date: Date, in weeks: [Week], now: Date = Date()) -> WeekRow {
         let interval = AnkerCalendar.weekInterval(containing: date)
-        let week = weeks.first { AnkerCalendar.isSameDay($0.monday, interval.monday) }
+        let week = WeekPlanning.week(startingAt: interval.monday, in: weeks)
         let days = week.map { $0.dayList.sorted { $0.date < $1.date } } ?? []
 
         // Immer sieben Quadrate, auch wenn Tage fehlen: die Zeile ist ein Raster, keine Liste.
@@ -86,7 +86,7 @@ enum SidebarTimeline {
             guard let date = AnkerCalendar.iso.date(byAdding: .day, value: index, to: interval.monday) else {
                 return .empty
             }
-            guard let day = days.first(where: { AnkerCalendar.isSameDay($0.date, date) }) else {
+            guard let day = days.first(where: { AnkerCalendar.storedDay($0.date, isOn: date) }) else {
                 return AnkerCalendar.isSameDay(date, now) ? .today : .empty
             }
             return DayMark.of(day, now: now)
@@ -99,7 +99,8 @@ enum SidebarTimeline {
             isoWeek: interval.isoWeek,
             isoYear: interval.isoYear,
             marks: marks,
-            openCount: days.flatMap(\.taskList).filter { !$0.isDone }.count,
+            openCount: days.flatMap(\.taskList).filter { !$0.isDone }.count
+                + (week.map { TaskActions.unscheduledTasks(in: $0).filter { !$0.isDone }.count } ?? 0),
             isCurrent: AnkerCalendar.isSameDay(interval.monday, currentInterval.monday),
             isPast: interval.monday < currentInterval.monday,
             exists: week != nil

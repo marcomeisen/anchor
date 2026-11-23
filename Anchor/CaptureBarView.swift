@@ -1,22 +1,21 @@
 import SwiftData
 import SwiftUI
 
-/// Die feste Erfassungszeile des Entwurfs: tippen, Enter, fertig.
+/// Die Erfassungszeile: tippen, Enter, fertig.
 ///
-/// Ersetzt den Weg „Knopf drücken, Blatt öffnet, vier Felder ausfüllen, sichern" für den
-/// Alltagsfall. Das Blatt bleibt für den Fall, dass jemand Woche und Tag wirklich aussuchen
-/// will — die Zeile ist der schnelle Weg, nicht der einzige.
+/// `Angebot prüfen !a #2 mi` — Priorität, Anker und Wochentag als Kürzel. Darunter steht der
+/// **aufgelöste** Stand, also wo die Aufgabe ohne weitere Angabe landet.
 ///
-/// Die Hinweiszeile darunter zeigt den **aufgelösten** Stand vor dem Anlegen. Das ist der Grund,
-/// warum die Mehrdeutigkeit von „so" (Wochentag oder Wort) tragbar ist: man sieht es vorher.
+/// Die Woche darf fehlen: sie entsteht erst beim Sichern. Vorher legte schon das Anzeigen eine
+/// Woche an — auf einem neuen Gerät vor dem iCloud-Import, also als Duplikat.
 struct CaptureBar: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \Week.monday) private var weeks: [Week]
 
-    /// Die angezeigte Woche — ein Wochentagskürzel bezieht sich auf sie.
-    let week: Week
-    /// Der gewählte Tag, wenn kein Wochentagskürzel getippt wurde.
+    let week: Week?
+    let weekStart: Date
     let fallbackDate: Date
+    var placeholder = "Was steht an?  ·  1–4 für den Anker"
     var onCommitted: (AnkerTask) -> Void = { _ in }
 
     @State private var raw = ""
@@ -28,65 +27,57 @@ struct CaptureBar: View {
 
     private var target: CaptureTarget? {
         guard !raw.trimmingCharacters(in: .whitespaces).isEmpty else { return nil }
-        return CaptureSyntax.resolve(input, weekStart: week.monday, fallbackDate: fallbackDate)
+        return CaptureSyntax.resolve(input, weekStart: weekStart, fallbackDate: fallbackDate)
     }
 
-    private var hint: String {
-        CaptureSyntax.hint(raw: raw, target: target, anchorCount: GoalOrdering.anchors(in: week).count)
+    private var hint: String? {
+        guard !raw.trimmingCharacters(in: .whitespaces).isEmpty else { return nil }
+        let count = week.map { GoalOrdering.anchors(in: $0).count } ?? 0
+        return CaptureSyntax.hint(raw: raw, target: target, anchorCount: count)
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            // Der Kopf des Fussblocks: 2px in **Tinte**, nicht in der Trennlinienfarbe. Die
-            // Vorlage setzt hier dieselbe Kante wie unter der Datumszeile oben.
-            AnkerRule(color: AnkerColor.ink)
+        VStack(alignment: .leading, spacing: AnkerSpacing.s1) {
+            HStack(spacing: AnkerSpacing.s2) {
+                TextField(placeholder, text: $raw)
+                    .textFieldStyle(.plain)
+                    .ankerType(AnkerType.body)
+                    .foregroundStyle(AnkerColor.ink)
+                    .focused($isFocused)
+                    .onSubmit(commit)
+                    .submitLabel(.done)
+                    .accessibilityLabel("Aufgabe erfassen")
+                    .accessibilityIdentifier("captureBar.field")
 
-            HStack(spacing: AnkerSpacing.s3) {
-                // Feld und Knopf sind Objekte: gerundet. Die 2px-Kante der Leiste darueber ist
-                // Struktur und bleibt scharf.
-                HStack(spacing: AnkerSpacing.s2) {
-                    Text(verbatim: "+")
-                        .ankerType(AnkerType.headline)
-                        .foregroundStyle(AnkerColor.ink)
-                        .accessibilityHidden(true)
-
-                    TextField("Was steht an?  !a  #2", text: $raw)
-                        .textFieldStyle(.plain)
-                        .ankerType(AnkerType.body)
-                        .foregroundStyle(AnkerColor.ink)
-                        .focused($isFocused)
-                        .onSubmit(commit)
-                        .accessibilityLabel("Aufgabe erfassen")
-                        .accessibilityIdentifier("captureBar.field")
+                Button(action: commit) {
+                    Image(.add)
+                        .ankerIcon(AnkerIconSize.m)
+                        .foregroundStyle(AnkerColor.onInk)
+                        .frame(width: 38, height: 38)
+                        .background(AnkerColor.ink, in: RoundedRectangle(cornerRadius: AnkerRadius.inlineButton, style: .continuous))
                 }
-                .padding(.horizontal, AnkerSpacing.s3)
-                .padding(.vertical, AnkerSpacing.s3)
-                .ankerField()
-
-                Button("Sichern", action: commit)
-                    .buttonStyle(AnkerButtonStyle.primary)
-                    .disabled(input.isEmpty)
-                    .opacity(input.isEmpty ? 0.45 : 1)
-                    .accessibilityIdentifier("captureBar.commit")
+                .buttonStyle(.plain)
+                .disabled(input.isEmpty)
+                .opacity(input.isEmpty ? 0.4 : 1)
+                .accessibilityLabel("Aufgabe anlegen")
+                .accessibilityIdentifier("captureBar.commit")
+                .keyboardShortcut(.return, modifiers: .command)
             }
-            .padding(.horizontal, AnkerSpacing.screenPadding)
-            .padding(.top, AnkerSpacing.s3)
+            .padding(.leading, AnkerSpacing.s4)
+            .padding(.trailing, AnkerSpacing.s1)
+            .frame(minHeight: 50)
+            .ankerField(radius: AnkerRadius.bar)
 
-            Text(verbatim: hint)
-                .ankerType(AnkerType.caption)
-                .foregroundStyle(AnkerColor.inkSecond)
-                .lineLimit(1)
-                .padding(.horizontal, AnkerSpacing.s4)
-                .padding(.top, AnkerSpacing.s1)
-                .padding(.bottom, AnkerSpacing.s3)
-                .accessibilityIdentifier("captureBar.hint")
+            if let hint {
+                Text(verbatim: hint)
+                    .ankerType(AnkerType.caption)
+                    .foregroundStyle(AnkerColor.inkSecond)
+                    .lineLimit(1)
+                    .padding(.horizontal, AnkerSpacing.s2)
+                    .accessibilityIdentifier("captureBar.hint")
+            }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        // Die Vorlage setzt den ganzen Fussblock auf den Grund und trennt ihn allein mit der
-        // 2px-Kante daruber — nicht zusaetzlich mit einer eigenen Flaeche.
-        .background(AnkerColor.ground)
 #if os(macOS)
-        // Auf dem Mac ist die Zeile der Fuss der Matrix und per Tastatur erreichbar.
         .onExitCommand { raw = ""; isFocused = false }
 #endif
     }
@@ -96,7 +87,7 @@ struct CaptureBar: View {
     private func commit() {
         guard let task = TaskActions.create(
             input,
-            weekStart: week.monday,
+            weekStart: weekStart,
             fallbackDate: fallbackDate,
             weeks: weeks,
             modelContext: modelContext

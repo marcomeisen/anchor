@@ -1,6 +1,6 @@
 import SwiftData
 import XCTest
-@testable import Daivento
+@testable import Anchorit
 
 final class AnchorTests: XCTestCase {
     @MainActor
@@ -68,7 +68,7 @@ final class AnchorTests: XCTestCase {
         let existingWeek = makeWeek(in: context)
         try context.save()
 
-        let ensuredWeek = TaskActions.ensureWeek(
+        let ensuredWeek = TaskActions.ensureFullWeek(
             containing: existingWeek.monday,
             weeks: [],
             modelContext: context
@@ -613,20 +613,24 @@ final class AnchorTests: XCTestCase {
     func testDeepLinksSetDestinationAndDate() throws {
         var state = AnkerNavigationState()
 
-        XCTAssertTrue(state.apply(try XCTUnwrap(URL(string: "daivento://day/2026-08-05"))))
+        XCTAssertTrue(state.apply(try XCTUnwrap(URL(string: "anchorit://day/2026-08-05"))))
         XCTAssertEqual(state.destination, .day)
         XCTAssertTrue(AnkerCalendar.isSameDay(state.dayDate, AnkerCalendar.date(year: 2026, month: 8, day: 5)))
 
-        XCTAssertTrue(state.apply(try XCTUnwrap(URL(string: "daivento://week/2026-09-14"))))
+        XCTAssertTrue(state.apply(try XCTUnwrap(URL(string: "anchorit://week/2026-09-14"))))
         XCTAssertEqual(state.destination, .week)
         XCTAssertEqual(state.weekStart, AnkerCalendar.weekInterval(containing: AnkerCalendar.date(year: 2026, month: 9, day: 14)).monday)
 
         let goalID = UUID()
-        XCTAssertTrue(state.apply(try XCTUnwrap(URL(string: "daivento://goal/\(goalID.uuidString)"))))
+        XCTAssertTrue(state.apply(try XCTUnwrap(URL(string: "anchorit://goal/\(goalID.uuidString)"))))
         XCTAssertEqual(state.destination, .goal(goalID))
 
-        XCTAssertTrue(state.apply(try XCTUnwrap(URL(string: "daivento://year"))))
+        XCTAssertTrue(state.apply(try XCTUnwrap(URL(string: "anchorit://year"))))
         XCTAssertEqual(state.destination, .year)
+
+        // Der frühere Produktname: vorhandene Links funktionieren weiter.
+        XCTAssertTrue(state.apply(try XCTUnwrap(URL(string: "daivento://archive"))))
+        XCTAssertEqual(state.destination, .archive)
     }
 
     func testUnknownDeepLinkLeavesStateUntouched() throws {
@@ -635,8 +639,8 @@ final class AnchorTests: XCTestCase {
         let before = state
 
         // Ein Tippfehler im Link darf den Nutzer nicht irgendwo hin befoerdern.
-        for text in ["daivento://unbekannt", "daivento://day/kein-datum", "daivento://goal/abc",
-                     "https://daivento.app/today"] {
+        for text in ["anchorit://unbekannt", "anchorit://day/kein-datum", "anchorit://goal/abc",
+                     "https://anchorit.app/today"] {
             XCTAssertFalse(state.apply(try XCTUnwrap(URL(string: text))), text)
             XCTAssertEqual(state, before, text)
         }
@@ -681,7 +685,7 @@ final class AnchorTests: XCTestCase {
         XCTAssertTrue(WeekPlanning.needsOnboarding(in: [], hasCompletedOnboarding: false))
         XCTAssertFalse(WeekPlanning.needsOnboarding(in: [], hasCompletedOnboarding: true))
 
-        let week = WeekPlanning.ensureWeek(containing: Date(), weeks: [], modelContext: context)
+        let week = TaskActions.ensureFullWeek(containing: Date(), weeks: [], modelContext: context)
         try context.save()
 
         // **Geaenderter Vertrag (2026-08-04).** Vorher galt: laufende Woche ohne echtes Ziel

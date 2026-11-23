@@ -1,6 +1,6 @@
 import SwiftData
 import XCTest
-@testable import Daivento
+@testable import Anchorit
 
 /// Ankerordnung, Wochenaktionen und Kennzahlen.
 ///
@@ -276,7 +276,7 @@ final class AnkerStatisticsTests: XCTestCase {
         let now = AnkerCalendar.date(year: 2026, month: 8, day: 5)
 
         // Eine Woche in der Vergangenheit ohne Anker.
-        let past = TaskActions.ensureWeek(
+        let past = TaskActions.ensureFullWeek(
             containing: AnkerCalendar.date(year: 2026, month: 7, day: 20),
             weeks: [], modelContext: context
         )
@@ -292,7 +292,7 @@ final class AnkerStatisticsTests: XCTestCase {
         let container = try makeContainer()
         let context = container.mainContext
         let now = AnkerCalendar.date(year: 2026, month: 8, day: 5)
-        let week = TaskActions.ensureWeek(containing: now, weeks: [], modelContext: context)
+        let week = TaskActions.ensureFullWeek(containing: now, weeks: [], modelContext: context)
         let goal = try XCTUnwrap(GoalActions.create(title: "Anker", colorHex: "#DD2B0F", in: week, modelContext: context))
         let day = try XCTUnwrap(week.dayList.first)
         let task = try XCTUnwrap(TaskActions.create(title: "Sache", priority: .b, on: day,
@@ -371,7 +371,7 @@ final class AnkerStatisticsTests: XCTestCase {
         let context = container.mainContext
         // Mittwoch der Woche: vier Tage übrig, drei verstrichen.
         let wednesday = AnkerCalendar.date(year: 2026, month: 8, day: 5, hour: 10)
-        let week = TaskActions.ensureWeek(containing: wednesday, weeks: [], modelContext: context)
+        let week = TaskActions.ensureFullWeek(containing: wednesday, weeks: [], modelContext: context)
         let day = try XCTUnwrap(week.dayList.first)
 
         for index in 0..<7 {
@@ -399,7 +399,7 @@ final class AnkerStatisticsTests: XCTestCase {
         try context.save()
 
         let empty = AnkerStatistics.forecast(
-            for: TaskActions.ensureWeek(containing: AnkerCalendar.date(year: 2026, month: 9, day: 1),
+            for: TaskActions.ensureFullWeek(containing: AnkerCalendar.date(year: 2026, month: 9, day: 1),
                                         weeks: [], modelContext: context)
         )
         XCTAssertEqual(empty.kind, .empty)
@@ -434,7 +434,7 @@ final class AnkerStatisticsTests: XCTestCase {
         let now = AnkerCalendar.date(year: 2026, month: 8, day: 5)
 
         // Eine gehaltene Vorwoche.
-        let past = TaskActions.ensureWeek(containing: AnkerCalendar.date(year: 2026, month: 7, day: 29),
+        let past = TaskActions.ensureFullWeek(containing: AnkerCalendar.date(year: 2026, month: 7, day: 29),
                                           weeks: [], modelContext: context)
         let goal = try XCTUnwrap(GoalActions.create(title: "Anker", colorHex: "#DD2B0F", in: past, modelContext: context))
         let day = try XCTUnwrap(past.dayList.first)
@@ -443,7 +443,7 @@ final class AnkerStatisticsTests: XCTestCase {
         TaskActions.setDone(task, true, now: day.date, modelContext: context)
 
         // Und eine leere Woche, die die Quote nicht verwaessern darf.
-        _ = TaskActions.ensureWeek(containing: AnkerCalendar.date(year: 2026, month: 7, day: 20),
+        _ = TaskActions.ensureFullWeek(containing: AnkerCalendar.date(year: 2026, month: 7, day: 20),
                                    weeks: [past], modelContext: context)
         let all = try context.fetch(FetchDescriptor<Week>())
         try context.save()
@@ -457,7 +457,7 @@ final class AnkerStatisticsTests: XCTestCase {
     func testRemainingDaysCountsTodayAndStopsAfterSunday() throws {
         let container = try makeContainer()
         let context = container.mainContext
-        let week = TaskActions.ensureWeek(containing: AnkerCalendar.date(year: 2026, month: 8, day: 3),
+        let week = TaskActions.ensureFullWeek(containing: AnkerCalendar.date(year: 2026, month: 8, day: 3),
                                           weeks: [], modelContext: context)
 
         XCTAssertEqual(AnkerStatistics.remainingDays(in: week, now: AnkerCalendar.date(year: 2026, month: 8, day: 3)), 7)
@@ -540,7 +540,7 @@ final class AnkerStatisticsTests: XCTestCase {
 
     @MainActor
     private func makeWeek(in context: ModelContext) -> Week {
-        TaskActions.ensureWeek(
+        TaskActions.ensureFullWeek(
             containing: AnkerCalendar.date(year: 2026, month: 8, day: 3),
             weeks: [],
             modelContext: context

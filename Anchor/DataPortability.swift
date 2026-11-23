@@ -97,7 +97,7 @@ enum DataPortability {
 
         return Snapshot(
             exportedAt: exportedAt,
-            application: "Daivento \(CloudSyncDiagnostics.appVersion)",
+            application: "Anchorit \(CloudSyncDiagnostics.appVersion)",
             weeks: weeks.map(exported(week:)),
             unassigned: Snapshot.Unassigned(
                 goals: allGoals.filter { $0.week == nil }.map(exported(goal:)),
@@ -121,7 +121,7 @@ enum DataPortability {
         // Bewusst ISO statt lokalem Format: der Name soll sortierbar sein und keine
         // Zeichen enthalten, die ein Dateisystem nicht mag.
         let day = date.formatted(.iso8601.year().month().day().dateSeparator(.dash))
-        return "Daivento-Export-\(day).json"
+        return "Anchorit-Export-\(day).json"
     }
 
     private static func exported(week: Week) -> ExportedWeek {

@@ -51,14 +51,16 @@ struct TaskCheckmark: View {
     var size: CGFloat = 22
 
     var body: some View {
-        RoundedRectangle(cornerRadius: AnkerRadius.check, style: .continuous)
-            .fill(isDone ? AnkerColor.ink : Color.clear)
-            .overlay(
-                // Auch offen eine 2px-Kante in Tinte, nicht in der Trennlinienfarbe: das
-                // Kaestchen ist ein Bedienelement und muss als solches lesbar sein.
-                RoundedRectangle(cornerRadius: AnkerRadius.check, style: .continuous)
-                    .stroke(AnkerColor.ink, lineWidth: AnkerBorder.rule)
-            )
+        // Erledigt ist blau gefüllt — das eine Blau von „Blatt" heißt genau das. Offen eine
+        // 2pt-Kante in Tinte: das Kästchen ist ein Bedienelement und muss als solches lesbar sein.
+        RoundedRectangle(cornerRadius: AnkerRadius.check(size: size), style: .continuous)
+            .fill(isDone ? AnkerColor.accentFill : Color.clear)
+            .overlay {
+                if !isDone {
+                    RoundedRectangle(cornerRadius: AnkerRadius.check(size: size), style: .continuous)
+                        .strokeBorder(AnkerColor.ink, lineWidth: AnkerBorder.heavy)
+                }
+            }
             .overlay {
                 if isDone {
                     Image(.check)
@@ -67,7 +69,7 @@ struct TaskCheckmark: View {
                 }
             }
             .frame(width: size, height: size)
-            .contentShape(RoundedRectangle(cornerRadius: AnkerRadius.check, style: .continuous))
+            .contentShape(RoundedRectangle(cornerRadius: AnkerRadius.check(size: size), style: .continuous))
             .accessibilityLabel(isDone ? "Erledigt" : "Offen")
     }
 }
@@ -169,11 +171,14 @@ struct TaskCard: View {
     ///
     /// In der Tagesliste ist der **Anker** die Aussage — die Zuordnung ist der Kern der App. Im
     /// Ankerdetail haben alle Aufgaben denselben Anker; dort ist der **Tag** die Information.
-    enum MetaLine { case anchor, day }
+    /// `.none`: nur der Titel, die Ankernummer steht dann rechts (`showsAnchorNumber`).
+    enum MetaLine { case anchor, day, none }
 
     let task: AnkerTask
     var showPriority = true
     var metaLine: MetaLine = .anchor
+    /// Die Nummer des Ankers rechts an der Zeile — so zeigt „Blatt" die Zuordnung.
+    var showsAnchorNumber = false
     var onToggle: (() -> Void)?
     var isSelectionMode = false
     var isSelected = false
@@ -233,6 +238,14 @@ struct TaskCard: View {
                 }
                 .buttonStyle(.plain)
                 .padding(.top, 1)  // optische Ausrichtung, kein Raster. design-guard: erlaubt
+                // Langes Drücken auf das Kästchen beginnt die Mehrfachauswahl — mit dieser Aufgabe.
+                .simultaneousGesture(
+                    LongPressGesture(minimumDuration: 0.5).onEnded { _ in
+                        guard let onStartSelection else { return }
+                        iOSImpact(.medium)
+                        onStartSelection()
+                    }
+                )
             }
 
             VStack(alignment: .leading, spacing: AnkerSpacing.s1 + 1) {
@@ -245,12 +258,12 @@ struct TaskCard: View {
                     }
                 )
 
-                // Der Anker steht als Text da, nicht als Farbpunkt oder Logo: die Zuordnung
-                // ist die Kernaussage der App und soll lesbar sein.
-                Text(verbatim: metaText)
-                    .ankerType(AnkerType.microLabel)
-                    .foregroundStyle(metaColor)
-                    .lineLimit(1)
+                if metaLine != .none {
+                    Text(verbatim: metaText)
+                        .ankerType(AnkerType.caption)
+                        .foregroundStyle(metaColor)
+                        .lineLimit(1)
+                }
             }
             // Doppelklick auf die Zeile bearbeitet den Titel an der Stelle. Bewusst nicht der
             // einfache Klick: der zieht in der Mehrfachauswahl und darf nicht zweierlei tun.
@@ -272,6 +285,16 @@ struct TaskCard: View {
 #if os(macOS)
                 hoverActions
 #endif
+            }
+
+            // Die Nummer steht ganz rechts, auch wenn die Hover-Aktionen erscheinen.
+            if showsAnchorNumber {
+                Text(verbatim: anchorNumberText)
+                    .ankerType(AnkerType.bodyStrong)
+                    .monospacedDigit()
+                    .foregroundStyle(task.linkedGoal == nil ? AnkerColor.inkTertiary : AnkerColor.ink)
+                    .padding(.top, AnkerSpacing.s0)
+                    .accessibilityLabel(anchorLabel)
             }
         }
         .padding(.vertical, AnkerSpacing.s3)
@@ -295,7 +318,7 @@ struct TaskCard: View {
                 } label: {
                     Label(task.isDone ? "Offen" : "Erledigt", ankerIcon: task.isDone ? .undo : .check)
                 }
-                .tint(AnkerColor.ink)
+                .tint(AnkerColor.accentFill)
             }
         }
         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
@@ -566,8 +589,16 @@ struct TaskCard: View {
         .keyboardShortcut(.delete, modifiers: .command)
     }
 
+    private var anchorNumberText: String {
+        guard let goal = task.linkedGoal, let week = goal.week,
+              let number = GoalOrdering.anchorNumber(of: goal, in: week) else { return "–" }
+        return "\(number)"
+    }
+
     private var metaText: String {
         switch metaLine {
+        case .none:
+            return ""
         case .anchor:
             return anchorLabel
         case .day:
@@ -578,6 +609,8 @@ struct TaskCard: View {
 
     private var metaColor: Color {
         switch metaLine {
+        case .none:
+            return AnkerColor.inkSecond
         case .anchor:
             return task.linkedGoal == nil ? AnkerColor.inkTertiary : AnkerColor.inkSecond
         case .day:
@@ -669,7 +702,7 @@ private enum TaskHapticStyle {
 }
 
 enum TaskDragEvents {
-    static let didEnd = Notification.Name("DaiventoTaskDragDidEnd")
+    static let didEnd = Notification.Name("AnchoritTaskDragDidEnd")
 
     static func end(taskID: UUID) {
         NotificationCenter.default.post(name: didEnd, object: taskID.uuidString)
@@ -948,77 +981,48 @@ struct ChipButton: View {
     }
 }
 
-/// Die Tableiste des iPhones — Heute, Woche, Jahr, Mehr.
-///
-/// Nach der Vorlage 3b: **nur Text**, Versalien im Mikrolabel, keine Umrandung. Aktiv ist eine
-/// 8pt-Pille in der blassen Akzentstufe mit `accentInk` darauf; inaktiv steht nur die
-/// Beschriftung. Icons uebereinander gestapelt waren die Systemsprache, nicht diese.
-///
-/// Der Name des Bildschirms steht **hier** und nirgends sonst — deshalb hat die Kopfzeile oben
-/// keinen Titel (siehe `AnkerPhoneChrome`).
-///
-/// Der Entwurf zeichnet drei Tabs, weil er die vierte Flaeche nicht zeigt. „Mehr" bleibt: ohne
-/// den Tab waeren Rueckblick, Archiv und Einstellungen auf dem iPhone nicht erreichbar.
+/// Die Tableiste des iPhones: Heute, Woche, Archiv — Text, die Auswahl unterstrichen.
 struct AnkerTabBar: View {
     @Binding var selection: AppDestination
-    /// Wie die Leiste nach oben abschliesst.
-    ///
-    /// Die Vorlage setzt **eine** 2px-Kante an den Kopf des ganzen Fussblocks und trennt
-    /// innerhalb davon mit einer Haarlinie. Sitzt die Erfassungszeile darueber, traegt sie die
-    /// 2px und hier genuegt `.row`; steht die Tableiste allein, ist sie selbst die Sektionsgrenze.
-    var topEdge: AnkerRule.Weight = .section
 
     var body: some View {
-        VStack(spacing: 0) {
-            // Die Farbe folgt der Rolle: der Kopf des Blocks ist Tinte, ein Trenner **im** Block
-            // ist grau. Zwei Kanten in Tinte 60pt uebereinander waeren ein Gitter.
-            AnkerRule(
-                color: topEdge == .section ? AnkerColor.ink : AnkerColor.divider,
-                weight: topEdge
-            )
-
-            HStack(spacing: AnkerSpacing.s2) {
-                tab(.today, title: "Heute")
-                tab(.week, title: "Woche")
-                tab(.year, title: "Jahr")
-                tab(.review, title: "Mehr")
-            }
-            .padding(.horizontal, AnkerSpacing.s4)
-            .padding(.top, AnkerSpacing.s2)
-            .padding(.bottom, AnkerSpacing.s3)
+        HStack(spacing: 0) {
+            tab(.today, title: "Heute")
+            tab(.week, title: "Woche")
+            tab(.archive, title: "Archiv")
         }
+        .padding(.horizontal, AnkerSpacing.s4)
+        .padding(.top, AnkerSpacing.s1)
         .background(AnkerColor.ground)
+        .overlay(alignment: .top) { AnkerRule() }
         .accessibilityElement(children: .contain)
-    }
-
-    private func tab(_ destination: AppDestination, title: String) -> some View {
-        Button {
-            selection = destination
-        } label: {
-            Text(title)
-                .ankerType(AnkerType.microLabel)
-                .foregroundStyle(isSelected(destination) ? AnkerColor.accentInk : AnkerColor.inkSecond)
-                // 44pt ist Apples Mindestziel; die Pille darunter ist das anfassbare Objekt
-                // und deshalb rund.
-                .frame(maxWidth: .infinity, minHeight: 44)
-                .background(
-                    isSelected(destination) ? AnkerColor.accent[100] : Color.clear,
-                    in: RoundedRectangle(cornerRadius: AnkerRadius.control, style: .continuous)
-                )
-                .contentShape(RoundedRectangle(cornerRadius: AnkerRadius.control, style: .continuous))
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(title)
-        .accessibilityAddTraits(isSelected(destination) ? [.isSelected] : [])
     }
 
     private func isSelected(_ destination: AppDestination) -> Bool {
         switch (selection, destination) {
-        case (.today, .today), (.week, .week), (.year, .year), (.review, .review):
-            true
-        default:
-            false
+        case (.year, .archive), (.review, .archive): true
+        default: selection == destination
         }
+    }
+
+    private func tab(_ destination: AppDestination, title: String) -> some View {
+        let isOn = isSelected(destination)
+        return Button {
+            selection = destination
+        } label: {
+            Text(title)
+                .ankerType(isOn ? AnkerType.label : AnkerType.meta)
+                .foregroundStyle(isOn ? AnkerColor.ink : AnkerColor.inkSecond)
+                .frame(maxWidth: .infinity, minHeight: 44)
+                .overlay(alignment: .bottom) {
+                    if isOn {
+                        Rectangle().fill(AnkerColor.ink).frame(height: 2)
+                    }
+                }
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(isOn ? [.isButton, .isSelected] : .isButton)
     }
 }
 

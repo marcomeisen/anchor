@@ -18,7 +18,7 @@ final class PhoneChromeTests: XCTestCase {
     @MainActor
     private func launchAtTopLevel() -> XCUIApplication {
         let app = XCUIApplication()
-        app.launchArguments = ["-DaiventoUITest"]
+        app.launchArguments = ["-AnchoritUITest"]
         app.launch()
 
         // Tolerant: dieser Test prueft die Rahmung, nicht das Onboarding. Ob der Bildschirm
@@ -36,7 +36,8 @@ final class PhoneChromeTests: XCTestCase {
         XCTAssertTrue(week.waitForExistence(timeout: 10), "Tableiste fehlt")
         week.tap()
 
-        let dayRow = app.staticTexts["Donnerstag"].firstMatch
+        // Die Tageszeile ist ein Knopf „Donnerstag, … öffnen".
+        let dayRow = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Donnerstag")).firstMatch
         XCTAssertTrue(dayRow.waitForExistence(timeout: 10), "Tageszeile fehlt")
         dayRow.tap()
 
@@ -56,7 +57,7 @@ final class PhoneChromeTests: XCTestCase {
     func testEveryTabIsReachable() throws {
         let app = launchAtTopLevel()
 
-        for title in ["Woche", "Jahr", "Mehr", "Heute"] {
+        for title in ["Woche", "Archiv", "Heute"] {
             let tab = app.buttons[title].firstMatch
             XCTAssertTrue(tab.waitForExistence(timeout: 10), "Tab \(title) fehlt")
             tab.tap()

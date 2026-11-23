@@ -12,7 +12,10 @@ import AppKit
 /// App-Prozess nicht gesetzt, und `@AppStorage` haelt den Onboarding-Zustand ueber Laeufe
 /// hinweg. Aktiv nur mit dem Startargument, und nur in Debug-Builds.
 enum UITestMode {
-    static let launchArgument = "-DaiventoUITest"
+    static let launchArgument = "-AnchoritUITest"
+    /// Zusätzlich zu `launchArgument`: legt eine Beispielwoche im Speicher-Store an — für
+    /// Bildschirmfotos und UI-Tests, die nicht beim Onboarding beginnen sollen.
+    static let demoDataArgument = "-AnchoritDemoData"
 
     static var isActive: Bool {
         ProcessInfo.processInfo.arguments.contains(launchArgument)

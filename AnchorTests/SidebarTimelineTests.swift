@@ -1,6 +1,6 @@
 import SwiftData
 import XCTest
-@testable import Daivento
+@testable import Anchorit
 
 /// Die vier gemeinsamen Festlegungen der zweiten Entwurfsrunde.
 ///
@@ -188,7 +188,7 @@ final class SidebarTimelineTests: XCTestCase {
 
         // Die Folgewoche mit einem eigenen Anker — ein Anker gehört genau einer Woche.
         let nextMonday = try XCTUnwrap(AnkerCalendar.iso.date(byAdding: .weekOfYear, value: 1, to: week.monday))
-        let nextWeek = TaskActions.ensureWeek(containing: nextMonday, weeks: [week], modelContext: context)
+        let nextWeek = TaskActions.ensureFullWeek(containing: nextMonday, weeks: [week], modelContext: context)
         let newGoal = try XCTUnwrap(GoalActions.create(title: "Neu", colorHex: "#2D2B2B",
                                                       in: nextWeek, modelContext: context))
         try context.save()
@@ -230,11 +230,11 @@ final class SidebarTimelineTests: XCTestCase {
         let context = container.mainContext
         let now = AnkerCalendar.date(year: 2026, month: 8, day: 4, hour: 10)
 
-        let past = TaskActions.ensureWeek(containing: AnkerCalendar.date(year: 2026, month: 7, day: 27),
+        let past = TaskActions.ensureFullWeek(containing: AnkerCalendar.date(year: 2026, month: 7, day: 27),
                                           weeks: [], modelContext: context)
-        let current = TaskActions.ensureWeek(containing: AnkerCalendar.date(year: 2026, month: 8, day: 3),
+        let current = TaskActions.ensureFullWeek(containing: AnkerCalendar.date(year: 2026, month: 8, day: 3),
                                              weeks: [past], modelContext: context)
-        let future = TaskActions.ensureWeek(containing: AnkerCalendar.date(year: 2026, month: 8, day: 10),
+        let future = TaskActions.ensureFullWeek(containing: AnkerCalendar.date(year: 2026, month: 8, day: 10),
                                             weeks: [past, current], modelContext: context)
         let weeks = [past, current, future]
 
@@ -386,7 +386,7 @@ final class SidebarTimelineTests: XCTestCase {
 
     func testArchiveHasADeepLinkAndStaysTopLevel() throws {
         var state = AnkerNavigationState(now: AnkerCalendar.date(year: 2026, month: 8, day: 4))
-        XCTAssertTrue(state.apply(URL(string: "daivento://archive")!))
+        XCTAssertTrue(state.apply(URL(string: "anchorit://archive")!))
         XCTAssertEqual(state.destination, .archive)
         XCTAssertTrue(AppDestination.archive.isTopLevel)
     }
@@ -401,7 +401,7 @@ final class SidebarTimelineTests: XCTestCase {
 
     @MainActor
     private func makeWeek(in context: ModelContext) -> Week {
-        TaskActions.ensureWeek(
+        TaskActions.ensureFullWeek(
             containing: AnkerCalendar.date(year: 2026, month: 8, day: 3),
             weeks: [],
             modelContext: context

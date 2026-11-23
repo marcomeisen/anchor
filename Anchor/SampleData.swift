@@ -85,3 +85,49 @@ enum SampleData {
         return week
     }
 }
+
+extension SampleData {
+    /// Eine Woche „Blatt" um heute herum: vier Anker mit Warum-Satz, Aufgaben über die Woche
+    /// verteilt, einige ohne Tag, eine im Eingang. Nur für den UI-Testmodus und Vorschauen.
+    @MainActor
+    static func insertDemoWeek(in context: ModelContext, now: Date = Date()) {
+        let week = TaskActions.ensureWeek(containing: now, weeks: [], modelContext: context)
+        let anchors: [(String, String)] = [
+            ("Launch vorbereiten", "Beta geht Freitag raus."),
+            ("Dreimal laufen", "Für den Kopf, nicht für die Zeit."),
+            ("Zeit für Familie", "Ein Abend ohne Laptop."),
+            ("Spanisch lernen", "Zweiter Versuch nach letzter Woche."),
+        ]
+        let goals = anchors.enumerated().map { index, entry in
+            let goal = Goal(title: entry.0, colorHex: AnkerColor.goalTintOptions[0], order: index, week: week)
+            goal.why = entry.1
+            context.insert(goal)
+            week.appendGoal(goal)
+            return goal
+        }
+        let plan: [(String, Int?, Int?, Bool)] = [
+            ("Angebot an Kunde senden", 0, 0, true), ("Launch-Deck gliedern", 0, 0, false),
+            ("Rückmeldung an Design", 0, 0, false), ("Probelauf mit dem Team", 0, 1, false),
+            ("Beta veröffentlichen", 0, 4, false), ("Release Notes schreiben", 0, nil, true),
+            ("30 Minuten laufen", 1, 0, false), ("Intervalle", 1, 2, false), ("Langer Lauf", 1, 5, false),
+            ("Laufschuhe kaufen", 1, nil, false), ("Geschenk für Lea bestellen", 2, 0, false),
+            ("Elternabend", 2, 3, false), ("Oma anrufen", 2, nil, false),
+            ("Vokabeln Lektion 4", 3, 0, false), ("Tandem-Gespräch", 3, 2, false),
+            ("Steuerunterlagen sortieren", nil, 1, false),
+        ]
+        let dates = AnkerCalendar.daysInWeek(starting: week.monday)
+        for (title, goalIndex, dayIndex, done) in plan {
+            let goal = goalIndex.map { goals[$0] }
+            let task: AnkerTask?
+            if let dayIndex {
+                let day = TaskActions.ensureDay(containing: dates[dayIndex], in: week)
+                task = TaskActions.create(title: title, priority: .b, on: day, linkedGoal: goal, modelContext: context)
+            } else {
+                task = TaskActions.createUnscheduled(title: title, goal: goal, modelContext: context)
+            }
+            if done, let task { TaskActions.setDone(task, true, modelContext: context) }
+        }
+        _ = TaskActions.createUnscheduled(title: "Arzttermin vereinbaren", goal: nil, modelContext: context)
+        context.saveChanges()
+    }
+}

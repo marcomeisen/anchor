@@ -1,11 +1,12 @@
 import SwiftData
 import SwiftUI
 
-/// Verteilt auf Onboarding, Split-Layout (Mac, iPad) und iPhone-Layout und haelt den
-/// Navigationszustand.
+/// Verteilt auf Onboarding, iPhone-Layout (Tabs unten) und Fensterlayout (Mac, iPad).
 ///
-/// Die Logik selbst liegt nicht mehr hier: Wochen und Tage aufloesen macht `WeekPlanning`,
-/// Navigation und Deep Links `AnkerNavigationState`. Uebrig bleibt die Verdrahtung.
+/// „Blatt" hat **keine Sidebar** mehr: die Zeit steht im Kopf als ein Schrittschalter, der
+/// Bereich (Heute, Woche, Archiv) daneben. Und diese Ansicht legt **nichts** an — weder beim
+/// Start noch beim Blättern. Wochen und Tage entstehen erst, wenn etwas geschrieben wird;
+/// vorher entstanden auf jedem neuen Gerät Duplikate, bevor der iCloud-Import ankam.
 struct AnkerRootView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.horizontalSizeClass) private var horizontalClass
@@ -13,52 +14,41 @@ struct AnkerRootView: View {
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
     @AppStorage("onboardingVersion") private var onboardingVersion = 0
 
-    /// Injizierbar, damit Previews und Tests eine stille Instanz einsetzen koennen.
     @ObservedObject var cloudSyncStatus: CloudSyncStatusCenter = .shared
 
     let weeks: [Week]
 
-    /// `@SceneStorage` statt `@State`: damit steht die App nach einem Neustart wieder in der
-    /// Woche und auf dem Tag, an denen zuletzt gearbeitet wurde. Auf dem Mac gilt das je
-    /// Fenster.
     @SceneStorage("navigation") private var storedNavigation: String?
     @State private var navigation = AnkerNavigationState()
 
-    @State private var showingNewTask = false
-    @State private var showingNewGoal = false
+    /// Pro Gerät gemerkt: wer die Leiste einklappt, will sie beim nächsten Start nicht
+    /// wieder offen sehen.
+    @AppStorage("sidebarVisible") private var isSidebarVisible = true
     @State private var showingSearch = false
+    @State private var showingSettings = false
+    @State private var weekStartTarget: Date?
+    @State private var reviewTarget: Date?
 
-    /// Beim Erhoehen zeigt das Onboarding erneut. Bisher nur fuer den Schritt von der ersten
-    /// auf die zweite Fassung genutzt.
     private let requiredOnboardingVersion = 2
 
-    private var selectedWeek: Week? {
-        WeekPlanning.week(startingAt: navigation.weekStart, in: weeks)
-    }
-
-    private var selectedDay: Day? {
-        WeekPlanning.day(on: navigation.dayDate, in: selectedWeek)
-    }
-
     private var needsOnboarding: Bool {
-        WeekPlanning.needsOnboarding(in: weeks, hasCompletedOnboarding: hasCompletedOnboarding)
+        !WeekPlanning.hasContent(in: weeks, modelContext: modelContext) && !hasCompletedOnboarding
     }
 
-    /// Könnte iCloud noch Bestand nachliefern?
-    ///
-    /// Nur wenn der Sync in diesem Prozess wirklich läuft **und** noch keine Runde
-    /// abgeschlossen ist. `activeAtLaunch` statt der Einstellung: die greift erst beim Neustart,
-    /// und auf ein Warten wollen wir nur verweisen, wenn tatsächlich etwas unterwegs sein kann.
     private var isAwaitingFirstSync: Bool {
         guard CloudSyncPreference.activeAtLaunch else { return false }
         switch cloudSyncStatus.phase {
-        case .starting, .ready, .syncing:
-            return true
-        // `pendingExport` heisst: lokal liegt etwas an, das hinausgehen soll. Dann gibt es hier
-        // Bestand, und das Onboarding steht ohnehin nicht mehr.
-        case .pendingExport, .synced, .issue, .disabled:
-            return false
+        case .starting, .ready, .syncing: return true
+        case .pendingExport, .synced, .issue, .disabled: return false
         }
+    }
+
+    private var isWide: Bool {
+#if os(macOS)
+        true
+#else
+        horizontalClass == .regular
+#endif
     }
 
     var body: some View {
@@ -67,266 +57,317 @@ struct AnkerRootView: View {
                 OnboardingView(
                     weekIntervalTitle: currentWeekTitle,
                     isAwaitingFirstSync: isAwaitingFirstSync,
-                    onCreateAnchors: { titles in completeOnboarding(with: titles) },
+                    onCreateAnchors: completeOnboarding(with:),
                     onSkip: skipOnboarding
                 )
-            } else if let selectedWeek, let selectedDay {
-#if os(macOS)
-                splitContent(week: selectedWeek, day: selectedDay)
-#else
-                if horizontalClass == .regular {
-                    splitContent(week: selectedWeek, day: selectedDay)
-                } else {
-                    phoneContent(week: selectedWeek, day: selectedDay)
-                }
-#endif
+            } else if isWide {
+                windowContent
             } else {
-                ProgressView()
-                    .task { ensureSelectedWeek() }
+#if os(iOS)
+                phoneContent
+#else
+                windowContent
+#endif
             }
         }
-        .sheet(isPresented: $showingNewTask) {
-            if let selectedDay {
-                NewTaskSheet(day: selectedDay) { date in
-                    navigation.moveToPlannedDate(date)
-                    ensureSelectedWeek()
-                }
-                .presentationDetents([.medium, .large])
-            }
-        }
-        .sheet(isPresented: $showingNewGoal) {
-            if let selectedWeek {
-                NewGoalSheet(week: selectedWeek) { date in
-                    navigation.moveToPlannedDate(date)
-                    ensureSelectedWeek()
-                }
-                .presentationDetents([.medium])
-            }
-        }
+        .tint(AnkerColor.accentMark)
         .sheet(isPresented: $showingSearch) {
-            SearchSheet(weeks: weeks) { result in
-                open(result)
-            }
+            SearchSheet(weeks: weeks) { open($0) }
         }
-        .task {
-            restoreNavigationIfPossible()
-            ensureCurrentWeek()
-            ensureSelectedWeek()
-            modelContext.saveChanges()
+        .sheet(isPresented: $showingSettings) {
+            NavigationStack { SettingsView() }
         }
-        // Laeuft beim Start und nach jedem CloudKit-Import erneut.
+        .sheet(item: Binding(get: { weekStartTarget.map(IdentifiedDate.init) }, set: { weekStartTarget = $0?.date })) { target in
+            sheetFrame { WeekStartScreen(weekStart: target.date) }
+        }
+        .sheet(item: Binding(get: { reviewTarget.map(IdentifiedDate.init) }, set: { reviewTarget = $0?.date })) { target in
+            sheetFrame { ReviewScreen(weekStart: target.date) }
+        }
+        .task { restoreNavigationIfPossible() }
+        // Aufräumen nach dem Sync — aber erst, wenn kein Import mehr läuft.
         //
-        // Vorher war der Schluessel `StoreMaintenance.duplicateSignature(for: weeks)` — das
-        // gruppierte bei **jeder** `body`-Auswertung alle Wochen und Tage, bei einem Jahr
-        // Nutzung also rund 364 Tage pro Durchlauf. Der Zaehler aus dem Sync-Status ist nicht
-        // nur billiger, er trifft die Absicht genauer: Duplikate entstehen ausschliesslich
-        // dadurch, dass ein Import eine Woche einspielt, die lokal schon existiert.
-        .task(id: cloudSyncStatus.remoteChangeCount) {
-            StoreMaintenance.normalize(weeks: weeks, modelContext: modelContext)
+        // Mitten in einem Import kommen Wochen vor ihren Tagen an; ein Aufräumen in diesem
+        // Moment sieht einen halben Bestand. Der Schlüssel wechselt bei jeder Remote-Änderung und
+        // beim Ende eines Imports, die kurze Pause bündelt Serien von Änderungen.
+        .task(id: maintenanceTrigger) {
+            guard cloudSyncStatus.phase != .syncing else { return }
+            try? await Task.sleep(for: .seconds(2))
+            guard !Task.isCancelled, cloudSyncStatus.phase != .syncing else { return }
+            StoreMaintenance.run(modelContext: modelContext)
         }
         .onChange(of: navigation) { _, newValue in
             storedNavigation = newValue.encoded
         }
         .onOpenURL { url in
-            guard navigation.apply(url) else { return }
-            ensureSelectedWeek()
-            modelContext.saveChanges()
+            _ = navigation.apply(url)
         }
     }
 
-    // MARK: - Layouts
+    private var maintenanceTrigger: String {
+        "\(cloudSyncStatus.remoteChangeCount)-\(cloudSyncStatus.phase == .syncing)"
+    }
 
-    /// iPhone: Tabs unten, Detailansichten auf einem echten Navigationsstapel.
-    ///
-    /// Der Stapel wird aus dem Navigationszustand abgeleitet statt getrennt gefuehrt — so
-    /// bleiben Zurueck-Gestik, Tab-Auswahl und Wiederherstellung dieselbe Quelle. Vorher war
-    /// `.day` ein Tab-Ziel ohne Stapel: kein Zurueckwischen, nur ein Schliessen-Knopf.
-    /// Nur iOS: auf dem Mac gibt es keinen iPhone-Zweig, und `navigationBar` existiert dort
-    /// nicht einmal als Bezeichner.
+    private func sheetFrame<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
+        content()
+#if os(macOS)
+            .frame(minWidth: 520, minHeight: 620)
+#endif
+    }
+
+    // MARK: - iPhone
+
 #if os(iOS)
-    private func phoneContent(week: Week, day: Day) -> some View {
+    private var phoneContent: some View {
         NavigationStack(path: pushedPath) {
-            // Die Tableiste ist ein `safeAreaInset`, **kein** Overlay in einem `ZStack`.
-            //
-            // Als Overlay lag sie ueber dem Inhalt, und jede Ansicht musste sich selbst 96pt
-            // Freiraum lassen — drei taten es, die Heute-Ansicht nicht. Dort verdeckte die
-            // Leiste die Erfassungszeile, also genau das Bedienelement, auf das der Entwurf
-            // den Bildschirm ausrichtet. Als Inset stapelt SwiftUI die beiden Leisten
-            // uebereinander, und niemand muss mehr an einen Abstand denken.
-            topLevelContent(week: week, day: day)
-                // Nach unten ziehen fordert einen Abgleich an. `refreshable` reicht die Aktion
-                // ueber die Umgebung an die scrollende Ansicht darin weiter — Liste wie
-                // Scrollansicht —, deshalb steht sie hier einmal statt in jedem Bildschirm.
-                .refreshable { await cloudSyncStatus.requestSync() }
-                .safeAreaInset(edge: .top, spacing: 0) { syncStatusBanner }
+            topLevel
+                .safeAreaInset(edge: .top, spacing: 0) { phoneHeader(showsBack: false) }
                 .safeAreaInset(edge: .bottom, spacing: 0) {
-                    // Auf Heute sitzt die Erfassungszeile darueber; sie traegt dann die
-                    // 2px-Kante des Fussblocks und die Tableiste trennt nur mit einer Haarlinie.
-                    AnkerTabBar(
-                        selection: topLevelSelection,
-                        topEdge: navigation.topLevel == .today ? .row : .section
-                    )
+                    AnkerTabBar(selection: topLevelSelection)
                 }
+                .refreshable { await cloudSyncStatus.requestSync() }
+                .toolbar(.hidden, for: .navigationBar)
                 .navigationDestination(for: AppDestination.self) { destination in
-                    detailContent(for: destination, week: week, day: day)
+                    detail(destination)
                         .safeAreaInset(edge: .top, spacing: 0) { phoneHeader(showsBack: true) }
                         .toolbar(.hidden, for: .navigationBar)
                 }
-                .safeAreaInset(edge: .top, spacing: 0) { phoneHeader() }
-                .toolbar(.hidden, for: .navigationBar)
         }
     }
 
-    /// Dieselbe Statuszeile wie im Sidebar-Fuss von Mac und iPad — `CloudSyncStatusRow`, nicht
-    /// eine zweite Darstellung derselben Sache.
+    private func phoneHeader(showsBack: Bool) -> some View {
+        VStack(spacing: 0) {
+            AnkerPhoneHeader(showsBack: showsBack) {
+                AnkerHeaderButton(icon: .search, label: "Suchen") { showingSearch = true }
+                CloudSyncStatusBadge(status: cloudSyncStatus)
+                    .frame(width: 44, height: 44)
+                AnkerHeaderButton(icon: .settings, label: "Einstellungen öffnen") { showingSettings = true }
+            }
+            if cloudSyncStatus.isShowingManualSync || cloudSyncStatus.phase == .issue || cloudSyncStatus.phase == .disabled {
+                CloudSyncStatusRow(status: cloudSyncStatus)
+                    .padding(.horizontal, AnkerSpacing.screenPadding)
+                    .padding(.bottom, AnkerSpacing.s2)
+            }
+        }
+        .background(AnkerColor.ground)
+    }
+#endif
+
+    // MARK: - Mac und iPad
+
+    /// Mac und iPad: einklappbare Seitenleiste mit den Wochen, rechts der Inhalt.
     ///
-    /// Sie steht nicht dauerhaft: auf einem Telefon waeren das 40pt fuer eine Aussage, die
-    /// meistens „alles gut" lautet, und das Symbol im Kopf sagt das schon. Eingeblendet wird
-    /// sie, wenn sie etwas zu sagen hat — waehrend eines angeforderten Abgleichs, bei einem
-    /// Problem und wenn der Sync abgeschaltet ist.
-    @ViewBuilder
-    private var syncStatusBanner: some View {
-        if cloudSyncStatus.isShowingManualSync
-            || cloudSyncStatus.phase == .issue
-            || cloudSyncStatus.phase == .disabled {
-            CloudSyncStatusRow(status: cloudSyncStatus)
-                .padding(.horizontal, AnkerSpacing.screenPadding)
-                .padding(.bottom, AnkerSpacing.s2)
-                .background(AnkerColor.ground)
-                .transition(.move(edge: .top).combined(with: .opacity))
-        }
-    }
-
-    /// Die Aktionen des iPhones. Kein Titel und keine Kante — beides steht schon im Inhalt,
-    /// die Begruendung in `AnkerPhoneChrome`.
-    private func phoneHeader(showsBack: Bool = false) -> some View {
-        AnkerPhoneHeader(showsBack: showsBack) {
-            AnkerHeaderButton(icon: .search, label: "Suchen") { showingSearch = true }
-            CloudSyncStatusBadge(status: cloudSyncStatus)
-                .frame(width: 44, height: 44)
-            AnkerHeaderButton(
-                icon: .goal,
-                label: "Neues Wochenziel erstellen",
-                isDisabled: hasMaximumGoals
-            ) { showingNewGoal = true }
-            AnkerHeaderButton(icon: .add, label: "Neue Aufgabe erstellen") { showingNewTask = true }
-        }
-    }
-#endif
-
-    private func splitContent(week: Week, day: Day) -> some View {
-        NavigationSplitView {
-            SidebarView(
-                week: week,
-                weeks: weeks,
-                selection: destinationSelection,
-                selectedDay: day,
-                onPreviousWeek: { move { $0.moveWeek(by: -1) } },
-                onNextWeek: { move { $0.moveWeek(by: 1) } },
-                onCurrentWeek: { move { $0.moveToToday() } },
-                onSelectWeek: { monday in move { $0.moveToWeek(startingAt: monday) } },
-                onSelectDay: { day in move { $0.openDay(on: day.date) } },
-                onFocusDay: { day in move { $0.focus(on: day.date) } },
-                onSelectSearchResult: { open($0) }
+    /// Die Leiste ist der Ort für die Zeit — Wochen ansehen und Aufgaben in eine andere Woche
+    /// ziehen. Ist sie eingeklappt, übernimmt der Schrittschalter im Kopf; beide zugleich gibt
+    /// es nicht, damit es bei genau einem Zeitnavigator bleibt.
+    private var windowContent: some View {
+        NavigationSplitView(columnVisibility: sidebarVisibility) {
+            BlattSidebar(
+                selectedWeekStart: navigation.weekStart,
+                onSelectWeek: { monday in
+                    navigation.moveToWeek(startingAt: monday)
+                    navigation.select(.week)
+                },
+                onToday: {
+                    navigation.moveToToday()
+                    navigation.select(.week)
+                },
+                onArchive: { navigation.select(.archive) }
             )
-        } detail: {
-            VStack(spacing: 0) {
-                AnkerContentHeader(
-                    week: week,
-                    selectedDay: day,
-                    selection: destinationSelection,
-                    onSelectToday: { move { $0.moveToToday() } }
-                )
-
-                // Der Ankerstreifen steht über Woche und Ankerdetail — dort ist er im
-                // Zeitkontext. Über Heute, Jahr, Rückblick und Archiv nicht: die beantworten
-                // andere Fragen, und ein immer sichtbarer Streifen wäre dort Dekoration.
-                if showsAnchorStrip {
-                    AnchorStripView(
-                        week: week,
-                        selectedGoalID: selectedGoalID,
-                        onSelect: { navigation.select(.goal($0)) }
-                    )
-                }
-
-                if navigation.destination.isTopLevel {
-                    topLevelContent(week: week, day: day)
-                } else {
-                    detailContent(for: navigation.destination, week: week, day: day)
-                }
-            }
-            .toolbar {
-                creationToolbarItems
-            }
+            .navigationSplitViewColumnWidth(min: 250, ideal: 270, max: 340)
 #if os(macOS)
-            .toolbarBackground(.visible, for: .windowToolbar)
-            .toolbarBackground(AnkerColor.surface, for: .windowToolbar)
+            .toolbar(removing: .sidebarToggle)
+#endif
+        } detail: {
+            NavigationStack(path: pushedPath) {
+                VStack(spacing: 0) {
+                    windowHeader
+                    AnkerRule()
+                    topLevel
+                }
+                .background(AnkerColor.ground)
+                .navigationDestination(for: AppDestination.self) { destination in
+                    detail(destination)
+                        .safeAreaInset(edge: .top, spacing: 0) { BlattBackBar() }
+                        .background(AnkerColor.ground)
+#if os(iOS)
+                        .toolbar(.hidden, for: .navigationBar)
+#endif
+                }
+#if os(iOS)
+                .toolbar(.hidden, for: .navigationBar)
+#endif
+            }
+        }
+        .navigationSplitViewStyle(.balanced)
+#if os(macOS)
+        // Darunter wird das Raster unlesbar und die Leiste verliert ihre Beschriftung.
+        .frame(minWidth: 960, minHeight: 620)
+#endif
+    }
+
+    private var sidebarVisibility: Binding<NavigationSplitViewVisibility> {
+        Binding(
+            get: { isSidebarVisible ? .all : .detailOnly },
+            set: { isSidebarVisible = $0 != .detailOnly }
+        )
+    }
+
+    private func toggleSidebar() {
+        withAnimation(.easeOut(duration: 0.2)) { isSidebarVisible.toggle() }
+    }
+
+    private var windowHeader: some View {
+        let interval = AnkerCalendar.weekInterval(containing: navigation.weekStart)
+        let isCurrent = AnkerCalendar.weekKey(containing: Date()) == AnkerCalendar.weekKey(containing: navigation.weekStart)
+        return HStack(spacing: AnkerSpacing.s4) {
+            BlattIconButton(icon: .sidebar, label: isSidebarVisible ? "Seitenleiste ausblenden" : "Seitenleiste einblenden") {
+                toggleSidebar()
+            }
+            .keyboardShortcut("s", modifiers: [.command, .control])
+
+            if navigation.topLevel == .week {
+                HStack(spacing: AnkerSpacing.s3) {
+                    if !isSidebarVisible {
+                    WeekStepper(
+                        onPrevious: { navigation.moveWeek(by: -1) },
+                        onNext: { navigation.moveWeek(by: 1) },
+                        onToday: { navigation.moveToToday() },
+                        isCurrent: isCurrent
+                    )
+                    }
+                    VStack(alignment: .leading, spacing: 0) {
+                        Text(verbatim: AnkerDateFormat.calendarWeek(interval.isoWeek))
+                            .ankerType(AnkerType.headline)
+                            .foregroundStyle(AnkerColor.ink)
+                        Text(verbatim: AnkerDateFormat.weekSpan(monday: interval.monday, sunday: interval.sunday))
+                            .ankerType(AnkerType.meta)
+                            .foregroundStyle(AnkerColor.inkSecond)
+                            .lineLimit(1)
+                            .fixedSize()
+                    }
+                }
+            }
+
+            Spacer(minLength: AnkerSpacing.s2)
+
+            // Breit: Bereichswahl in voller Breite und „Rückblick" als Text. Eng (iPad hochkant
+            // mit offener Leiste): schmalere Bereichswahl, „Rückblick" als Symbol. Nie breiter
+            // als der Platz — sonst rutscht der Kopf unter die Seitenleiste.
+            ViewThatFits(in: .horizontal) {
+                headerActions(segmentWidth: 280, compactReview: false)
+                headerActions(segmentWidth: 220, compactReview: true)
+                headerActions(segmentWidth: 180, compactReview: true)
+            }
+        }
+        .padding(.horizontal, AnkerSpacing.screenPadding)
+#if os(macOS)
+        // Platz für die Ampelknöpfe, die bei verborgener Titelleiste über dem Kopf liegen —
+        // nur, wenn die Seitenleiste sie nicht schon trägt.
+        .padding(.leading, isSidebarVisible ? 0 : AnkerSpacing.s6 + AnkerSpacing.s5)
+#endif
+        .frame(minHeight: 64)
+        .background(AnkerColor.ground)
+    }
+
+    private func headerActions(segmentWidth: CGFloat, compactReview: Bool) -> some View {
+        HStack(spacing: AnkerSpacing.s3) {
+            AnkerSegmented(
+                options: [(AppDestination.today, "Heute"), (.week, "Woche"), (.archive, "Archiv")],
+                selection: topLevelSelection,
+                accessibilityLabel: "Bereich"
+            )
+            .frame(width: segmentWidth)
+
+            if navigation.topLevel == .week {
+                if compactReview {
+                    BlattIconButton(icon: .checkCircle, label: "Rückblick") { reviewTarget = navigation.weekStart }
+                } else {
+                    Button("Rückblick") { reviewTarget = navigation.weekStart }
+                        .buttonStyle(AnkerButtonStyle.secondary)
+                        .fixedSize()
+                }
+            }
+
+            BlattIconButton(icon: .search, label: "Suchen") { showingSearch = true }
+                .keyboardShortcut("f", modifiers: .command)
+            CloudSyncStatusBadge(status: cloudSyncStatus)
+                .frame(width: 40, height: 40)
+#if os(iOS)
+            BlattIconButton(icon: .settings, label: "Einstellungen öffnen") { showingSettings = true }
 #endif
         }
+        .fixedSize()
     }
 
-    /// Woche und Ankerdetail gehören zusammen: im Entwurf bleibt der Streifen stehen, wenn ein
-    /// Anker geöffnet wird.
-    private var showsAnchorStrip: Bool {
-        switch navigation.destination {
-        case .week, .goal: true
-        case .today, .year, .review, .archive, .day: false
-        }
-    }
-
-    private var selectedGoalID: UUID? {
-        if case .goal(let id) = navigation.destination { return id }
-        return nil
-    }
+    // MARK: - Inhalt
 
     @ViewBuilder
-    private func topLevelContent(week: Week, day: Day) -> some View {
+    private var topLevel: some View {
         switch navigation.topLevel {
-        case .today:
-            todayView(day: day, week: week)
         case .week:
-            weekOverview(week: week, day: day)
-        case .year:
-            YearOverviewView(week: week, weeks: weeks) { isoWeek in
-                guard let target = weeks.first(where: { $0.isoYear == week.isoYear && $0.isoWeek == isoWeek }) else { return }
-                move { $0.moveToWeek(startingAt: target.monday) }
+            WeekScreen(
+                weekStart: navigation.weekStart,
+                onPreviousWeek: { navigation.moveWeek(by: -1) },
+                onNextWeek: { navigation.moveWeek(by: 1) },
+                onToday: { navigation.moveToToday() },
+                onOpenAnchor: { navigation.select(.goal($0.id)) },
+                onOpenDay: { navigation.openDay(on: $0) },
+                onStartWeek: { weekStartTarget = navigation.weekStart },
+                showsNavigation: !isWide
+            )
+        case .archive, .year, .review:
+            ArchiveScreen { monday in
+                navigation.moveToWeek(startingAt: monday)
                 navigation.select(.week)
             }
-        case .review:
-            WeeklyReviewView(week: week)
-        case .archive:
-            ArchiveView(weeks: weeks) { monday in
-                move { $0.moveToWeek(startingAt: monday) }
-                navigation.select(.week)
-            }
-        case .day, .goal:
-            // Kann nicht auftreten: `topLevel` nimmt nur oberste Ebenen an.
-            todayView(day: day, week: week)
+        default:
+            TodayScreen(
+                onOpenAnchor: { navigation.select(.goal($0.id)) },
+                onStartWeek: { weekStartTarget = AnkerCalendar.weekInterval(containing: Date()).monday },
+                onOpenWeek: {
+                    navigation.moveToToday()
+                    navigation.select(.week)
+                },
+                onReview: { reviewTarget = AnkerCalendar.weekInterval(containing: Date()).monday }
+            )
         }
     }
 
     @ViewBuilder
-    private func detailContent(for destination: AppDestination, week: Week, day: Day) -> some View {
+    private func detail(_ destination: AppDestination) -> some View {
         switch destination {
-        case .day:
-            dayDetail(day: day, week: week)
         case .goal(let id):
-            if let goal = week.goalList.first(where: { $0.id == id }) {
-                GoalDetailView(goal: goal, week: week) { navigation.popToTopLevel() }
+            if let goal = weeks.lazy.flatMap(\.goalList).first(where: { $0.id == id }) {
+                AnchorScreen(goal: goal) { navigation.popToTopLevel() }
             } else {
-                // Etwa nach einem Sync, der das Ziel auf einem anderen Geraet entfernt hat.
-                weekOverview(week: week, day: day)
+                BlattEmptyNote(text: "Dieser Anker ist nicht mehr da — vielleicht auf einem anderen Gerät gelöscht.")
+                    .padding(AnkerSpacing.screenPadding)
             }
-        case .today, .week, .year, .review, .archive:
-            topLevelContent(week: week, day: day)
+        case .day:
+            dayDetail
+        default:
+            topLevel
         }
     }
 
-    // MARK: - Bindings
+    /// Das Tagesdetail (Fokus, Notizen, Zeitplan) braucht einen Tag zum Hineinschreiben. Er
+    /// entsteht hier, weil das Öffnen eines Tages die ausdrückliche Absicht ist, an ihm zu
+    /// arbeiten — nicht schon beim Blättern durch die Woche.
+    @ViewBuilder
+    private var dayDetail: some View {
+        let week = TaskActions.ensureWeek(containing: navigation.dayDate, weeks: weeks, modelContext: modelContext)
+        let day = TaskActions.ensureDay(containing: navigation.dayDate, in: week)
+        DayDetailView(
+            day: day,
+            week: week,
+            onAddTask: {},
+            onSelectGoal: { navigation.select(.goal($0.id)) },
+            onClose: { navigation.popToTopLevel() }
+        )
+    }
 
-    /// Genau ein Element auf dem Stapel, solange eine Detailansicht offen ist. Leert der
-    /// Nutzer den Stapel per Zurueck-Gestik, fuehrt das auf die Ebene zurueck, aus der die
-    /// Detailansicht geoeffnet wurde.
+    // MARK: - Bindungen
+
     private var pushedPath: Binding<[AppDestination]> {
         Binding(
             get: { navigation.isPushed ? [navigation.destination] : [] },
@@ -342,98 +383,14 @@ struct AnkerRootView: View {
 
     private var topLevelSelection: Binding<AppDestination> {
         Binding(
-            get: { navigation.topLevel },
+            get: {
+                switch navigation.topLevel {
+                case .year, .review: .archive
+                default: navigation.topLevel
+                }
+            },
             set: { navigation.select($0) }
         )
-    }
-
-    private var destinationSelection: Binding<AppDestination> {
-        Binding(
-            get: { navigation.destination },
-            set: { navigation.select($0) }
-        )
-    }
-
-    // MARK: - Einzelansichten
-
-    private func todayView(day: Day, week: Week) -> some View {
-        TodayView(
-            day: day,
-            week: week,
-            onAddTask: { showingNewTask = true },
-            onSelectDay: { day in move { $0.openDay(on: day.date) } },
-            onFocusDay: { day in move { $0.focus(on: day.date) } }
-        )
-    }
-
-    /// Woche: die Matrix, wo Platz fuer sieben Spalten ist — sonst die Tagesliste.
-    ///
-    /// Dieselbe Bedingung wie bei `splitContent`, also kommt kein neuer Zustand hinzu.
-    @ViewBuilder
-    private func weekOverview(week: Week, day: Day) -> some View {
-#if os(macOS)
-        anchorMatrix(week: week, day: day)
-#else
-        if horizontalClass == .regular {
-            anchorMatrix(week: week, day: day)
-        } else {
-            WeekOverviewView(
-                week: week,
-                selectedDay: day,
-                onCurrentWeek: { move { $0.moveToToday() } },
-                onPreviousWeek: { move { $0.moveWeek(by: -1) } },
-                onNextWeek: { move { $0.moveWeek(by: 1) } },
-                onSelectDay: { day in move { $0.openDay(on: day.date) } },
-                onFocusDay: { day in move { $0.focus(on: day.date) } }
-            )
-        }
-#endif
-    }
-
-    private func anchorMatrix(week: Week, day: Day) -> some View {
-        AnkerMatrixView(
-            week: week,
-            selectedDay: day,
-            onSelectGoal: { goal in navigation.select(.goal(goal.id)) }
-        )
-    }
-
-    private func dayDetail(day: Day, week: Week) -> some View {
-        DayDetailView(
-            day: day,
-            week: week,
-            onAddTask: { showingNewTask = true },
-            onSelectGoal: { goal in navigation.select(.goal(goal.id)) },
-            onClose: { navigation.popToTopLevel() }
-        )
-    }
-
-    // MARK: - Werkzeugleiste
-
-    @ToolbarContentBuilder
-    private var creationToolbarItems: some ToolbarContent {
-        ToolbarItemGroup(placement: .primaryAction) {
-            Button {
-                showingNewGoal = true
-            } label: {
-                Image(.goal)
-            }
-            .help(hasMaximumGoals ? "Maximal 4 Wochenziele pro Woche" : "Neues Wochenziel erstellen")
-            .accessibilityLabel("Neues Wochenziel erstellen")
-            .disabled(hasMaximumGoals)
-
-            Button {
-                showingNewTask = true
-            } label: {
-                Image(.add)
-            }
-            .help("Neue Aufgabe erstellen")
-            .accessibilityLabel("Neue Aufgabe erstellen")
-        }
-    }
-
-    private var hasMaximumGoals: Bool {
-        (selectedWeek?.goalList.count ?? 0) >= 4
     }
 
     private var currentWeekTitle: String {
@@ -443,67 +400,51 @@ struct AnkerRootView: View {
 
     // MARK: - Aktionen
 
-    /// Jede Navigationsaenderung nach demselben Muster: Zustand aendern, Zielwoche anlegen,
-    /// speichern. Vorher stand diese Dreierfolge in acht Methoden je einmal.
-    private func move(_ change: (inout AnkerNavigationState) -> Void) {
-        change(&navigation)
-        ensureSelectedWeek()
-        modelContext.saveChanges()
-    }
-
     private func open(_ result: AnkerSearch.Result) {
         let dayDate = result.dayID.flatMap { WeekPlanning.day(withID: $0, in: weeks)?.date }
-        move { $0.open(result, dayDate: dayDate) }
+        navigation.open(result, dayDate: dayDate)
     }
 
-    /// Ohne Anker weiter — die App ist auch leer benutzbar: Erfassungszeile und der Knopf für ein
-    /// neues Wochenziel sind da. Wichtig ist, dass niemand im Einrichtungsschritt festsitzt.
     private func skipOnboarding() {
         hasCompletedOnboarding = true
         onboardingVersion = requiredOnboardingVersion
-        ensureSelectedWeek()
         navigation.moveToToday()
-        modelContext.saveChanges()
     }
 
     private func completeOnboarding(with titles: [String]) {
-        // Sicherheitsnetz: kam der Bestand zwischen Anzeige und Tippen an, wird nichts angelegt.
-        // `createOnboardingAnchors` prüft das ebenfalls; hier entscheidet es zusätzlich, wohin
-        // die App springt.
-        guard !WeekPlanning.hasContent(in: weeks) else {
+        guard !WeekPlanning.hasContent(in: weeks, modelContext: modelContext) else {
             skipOnboarding()
             return
         }
-
-        let week = ensureCurrentWeek()
-        let anchors = WeekPlanning.createOnboardingAnchors(titles, in: week, modelContext: modelContext)
+        let week = TaskActions.ensureWeek(containing: Date(), weeks: weeks, modelContext: modelContext)
+        WeekPlanning.createOnboardingAnchors(titles, in: week, modelContext: modelContext)
         hasCompletedOnboarding = true
         onboardingVersion = requiredOnboardingVersion
-        navigation.moveToWeek(startingAt: week.monday)
-        navigation.focus(on: Date())
-        // Mit mehreren Ankern ist die Woche der sinnvolle Einstieg, nicht ein einzelnes Ziel.
-        navigation.select(anchors.count == 1 ? .goal(anchors[0].id) : .week)
+        navigation.moveToToday()
+        navigation.select(.today)
         modelContext.saveChanges()
     }
 
-    /// Nur beim Start und nur, wenn wirklich etwas gespeichert war — sonst wuerde der
-    /// Standardzustand die Auswahl ueberschreiben, die ein Deep Link gerade gesetzt hat.
     private func restoreNavigationIfPossible() {
 #if DEBUG
-        // UI-Tests sollen immer gleich anfangen; `@SceneStorage` ueberlebt sonst den Neustart.
-        if UITestMode.isActive { return }
+        if UITestMode.isActive {
+            // `-AnchoritTab week` — Startbereich für Bildschirmfotos und UI-Tests. Startargumente
+            // landen in der Argument-Domain der Defaults; gelesen wird nur, nichts geschrieben.
+            switch UserDefaults.standard.string(forKey: "AnchoritTab") {
+            case "week": navigation.select(.week)
+            case "archive": navigation.select(.archive)
+            default: break
+            }
+            return
+        }
 #endif
         guard let restored = AnkerNavigationState(encoded: storedNavigation) else { return }
         navigation = restored
     }
+}
 
-    @discardableResult
-    private func ensureCurrentWeek() -> Week {
-        WeekPlanning.ensureWeek(containing: Date(), weeks: weeks, modelContext: modelContext)
-    }
-
-    @discardableResult
-    private func ensureSelectedWeek() -> Week {
-        WeekPlanning.ensureWeek(containing: navigation.weekStart, weeks: weeks, modelContext: modelContext)
-    }
+/// `sheet(item:)` braucht `Identifiable`.
+private struct IdentifiedDate: Identifiable {
+    let date: Date
+    var id: TimeInterval { date.timeIntervalSince1970 }
 }

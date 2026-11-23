@@ -160,17 +160,23 @@ struct AnkerNavigationState: Codable, Equatable {
 
     // MARK: - Deep Links
 
-    static let urlScheme = "daivento"
+    static let urlScheme = "anchorit"
 
-    /// `daivento://today`, `daivento://week`, `daivento://year`, `daivento://review`,
-    /// `daivento://archive`, `daivento://day/2026-08-05`, `daivento://week/2026-08-03`,
-    /// `daivento://goal/<UUID>`.
+    /// Das Schema des früheren Produktnamens. Vorhandene Links und Kurzbefehle sollen nach der
+    /// Umbenennung weiter funktionieren.
+    static let legacyURLSchemes: Set<String> = ["daivento"]
+
+    /// `anchorit://today`, `anchorit://week`, `anchorit://year`, `anchorit://review`,
+    /// `anchorit://archive`, `anchorit://day/2026-08-05`, `anchorit://week/2026-08-03`,
+    /// `anchorit://goal/<UUID>`.
     ///
     /// Gibt zurueck, ob die URL verstanden wurde — eine unbekannte URL darf den Zustand nicht
     /// anfassen, sonst landet der Nutzer nach einem Tippfehler im Link irgendwo.
     @discardableResult
     mutating func apply(_ url: URL) -> Bool {
-        guard url.scheme == Self.urlScheme, let host = url.host else { return false }
+        guard let scheme = url.scheme?.lowercased(),
+              scheme == Self.urlScheme || Self.legacyURLSchemes.contains(scheme),
+              let host = url.host else { return false }
 
         let argument = url.pathComponents.first { $0 != "/" }
 
