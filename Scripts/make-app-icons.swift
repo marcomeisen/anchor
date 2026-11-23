@@ -4,6 +4,7 @@ import SwiftUI
 
 // Erzeugt den App-Iconsatz aus den Vorlagen in `assets/icon/` — aus der Repowurzel aufrufen:
 //
+//     swift Scripts/make-icon-sources.swift   # zeichnet die Vorlagen
 //     swift Scripts/make-app-icons.swift
 //
 // Warum ein Skript und kein Handgriff: die macOS-Varianten sind **abgeleitet**. Sie entstehen aus
@@ -69,6 +70,13 @@ func renderMac(from source: URL, size: Int, to destination: URL) -> Bool {
             .interpolation(.high)
             .frame(width: body, height: body)
             .clipShape(RoundedRectangle(cornerRadius: body * cornerRatio, style: .continuous))
+            // Eine Haarlinie um den Körper: der helle „Blatt"-Grund verschwände sonst auf
+            // hellem Dock und im Finder.
+            .overlay(
+                RoundedRectangle(cornerRadius: body * cornerRatio, style: .continuous)
+                    .strokeBorder(Color(red: 0x14 / 255, green: 0x16 / 255, blue: 0x1A / 255).opacity(0.12),
+                                  lineWidth: max(1, body / 300))
+            )
     }
     .frame(width: canvas, height: canvas)
 
@@ -107,8 +115,14 @@ MainActor.assumeIsolated {
     // Dieselbe Marke auf dunklem Grund. Die App hat keinen Dokumenttyp, für den ein
     // Dokument-Icon Verwendung hätte — hier ist es die dunkle Erscheinung auf iOS.
     let darkSource = sources.appendingPathComponent("DocumentIcon-1024.png")
+    // iOS färbt diese Variante selbst ein und erwartet Graustufen auf Schwarz.
+    let tintedSource = sources.appendingPathComponent("TintedIcon-1024.png")
 
-    for (source, name) in [(lightSource, "AppIcon-1024.png"), (darkSource, "AppIcon-dark-1024.png")] {
+    for (source, name) in [
+        (lightSource, "AppIcon-1024.png"),
+        (darkSource, "AppIcon-dark-1024.png"),
+        (tintedSource, "AppIcon-tinted-1024.png"),
+    ] {
         let ok = copyWithoutAlpha(from: source, to: target.appendingPathComponent(name))
         print("  \(ok ? "✓" : "✗") \(name) — iOS, randlos, ohne Alpha")
         if !ok { failures += 1 }
