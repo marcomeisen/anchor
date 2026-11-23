@@ -1,5 +1,58 @@
 # Changelog
 
+## 2026-11-23
+
+### Seitenleiste mit den Wochen ist zurück
+
+- **Auf Mac und iPad steht links wieder eine Seitenleiste** — die Wochen um die laufende herum mit ihren sieben Tagesquadraten und der Zahl offener Aufgaben. Ein Klick öffnet die Woche, „Heute" springt zur laufenden.
+- **Aufgaben in eine andere Woche ziehen:** eine Aufgabe aus dem Raster, der Ansicht nach Anker oder einer Liste auf eine Woche der Leiste ziehen. Sie landet am selben Wochentag, ohne Tag am Montag; ihr Anker wird über die Wochengrenze gelöst. Rückgängig direkt in der Leiste. Als Test festgehalten.
+- **Verschieben auch in der iPhone-Wochenansicht.** Langes Drücken auf eine Aufgabe bietet jetzt „Verschieben …" (dasselbe Blatt wie in Heute, auch in andere Wochen und auf ein freies Datum) und „In die nächste Woche" (gleicher Wochentag). Außerdem lässt sich in der Ansicht „Nach Tag" jede offene Aufgabe antippen und per „Hierher" auf einen anderen Tag legen — mit Rückgängig.
+- **Einklappbar** über den Knopf links im Kopf oder ⌃⌘S, pro Gerät gemerkt. Ist die Leiste zu, erscheint der Wochenschalter im Kopf — es bleibt bei genau einem Zeitnavigator.
+- Der Fensterkopf passt sich an: im iPad-Hochformat wird die Bereichswahl schmaler und „Rückblick" zum Symbol, statt dass der Kopf unter die Leiste rutscht. Das Mac-Fenster hat eine Mindestgröße, unter der Raster und Leiste nicht mehr lesbar wären.
+
+### Neuer Produktname: Anchorit
+
+- **Die App heißt jetzt Anchorit.** Anzeigename, App- und Modulname (`Anchorit.app`, `@testable import Anchorit`), alle sichtbaren Texte, Exportdatei (`Anchorit-Export-….json`), Datenschutzhinweis und Startargumente (`-AnchoritUITest`, `-AnchoritDemoData`, `-AnchoritTab`, `-AnchoritInitializeCloudKitSchema`).
+- **Bundle-ID und iCloud-Container bleiben** `com.marcomeisen.Anchor` bzw. `iCloud.com.marcomeisen.Anchor` — sonst verlören bestehende Installationen ihre Daten und der Sync bräche ab. Der Speicherort der Daten hängt nicht am Produktnamen.
+- **Neues URL-Schema `anchorit://`.** `daivento://` bleibt registriert, damit vorhandene Links und Kurzbefehle weiter funktionieren; als Test festgehalten.
+- **Testlauf stürzte nach der Umbenennung ab — Ursache war ein Scheme-Argument.** Im geteilten Scheme stand `DaiventoInitializeCloudKitSchema` ohne führenden Bindestrich und wirkte deshalb nie. Mit Bindestrich lief die Schema-Initialisierung bei **jedem** Start und im unsignierten Testhost in CloudKit hinein. Das Argument ist jetzt standardmäßig aus, und die Initialisierung läuft nie im Test und nie ohne iCloud-Berechtigung.
+- **Unsignierte Mac-Builds stürzen nicht mehr in CloudKit ab**, sondern arbeiten lokal: CloudKit wird nur noch angebunden, wenn das Programm die iCloud-Berechtigung wirklich trägt. Die Testerkennung achtet zusätzlich auf alle Zeichen der XCTest-Einspritzung, nicht nur auf `XCTestConfigurationFilePath`.
+- Die Projekt-Skills heißen `anchorit-build`, `anchorit-swiftdata`, `anchorit-design-system`, `anchorit-task-interactions`. Ältere Entwurfsdokumente (`Daivento_Task_…`) und frühere Changelog-Einträge behalten den alten Namen als Historie.
+
+### Neuentwurf „Blatt": ein Blatt pro Woche
+
+- **Die Oberfläche folgt dem Entwurf „Blatt".** Tinte auf kühlem Hellgrau, weiße Karten mit Haarlinie, Systemschrift und genau eine Farbe — ein tiefes Blau, das „erledigt" oder „heute" heißt. Anker sind Nummern, keine Farben. Der Wochenablauf hat vier Schritte: Setzen (Montag), Erledigen, Prüfen (Sonntag), Ablegen.
+- **Heute** zeigt die vier Anker als Leiste mit einem Punkt pro Aufgabe; jeder Haken füllt sofort den Punkt bei seinem Anker. Darunter die Aufgaben des Tages, ein Hinweis auf „noch ohne Tag" und die Erfassungszeile.
+- **Die Woche gibt es in zwei Ansichten mit denselben Daten:** auf Mac und iPad als Raster (Zeile Anker, Spalte Tag, rechts „Ohne Tag") oder nach Anker; auf dem iPhone nach Tag — mit Überblick-Raster und Einplanen durch Antippen — oder nach Anker. Ziehen im Raster setzt Tag und Anker in einem Schritt; bei schmalem Fenster scrollt das Raster waagerecht statt die Chips abzuschneiden.
+- **Neu: Warum-Satz pro Anker** und ein Montagsschritt „Was zählt diese Woche?", der nicht gehaltene Anker der Vorwoche zur Übernahme anbietet.
+- **Neu: Am Sonntag antwortet der Mensch.** Pro Anker gehalten, teilweise oder nicht — die Zahl daneben ist nur ein Hinweis. Danach pro offener Aufgabe mitnehmen oder loslassen.
+- **Archiv** zeigt das Jahr als Raster aus Wochen mit je vier Strichen, die längste Serie und den Anker, der immer wieder gesetzt wird und selten hält.
+- **Keine Sidebar mehr.** Auf dem Mac ein eigener Fensterkopf mit Wochenschalter, Bereichswahl, Rückblick, Suche und Sync-Status; die Titelleiste ist verborgen, die Ampelknöpfe bleiben. Detailansichten haben einen Zurück-Knopf.
+- **Neues App-Icon:** das Blatt selbst — vier Reihen zu fünf Quadraten, Erledigtes blau. Hell, dunkel, getönt (iOS) und macOS mit Haarlinie gegen hellen Grund; dazu ein neues Menüleisten-Glyph. Gezeichnet von `Scripts/make-icon-sources.swift`, nicht von Hand.
+- Archivo ist entfallen; die App setzt in SF Pro und wächst auf iPhone und iPad mit Dynamic Type mit.
+
+### iCloud-Sync: Zusammenführen konvergiert, nichts geht mehr verloren
+
+Eine Prüfung der Sync-Schicht fand einen Fehler mit Datenverlust und zwei Ursachen für Duplikate:
+
+- **Das Zusammenführen doppelter Wochen lief auf zwei Geräten auseinander.** Gewonnen hatte die inhaltsreichere Kopie — gezählt wurde aber, was gerade lokal vorlag, und mitten in einem Import kommen Wochen vor ihren Tagen an. Zwei Geräte löschten so je die andere Kopie, und die Löschkaskade nahm Tage und Aufgaben mit. Jetzt gewinnt immer die kleinste UUID, die Löschregeln sind `.nullify`, und verwaiste Tage, Ziele und Zeitblöcke werden wieder eingehängt. Benutzte Anker kommen dabei vor leeren, damit frische Onboarding-Anker die echten nicht verdrängen.
+- **Start und Blättern legten Wochen an.** Auf jedem neuen Gerät entstand so die laufende Woche, bevor der iCloud-Import sie brachte. Wochen und Tage entstehen jetzt nur noch beim Schreiben, und zwar nur der eine Tag, der gebraucht wird.
+- **Wochen wurden über das Montagsdatum gefunden.** Das ist Mitternacht in der Zone des anlegenden Geräts; eine Woche aus einer anderen Zeitzone wurde nicht gefunden und doppelt angelegt. Jetzt über ISO-Jahr und -Woche, Tage über den gemeinten Kalendertag.
+- Aufgeräumt wird erst, wenn kein Import läuft, und auf dem aktuellen Bestand statt auf dem Schnappschuss der Ansicht.
+- „Nur lokal gespeichert" wurde nach dem nächsten Speichern durch „wartet auf Export" überschrieben, obwohl in diesem Prozess nie exportiert wird. Der Hinweis bleibt jetzt stehen.
+- Aufgaben ohne Tag sind ein gültiger Zustand (mit Anker „noch nicht eingeplant", ohne Anker im Eingang): anlegen, einplanen, ausplanen, duplizieren und Löschen rückgängig machen.
+- Neue Tests halten fest: zwei Geräte in verschiedenem Importzustand wählen dieselbe Kopie, eine gelöschte Woche nimmt ihre Tage nicht mit, Tage aus einer anderen Zeitzone landen auf ihrem Tag, Wochen entstehen ohne Tage.
+
+### Mehrfachauswahl in „Blatt"
+
+- **Mehrere Aufgaben auf einmal bearbeiten** — auf Heute und in der Ankeransicht über „Auswählen" oder ein langes Drücken auf ein Kästchen. Unten erscheint statt der Erfassungszeile eine Leiste: Erledigt, Verschieben, Anker setzen, Löschen und „Alle". Löschen fragt ab drei Aufgaben nach, jede Aktion lässt sich rückgängig machen — auch für Aufgaben ohne Tag. Auf dem Mac `⌘⇧A`, Escape beendet.
+- Am iPhone-Simulator geprüft: Heute, Woche und Archiv sehen aus wie im Entwurf; die Tagesbeschriftung steht bei langen Tagen jetzt oben statt mittig. Die iPhone-UI-Tests (Detail erreichbar und verlassbar, alle Tabs) laufen grün.
+- Neu: [CloudKit_Schema_Anleitung.md](CloudKit_Schema_Anleitung.md) — Schema von Development nach Production, Schritt für Schritt, mit Prüfpunkten und Fehlerbildern.
+
+**Vor dem nächsten TestFlight-Build nötig:** `Goal.why` und `Goal.verdictRaw` sind neue, optionale Felder. Einmal mit `-DaiventoInitializeCloudKitSchema` starten und das Schema in der CloudKit-Konsole nach Production deployen.
+
+**Offen:** Die Mac-UI-Tests sind umgeschrieben, aber nicht gelaufen — das Signieren scheitert aus einer Terminal-Sitzung mit `errSecInternalComponent` (gesperrter Schlüsselbund). In Xcode mit ⌘U ausführen. iPad und ein echtes Gerät sind noch nicht angesehen.
+
 ## 2026-08-06
 
 ### Zielsymbol, Bildschirmränder, Ziehen zum Abgleichen
