@@ -2,6 +2,12 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<!-- Export-Compliance vorab beantwortet, sonst bleibt jeder TestFlight-Upload in App Store
+	     Connect bis zur Antwort haengen. `false`: ausser HTTPS/CloudKit keine Verschluesselung,
+	     Apples Standardverschluesselung faellt unter die Ausnahme. Kaeme eigene Kryptografie
+	     dazu, muesste der Wert auf `true` und eine Einstufung hinterlegt werden. -->
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>remote-notification</string>

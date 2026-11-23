@@ -734,6 +734,44 @@ final class AnchorTests: XCTestCase {
         XCTAssertEqual(AppearanceMode.stored(in: defaults), .system)
     }
 
+    func testStartupViewModeDefaultsToLastViewAndRoundTrips() throws {
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: "AnchorTests.\(#function)"))
+        defer { defaults.removePersistentDomain(forName: "AnchorTests.\(#function)") }
+
+        XCTAssertEqual(StartupViewMode.stored(in: defaults), .lastView)
+
+        defaults.set(StartupViewMode.currentWeek.rawValue, forKey: AppSettingsKey.startupViewMode)
+        XCTAssertEqual(StartupViewMode.stored(in: defaults), .currentWeek)
+
+        // Unbekannte Werte fallen auf das bisherige Verhalten zurueck.
+        defaults.set("gestern", forKey: AppSettingsKey.startupViewMode)
+        XCTAssertEqual(StartupViewMode.stored(in: defaults), .lastView)
+    }
+
+    func testStartupViewModeSelectsInitialNavigation() throws {
+        let storedDay = AnkerCalendar.date(year: 2026, month: 7, day: 8, hour: 10)
+        var stored = AnkerNavigationState(now: storedDay)
+        stored.select(.year)
+        let now = AnkerCalendar.date(year: 2026, month: 8, day: 14, hour: 9)
+
+        let lastView = StartupViewMode.lastView.initialNavigation(storedNavigation: stored.encoded, now: now)
+        XCTAssertEqual(lastView, stored)
+        XCTAssertNil(StartupViewMode.lastView.initialNavigation(storedNavigation: nil, now: now),
+                     "Ohne gespeicherten Stand bleibt die Navigation, wie sie ist")
+
+        let currentWeek = try XCTUnwrap(StartupViewMode.currentWeek.initialNavigation(storedNavigation: stored.encoded, now: now))
+        XCTAssertEqual(currentWeek.destination, .week)
+        XCTAssertEqual(currentWeek.topLevel, .week)
+        XCTAssertEqual(currentWeek.weekStart, AnkerCalendar.weekInterval(containing: now).monday)
+        XCTAssertTrue(AnkerCalendar.isSameDay(currentWeek.dayDate, now))
+
+        let currentDay = try XCTUnwrap(StartupViewMode.currentDay.initialNavigation(storedNavigation: stored.encoded, now: now))
+        XCTAssertEqual(currentDay.destination, .today)
+        XCTAssertEqual(currentDay.topLevel, .today)
+        XCTAssertEqual(currentDay.weekStart, AnkerCalendar.weekInterval(containing: now).monday)
+        XCTAssertTrue(AnkerCalendar.isSameDay(currentDay.dayDate, now))
+    }
+
     @MainActor
     func testCloudSyncPreferenceDefaultsToEnabledUntilChosen() throws {
         let defaults = try XCTUnwrap(UserDefaults(suiteName: "AnchorTests.\(#function)"))

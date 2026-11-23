@@ -13,6 +13,7 @@ struct AnkerRootView: View {
 
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
     @AppStorage("onboardingVersion") private var onboardingVersion = 0
+    @AppStorage(AppSettingsKey.startupViewMode) private var startupViewRaw = StartupViewMode.lastView.rawValue
 
     @ObservedObject var cloudSyncStatus: CloudSyncStatusCenter = .shared
 
@@ -438,8 +439,9 @@ struct AnkerRootView: View {
             return
         }
 #endif
-        guard let restored = AnkerNavigationState(encoded: storedNavigation) else { return }
-        navigation = restored
+        let mode = StartupViewMode(rawValue: startupViewRaw) ?? .lastView
+        guard let initial = mode.initialNavigation(storedNavigation: storedNavigation) else { return }
+        navigation = initial
     }
 }
 

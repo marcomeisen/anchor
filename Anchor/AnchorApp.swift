@@ -135,10 +135,13 @@ enum CloudSyncConfiguration {
     }
 
 #if DEBUG
-    /// Das CloudKit-Entwicklungsschema muss nur nach Modelaenderungen einmal hochgeladen werden.
+    /// Das CloudKit-Entwicklungsschema muss nach **jeder** Modelaenderung einmal hochgeladen
+    /// werden, sonst fehlen die neuen Felder. Der normale Export legt sie nicht zwangslaeufig an:
+    /// CloudKit erzeugt ein Feld erst, wenn ein Record mit einem Wert darin exportiert wird —
+    /// ein durchgehend `nil` gebliebener Optional bleibt dem Schema deshalb unbekannt.
+    ///
     /// Bei jedem Start ausgefuehrt legt `initializeCloudKitSchema` fuer jede Entity Beispielrecords
-    /// an und wieder loescht sie, blockiert den Start und oeffnet einen zweiten CloudKit-Container
-    /// auf derselben Store-Datei. Deshalb laeuft es nur noch auf Anforderung:
+    /// an und wieder loescht sie. Deshalb laeuft es nur auf Anforderung:
     /// Scheme > Run > Arguments > `-AnchoritInitializeCloudKitSchema` setzen.
     static let schemaInitializationArgument = "-AnchoritInitializeCloudKitSchema"
 
@@ -146,7 +149,32 @@ enum CloudSyncConfiguration {
         ProcessInfo.processInfo.arguments.contains(schemaInitializationArgument)
     }
 
-    static func initializeDevelopmentSchema(for configuration: ModelConfiguration) throws {
+    /// Startet den Schema-Upload **nach** dem Start und abseits des Main-Threads.
+    ///
+    /// Inline in `App.init` aufgerufen scheiterte er reproduzierbar nach rund 130 Sekunden mit
+    /// "Failed to initialize CloudKit schema because the requests timed out (a 30s wait failed)":
+    /// `initializeCloudKitSchema` wartet synchron auf den Setup-Request des Mirroring-Delegate,
+    /// und der kommt nicht durch, solange der Main-Thread in `App.init` blockiert.
+    static func scheduleDevelopmentSchemaUpload(storeURL: URL) {
+        DispatchQueue.global(qos: .userInitiated).asyncAfter(deadline: .now() + 3) {
+            do {
+                try initializeDevelopmentSchema(storeURL: storeURL)
+                cloudSyncLog.notice("CloudKit-Schema hochgeladen")
+                print("CloudKit schema initialized.")
+            } catch {
+                // `localizedDescription` ist bei Core-Data-CloudKit-Fehlern nichtssagend; die
+                // Aussage steckt in `NSLocalizedFailureReason` und `encounteredErrors`.
+                let detail = CloudSyncErrorFormatter.describe(error)
+                cloudSyncLog.error("CloudKit-Schema fehlgeschlagen: \(detail, privacy: .public)")
+                print("CloudKit schema initialization failed: \(error)")
+            }
+        }
+    }
+
+    /// Laeuft bewusst gegen die **echte** Store-Datei. Auf einem Wegwerf-Store startet der
+    /// Mirroring-Delegate einen Import der bestehenden Zone, der nach dem Abraeumen noch laeuft;
+    /// wird die Datei dabei geloescht, endet der Prozess mit einer ObjC-Exception (SIGABRT).
+    static func initializeDevelopmentSchema(storeURL: URL) throws {
         guard let managedObjectModel = NSManagedObjectModel.makeManagedObjectModel(for: AnkerSchema.models) else {
             throw SyncError.managedObjectModelUnavailable
         }
@@ -156,7 +184,7 @@ enum CloudSyncConfiguration {
             managedObjectModel: managedObjectModel
         )
 
-        let storeDescription = NSPersistentStoreDescription(url: configuration.url)
+        let storeDescription = NSPersistentStoreDescription(url: storeURL)
         storeDescription.cloudKitContainerOptions = NSPersistentCloudKitContainerOptions(
             containerIdentifier: containerIdentifier
         )
@@ -224,11 +252,14 @@ struct AnkerStore {
         // Nie im Testlauf und nie ohne iCloud-Berechtigung: die Initialisierung öffnet einen
         // echten CloudKit-Container, und der bricht einen unsignierten Prozess ab.
         if CloudSyncConfiguration.shouldInitializeDevelopmentSchema && CloudSyncConfiguration.usesCloudKit {
-            do {
-                try CloudSyncConfiguration.initializeDevelopmentSchema(for: cloudConfiguration)
-                print("CloudKit schema initialized.")
-            } catch {
-                print("CloudKit schema initialization failed: \(error)")
+            CloudSyncConfiguration.scheduleDevelopmentSchemaUpload(storeURL: cloudConfiguration.url)
+
+            // Solange der Schema-Upload laeuft, bleibt die App selbst ohne CloudKit: zwei
+            // Stores, die im selben Prozess dieselbe Zone spiegeln, konkurrieren um den
+            // Setup-Request. Der Upload ist ein Werkzeuglauf, kein normaler Start.
+            let toolConfiguration = ModelConfiguration(schema: schema, cloudKitDatabase: .none)
+            if let container = try? ModelContainer(for: schema, configurations: [toolConfiguration]) {
+                return AnkerStore(container: container, cloudKitError: nil)
             }
         }
 #endif
@@ -263,6 +294,8 @@ struct AnkerStore {
 struct AnchorApp: App {
 #if os(macOS)
     @NSApplicationDelegateAdaptor(AnchorAppDelegate.self) private var appDelegate
+#elseif os(iOS)
+    @UIApplicationDelegateAdaptor(AnchorIOSAppDelegate.self) private var appDelegate
 #endif
 
     private let store = AnkerStore.make()
@@ -273,8 +306,6 @@ struct AnchorApp: App {
         WindowGroup {
             ContentView()
                 .onAppear {
-                    CloudSyncConfiguration.registerForRemoteNotifications()
-
                     if !CloudSyncPreference.activeAtLaunch {
                         CloudSyncStatusCenter.shared.markCloudSyncDisabled()
                     } else if let cloudKitError = store.cloudKitError {
@@ -312,10 +343,77 @@ struct AnchorApp: App {
     }
 }
 
+#if os(iOS)
+/// Registriert die stillen CloudKit-Pushes so früh wie möglich und meldet ihr Eintreffen.
+/// Ohne Registrierung erfährt ein iPhone von Änderungen anderer Geräte erst beim nächsten
+/// Vordergrundwechsel.
+@MainActor
+final class AnchorIOSAppDelegate: NSObject, UIApplicationDelegate {
+    func application(
+        _ application: UIApplication,
+        didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
+    ) -> Bool {
+        CloudSyncConfiguration.registerForRemoteNotifications()
+        return true
+    }
+
+    func application(
+        _ application: UIApplication,
+        didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data
+    ) {
+        CloudSyncStatusCenter.shared.markRemoteNotificationsRegistered()
+    }
+
+    func application(
+        _ application: UIApplication,
+        didFailToRegisterForRemoteNotificationsWithError error: Error
+    ) {
+        CloudSyncStatusCenter.shared.markRemoteNotificationsUnavailable(error)
+    }
+
+    /// Hält die App im Hintergrund wach, bis der Import angekommen ist (höchstens 25 s).
+    func application(
+        _ application: UIApplication,
+        didReceiveRemoteNotification userInfo: [AnyHashable: Any],
+        fetchCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void
+    ) {
+        CloudSyncStatusCenter.shared.markRemoteNotificationReceived()
+        let baseline = CloudSyncStatusCenter.shared.remoteChangeCount
+
+        Task { @MainActor in
+            let imported = await CloudSyncStatusCenter.shared.waitForRemoteChange(after: baseline)
+            completionHandler(imported ? .newData : .noData)
+        }
+    }
+}
+#endif
+
 #if os(macOS)
 @MainActor
 final class AnchorAppDelegate: NSObject, NSApplicationDelegate {
     private var statusItemController: AnchorStatusItemController?
+
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        CloudSyncConfiguration.registerForRemoteNotifications()
+    }
+
+    func application(
+        _ application: NSApplication,
+        didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data
+    ) {
+        CloudSyncStatusCenter.shared.markRemoteNotificationsRegistered()
+    }
+
+    func application(
+        _ application: NSApplication,
+        didFailToRegisterForRemoteNotificationsWithError error: Error
+    ) {
+        CloudSyncStatusCenter.shared.markRemoteNotificationsUnavailable(error)
+    }
+
+    func application(_ application: NSApplication, didReceiveRemoteNotification userInfo: [String: Any]) {
+        CloudSyncStatusCenter.shared.markRemoteNotificationReceived()
+    }
 
     func configure(modelContainer: ModelContainer) {
         guard statusItemController == nil else { return }
