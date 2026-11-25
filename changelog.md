@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-11-25
+
+- **Onboarding wieder bedienbar.** Bei einer frischen Installation wurde das Fenster auf dem Mac endlos lang, die Wahl „Mit iCloud synchronisieren / Nur auf diesem Gerät" lag unter dem Bildschirmrand, und es ging nicht weiter. Ursache: Das Fenster nimmt seine Mindestgröße aus dem Inhalt, und die umbrechenden Texte meldeten bei Breite null eine riesige Höhe. Das Onboarding scrollt jetzt (Knöpfe weiter unten, solange alles passt) und steht auf Mac und iPad in einer lesbaren Spalte von 560 pt.
+
 ## 2026-11-23
 
 ### Vor dem Release: Übertrag, Wiederholen, Erinnerungen, Datumseingabe, Import
