@@ -252,8 +252,9 @@ final class CloudSyncStatusCenter: ObservableObject {
     }
 
     func markRemoteNotificationsRegistered() {
-        guard !isSyncDisabled else { return }
-        remoteNotificationSummary = String(localized: "Registriert")
+        let registered = String(localized: "Registriert")
+        guard !isSyncDisabled, remoteNotificationSummary != registered else { return }
+        remoteNotificationSummary = registered
         cloudSyncLog.notice("Remote Notifications registriert")
     }
 

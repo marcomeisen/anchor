@@ -104,14 +104,6 @@ enum StartupViewMode: String, CaseIterable, Identifiable {
         }
     }
 
-    var explanation: String {
-        switch self {
-        case .currentDay: String(localized: "Anchorit öffnet beim Start immer Heute.")
-        case .currentWeek: String(localized: "Anchorit öffnet beim Start immer die laufende Woche.")
-        case .lastView: String(localized: "Anchorit öffnet beim Start dort, wo du zuletzt warst.")
-        }
-    }
-
     /// `nil` heißt: nichts ändern. So überschreibt „Zuletzt" ohne gespeicherten Stand keinen
     /// Deep Link, der die Navigation vor dem Start schon gesetzt hat.
     func initialNavigation(storedNavigation: String?, now: Date = Date()) -> AnkerNavigationState? {

@@ -23,6 +23,7 @@ struct TaskSnapshot: Identifiable {
     /// es eine Folgeinstanz wieder entfernen muss.
     var recurrenceRaw: String? = nil
     var recurrenceNextID: UUID? = nil
+    var importedReminderData: Data? = nil
 }
 
 struct TaskUndoNotice: Identifiable {
@@ -235,6 +236,7 @@ enum TaskActions {
                 linkedGoal: task.linkedGoal
             )
             copy.recurrenceRaw = task.recurrenceRaw
+            copy.importedReminderData = reminderDataForDuplicate(of: task)
             modelContext.insert(copy)
             modelContext.saveChanges()
             return copy
@@ -250,11 +252,26 @@ enum TaskActions {
         )
         // Die Regel gehört zur Aufgabe, die Kette nicht: die Kopie beginnt eine eigene.
         copy.recurrenceRaw = task.recurrenceRaw
+        copy.importedReminderData = reminderDataForDuplicate(of: task)
         modelContext.insert(copy)
         day.appendTask(copy)
         normalizeOrders(in: day)
         modelContext.saveChanges()
         return copy
+    }
+
+    private static func reminderDataForDuplicate(of task: AnkerTask) -> Data? {
+        guard var details = task.importedReminder, !details.isEmpty else { return nil }
+        details.sourceIdentifier = nil
+        details.sourceExternalIdentifier = nil
+        return try? JSONEncoder().encode(details)
+    }
+
+    /// Ein erneuter Import ändert nur Felder aus der Quelle. Gespeichert wird der ganze Import.
+    static func applyReminderImport(to task: AnkerTask, title: String, priority: Priority, data: Data?) {
+        task.title = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        task.priority = priority
+        task.importedReminderData = data
     }
 
     /// Legt eine Aufgabe an.
@@ -269,6 +286,8 @@ enum TaskActions {
         priority: Priority,
         on day: Day,
         linkedGoal: Goal?,
+        importedReminderData: Data? = nil,
+        save: Bool = true,
         modelContext: ModelContext
     ) -> AnkerTask? {
         let cleanTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -281,10 +300,11 @@ enum TaskActions {
             day: day,
             linkedGoal: linkedGoal
         )
+        task.importedReminderData = importedReminderData
         modelContext.insert(task)
         day.appendTask(task)
         normalizeOrders(in: day)
-        modelContext.saveChanges()
+        if save { modelContext.saveChanges() }
         return task
     }
 
@@ -358,7 +378,8 @@ enum TaskActions {
             goalID: task.linkedGoal?.id,
             dayDate: task.day?.date,
             recurrenceRaw: task.recurrenceRaw,
-            recurrenceNextID: task.recurrenceNextID
+            recurrenceNextID: task.recurrenceNextID,
+            importedReminderData: task.importedReminderData
         )
     }
 
@@ -419,6 +440,7 @@ enum TaskActions {
                 existingTask.completedAt = snapshot.completedAt
                 existingTask.carryOverCount = snapshot.carryOverCount
                 existingTask.recurrenceRaw = snapshot.recurrenceRaw
+                existingTask.importedReminderData = snapshot.importedReminderData
                 existingTask.linkedGoal = goal
 
                 if existingTask.day?.id != day?.id {
@@ -443,6 +465,7 @@ enum TaskActions {
                 )
                 task.recurrenceRaw = snapshot.recurrenceRaw
                 task.recurrenceNextID = snapshot.recurrenceNextID
+                task.importedReminderData = snapshot.importedReminderData
                 modelContext.insert(task)
                 restoredTasksByID[task.id] = task
             }
@@ -623,6 +646,8 @@ enum TaskActions {
         title: String,
         priority: Priority = .b,
         goal: Goal?,
+        importedReminderData: Data? = nil,
+        save: Bool = true,
         modelContext: ModelContext
     ) -> AnkerTask? {
         let cleanTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -634,8 +659,9 @@ enum TaskActions {
             order: goal?.taskList.count ?? 0,
             linkedGoal: goal
         )
+        task.importedReminderData = importedReminderData
         modelContext.insert(task)
-        modelContext.saveChanges()
+        if save { modelContext.saveChanges() }
         return task
     }
 

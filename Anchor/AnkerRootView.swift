@@ -22,6 +22,7 @@ struct AnkerRootView: View {
 
     @SceneStorage("navigation") private var storedNavigation: String?
     @State private var navigation = AnkerNavigationState()
+    @State private var restoredNavigation = false
 
     /// Pro Gerät gemerkt: wer die Leiste einklappt, will sie beim nächsten Start nicht
     /// wieder offen sehen.
@@ -103,16 +104,24 @@ struct AnkerRootView: View {
             guard !Task.isCancelled, cloudSyncStatus.phase != .syncing else { return }
             StoreMaintenance.run(modelContext: modelContext)
         }
-        .onChange(of: navigation) { _, newValue in
-            storedNavigation = newValue.encoded
+        .task(id: navigation) { [navigation] in
+            await Task.yield()
+            guard restoredNavigation, !Task.isCancelled, navigation == self.navigation else { return }
+            let encoded = navigation.encoded
+            if storedNavigation != encoded {
+                storedNavigation = encoded
+            }
         }
         .onOpenURL { url in
-            guard navigation.apply(url) else { return }
+            var target = navigation
+            guard target.apply(url) else { return }
             // `anchorit://review` öffnet den Rückblick der Woche, nicht nur einen Bereich.
-            if navigation.destination == .review {
-                navigation.select(.week)
-                reviewTarget = navigation.weekStart
+            if target.destination == .review {
+                target.select(.week)
+                reviewTarget = target.weekStart
             }
+            restoredNavigation = true
+            if navigation != target { navigation = target }
         }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active { refreshNow() }
@@ -158,10 +167,12 @@ struct AnkerRootView: View {
         let wasOnCurrentWeek = AnkerCalendar.weekKey(containing: navigation.weekStart) == AnkerCalendar.weekKey(containing: now)
         now = fresh
         // Wer auf „heute" stand, steht danach wieder auf heute — nicht auf gestern.
-        if wasOnToday { navigation.dayDate = fresh }
-        if wasOnCurrentWeek && !navigation.isPushed {
-            navigation.weekStart = AnkerCalendar.weekInterval(containing: fresh).monday
+        var target = navigation
+        if wasOnToday { target.dayDate = fresh }
+        if wasOnCurrentWeek && !target.isPushed {
+            target.weekStart = AnkerCalendar.weekInterval(containing: fresh).monday
         }
+        if navigation != target { navigation = target }
     }
 
     private func sheetFrame<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
@@ -374,7 +385,7 @@ struct AnkerRootView: View {
                 now: now,
                 onPreviousWeek: { navigation.moveWeek(by: -1) },
                 onNextWeek: { navigation.moveWeek(by: 1) },
-                onToday: { navigation.moveToToday(now: now); navigation.select(.week) },
+                onToday: { navigation.moveToPlannedDate(now) },
                 onOpenAnchor: { navigation.select(.goal($0.id)) },
                 onOpenDay: { navigation.openDay(on: $0) },
                 onStartWeek: { weekStartTarget = navigation.weekStart },
@@ -383,18 +394,14 @@ struct AnkerRootView: View {
             )
         case .archive, .year, .review:
             ArchiveScreen { monday in
-                navigation.moveToWeek(startingAt: monday)
-                navigation.select(.week)
+                navigation.moveToPlannedDate(monday)
             }
         default:
             TodayScreen(
                 now: now,
                 onOpenAnchor: { navigation.select(.goal($0.id)) },
                 onStartWeek: { weekStartTarget = AnkerCalendar.weekInterval(containing: now).monday },
-                onOpenWeek: {
-                    navigation.moveToToday(now: now)
-                    navigation.select(.week)
-                },
+                onOpenWeek: { navigation.moveToPlannedDate(now) },
                 onReview: { monday in reviewTarget = monday }
             )
         }
@@ -433,11 +440,9 @@ struct AnkerRootView: View {
         Binding(
             get: { navigation.isPushed ? [navigation.destination] : [] },
             set: { path in
-                if let last = path.last {
-                    navigation.select(last)
-                } else {
-                    navigation.popToTopLevel()
-                }
+                let destination = path.last ?? navigation.topLevel
+                guard destination != navigation.destination else { return }
+                navigation.select(destination)
             }
         )
     }
@@ -482,11 +487,12 @@ struct AnkerRootView: View {
         hasCompletedOnboarding = true
         onboardingVersion = requiredOnboardingVersion
         navigation.moveToToday()
-        navigation.select(.today)
         modelContext.saveChanges()
     }
 
     private func restoreNavigationIfPossible() {
+        guard !restoredNavigation else { return }
+        defer { restoredNavigation = true }
 #if DEBUG
         if UITestMode.isActive {
             // `-AnchoritTab week` — Startbereich für Bildschirmfotos und UI-Tests. Startargumente

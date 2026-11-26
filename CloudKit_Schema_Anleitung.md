@@ -1,8 +1,8 @@
 # CloudKit-Schema nach Production bringen
 
 Diese Anleitung ist für jede Modelländerung gedacht. Der aktuelle Anlass ist „Blatt"
-(2026-11-23), das zwei Felder an `CD_Goal` neu einführt, dazu die wiederkehrenden Aufgaben mit
-zwei Feldern an `CD_AnkerTask`.
+(2026-11-23) mit zwei Feldern an `CD_Goal`, die wiederkehrenden Aufgaben mit zwei Feldern an
+`CD_AnkerTask` und der Erhalt der Originalangaben beim Import aus Apple Erinnerungen.
 
 **Warum das nötig ist:** Xcode-Builds (Debug) schreiben in die CloudKit-Umgebung **Development**.
 TestFlight- und App-Store-Builds (Release) schreiben in **Production**. In Development legt CloudKit
@@ -18,6 +18,7 @@ Bild „läuft in Xcode, tot in TestFlight".
 | `CD_Goal` | `CD_verdictRaw` | String | `Goal.verdictRaw`: gehalten / teilweise / nicht |
 | `CD_AnkerTask` | `CD_recurrenceRaw` | String | `AnkerTask.recurrenceRaw`: Wiederholregel (`daily`, `weekdays`, `weekly`, `biweekly`, `monthly`) |
 | `CD_AnkerTask` | `CD_recurrenceNextID` | String | `AnkerTask.recurrenceNextID`: UUID der Folgeinstanz (Core Data legt UUIDs in CloudKit als String ab) |
+| `CD_AnkerTask` | `CD_importedReminderData` | Binärdaten | `AnkerTask.importedReminderData`: Fälligkeit, Notizen und Link der Erinnerung |
 
 - Alle Felder sind optional und additiv. Ältere App-Versionen ignorieren sie. Die Regel steht als
   Rohtext, nicht als `Codable`-Enum wie `priority`: ein neuer Fall bricht auf älteren Geräten
@@ -72,8 +73,8 @@ APP="$(xcodebuild -project Anchor.xcodeproj -scheme Anchor -destination 'platfor
    `iCloud.com.marcomeisen.Anchor`.
 2. Oben die Umgebung **Development** wählen.
 3. **Schema → Record Types → `CD_Goal`**, danach **`CD_AnkerTask`**.
-4. Prüfen, dass `CD_why` und `CD_verdictRaw` (bei `CD_Goal`) sowie `CD_recurrenceRaw` und
-   `CD_recurrenceNextID` (bei `CD_AnkerTask`) mit dem Typ **String** dastehen.
+4. Die Felder aus der Tabelle oben prüfen, einschließlich der für `CD_importedReminderData`
+   generierten Felder für Binärdaten.
 
 Fehlen sie, hat Schritt 1 nicht gegriffen. Meist war der Build nicht signiert, oder das Argument
 fehlte.
@@ -82,15 +83,15 @@ fehlte.
 
 1. In der Console, weiter in **Development**: **Deploy Schema Changes…** (Schaltfläche oben
    rechts im Schema-Bereich).
-2. Die Übersicht zeigt, was sich gegenüber Production ändert. **Erwartet sind genau die vier
-   neuen Felder: zwei an `CD_Goal`, zwei an `CD_AnkerTask`.** Steht dort mehr, zum Beispiel ein Record-Typ aus einem Experiment,
+2. Die Übersicht zeigt, was sich gegenüber Production ändert. **Erwartet sind die noch fehlenden
+   Felder aus der Tabelle oben.** Steht dort mehr, zum Beispiel ein Record-Typ aus einem Experiment,
    jetzt abbrechen: Was einmal in Production ist, lässt sich nicht mehr entfernen.
 3. **Deploy** bestätigen.
 
 ## Schritt 4: In Production prüfen
 
 1. Umgebung auf **Production** umschalten.
-2. **Schema → Record Types → `CD_Goal`** und **`CD_AnkerTask`**: alle vier Felder sind da.
+2. **Schema → Record Types → `CD_Goal`** und **`CD_AnkerTask`** öffnen und die Felder aus der Tabelle prüfen.
 3. Erst danach den TestFlight-Build hochladen bzw. freigeben.
 
 ## Reihenfolge, die nicht vertauscht werden darf
@@ -126,7 +127,8 @@ CloudKit-Code und Teilfehlern.
 - [ ] Argument wieder abgehakt
 - [ ] Development: `CD_Goal.CD_why` und `CD_Goal.CD_verdictRaw` vorhanden (String)
 - [ ] Development: `CD_AnkerTask.CD_recurrenceRaw` und `CD_AnkerTask.CD_recurrenceNextID` vorhanden (String)
-- [ ] Deploy-Übersicht zeigt nur diese vier Felder, deployt
-- [ ] Production: alle vier Felder vorhanden
+- [ ] Development: Binärdaten für `CD_AnkerTask.CD_importedReminderData` vorhanden
+- [ ] Deploy-Übersicht mit der Tabelle abgeglichen und deployt
+- [ ] Production: alle Schemaänderungen vorhanden
 - [ ] Erst jetzt den TestFlight-Build freigegeben
 - [ ] Auf zwei Geräten mit dem TestFlight-Build: Warum-Satz auf einem setzen, auf dem anderen nach dem nächsten Abgleich sehen

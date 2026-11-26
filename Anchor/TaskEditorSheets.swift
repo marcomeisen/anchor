@@ -47,6 +47,7 @@ struct TaskEditorSheet: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: AnkerSpacing.s4) {
                     titleField
+                    importedReminderDetails
                     statusAndImportance
                     weekPicker
                     dayPicker
@@ -77,6 +78,41 @@ struct TaskEditorSheet: View {
                 Text("Diese Aufgabe wird dauerhaft entfernt.")
             }
             .onAppear(perform: loadTaskIfNeeded)
+        }
+    }
+
+    @ViewBuilder
+    private var importedReminderDetails: some View {
+        if let reminder = task.importedReminder, !reminder.isEmpty {
+            VStack(alignment: .leading, spacing: AnkerSpacing.s2) {
+                if let due = AnkerDateFormat.reminderDueDate(reminder) {
+                    Text("Fälligkeit aus Erinnerungen")
+                        .ankerType(AnkerType.eyebrow)
+                        .foregroundStyle(AnkerColor.inkSecond)
+                    Text(verbatim: due)
+                        .ankerType(AnkerType.body)
+                }
+                if let notes = reminder.notes, !notes.isEmpty {
+                    Text("Notizen")
+                        .ankerType(AnkerType.eyebrow)
+                        .foregroundStyle(AnkerColor.inkSecond)
+                    Text(verbatim: notes)
+                        .ankerType(AnkerType.body)
+                        .textSelection(.enabled)
+                }
+                if let url = reminder.url {
+                    Link(destination: url) {
+                        Text(verbatim: url.absoluteString)
+                            .underline()
+                            .ankerType(AnkerType.body)
+                            .frame(minHeight: 44, alignment: .leading)
+                    }
+                }
+            }
+            .foregroundStyle(AnkerColor.ink)
+            .padding(AnkerSpacing.s3)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .ankerCard()
         }
     }
 

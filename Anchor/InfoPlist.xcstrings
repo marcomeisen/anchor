@@ -1,20 +1,44 @@
 {
   "sourceLanguage" : "de",
   "strings" : {
+    "CFBundleDisplayName" : {
+      "comment" : "Bundle display name",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Anchorit"
+          }
+        }
+      }
+    },
+    "CFBundleName" : {
+      "comment" : "Bundle name",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Anchorit"
+          }
+        }
+      }
+    },
     "NSRemindersFullAccessUsageDescription" : {
-      "comment" : "Begründung für den Zugriff auf Apple Erinnerungen (einmaliger Import, nur lesen).",
+      "comment" : "Begründung für den Zugriff auf Apple Erinnerungen (optionaler Import, nur lesen).",
       "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Anchorit liest deine offenen Erinnerungen nur, wenn du sie importierst, und übernimmt sie als Aufgaben. In Apple Erinnerungen wird nichts geändert."
+            "value" : "Anchorit liest offene Erinnerungen aus den Listen, die du für den Import auswählst, und übernimmt sie als Aufgaben."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Anchorit reads your open reminders only when you import them, and adds them as tasks. Nothing is changed in Apple Reminders."
+            "value" : "Anchorit reads open reminders from the lists you select for import and adds them as tasks."
           }
         }
       }

@@ -164,7 +164,9 @@ nonisolated struct AnkerNavigationState: Codable, Equatable {
     /// JSON fuer `@SceneStorage`. Ohne das faengt jeder Start wieder bei "Heute" an, auch
     /// wenn der Nutzer zuletzt in einer anderen Woche gearbeitet hat.
     var encoded: String? {
-        guard let data = try? JSONEncoder().encode(self) else { return nil }
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = .sortedKeys
+        guard let data = try? encoder.encode(self) else { return nil }
         return String(decoding: data, as: UTF8.self)
     }
 
