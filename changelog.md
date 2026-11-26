@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-11-24
+
+- **Korrekturen für App Review:** Der Erinnerungsimport liest Einträge erst für die ausgewählten Listen und aktualisiert nur belegte Zuordnungen. Die vollständige lokale Löschung entfernt auch die Importhistorie, bricht bei Lesefehlern ab und meldet das iCloud-Ergebnis getrennt. Datenschutzhinweise und Review-Notizen sind angepasst. Build 16 und das CloudKit-Werkzeugargument sind vorbereitet.
+- **Einstellungen:** Kompakte Auswahlzeilen und klare Bereiche für Allgemein, Mitteilungen, Daten und Hilfe.
+- **Erinnerungsimport:** Der Einstieg liegt im Drei-Punkte-Menü der Woche. Die Importvorschau kann eindeutig zugeordnete Aufgaben aktualisieren und zeigt Neuanlagen und Aktualisierungen getrennt. Rückgängig stellt die vorherigen Angaben wieder her.
+- **Start und Navigation:** Anchorit fordert die Push-Registrierung pro Start nur einmal an und bündelt Änderungen am Navigationszustand. Identische Pfade werden nicht erneut geschrieben.
+- **Import aus Apple Erinnerungen:** Fälligkeit mit Uhrzeit und Zeitzone, Notizen und Links bleiben in der Aufgabe erhalten, auch im Eingang. Die Angaben stehen im Aufgabeneditor und im JSON-Export. Das optionale CloudKit-Feld `importedReminderData` braucht vor TestFlight einen Schema-Deploy.
+
 ## 2026-11-23
 
 ### Vor dem Release: Übertrag, Wiederholen, Erinnerungen, Datumseingabe, Import

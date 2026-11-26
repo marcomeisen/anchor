@@ -18,7 +18,6 @@ struct SettingsView: View {
     @ObservedObject var cloudSyncStatus: CloudSyncStatusCenter = .shared
     @ObservedObject private var reminderCenter: RitualReminderCenter = .shared
     @State private var showingDataPrivacy = false
-    @State private var showingRemindersImport = false
     /// Gesetzt, wenn das Einschalten an einer verweigerten Berechtigung scheiterte.
     @State private var reminderPermissionDenied = false
 
@@ -30,21 +29,17 @@ struct SettingsView: View {
         AppearanceMode(rawValue: appearanceRaw) ?? .system
     }
 
-    private var startupViewMode: StartupViewMode {
-        StartupViewMode(rawValue: startupViewRaw) ?? .lastView
-    }
-
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: AnkerSpacing.s4) {
-                startupSection
-                appearanceSection
-                languageSection
-                cloudSyncSection
+            VStack(alignment: .leading, spacing: AnkerSpacing.s5) {
+                generalSection
                 remindersSection
                 dataSection
+                helpSection
             }
             .padding(AnkerSpacing.screenPadding)
+            .frame(maxWidth: 560)
+            .frame(maxWidth: .infinity)
         }
         .background(AnkerColor.ground)
         .ankerSheetChrome(
@@ -62,77 +57,26 @@ struct SettingsView: View {
             .frame(minWidth: 460, minHeight: 520)
 #endif
         }
-        .sheet(isPresented: $showingRemindersImport) {
-            NavigationStack {
-                RemindersImportSheet()
-            }
-#if os(macOS)
-            .frame(minWidth: 460, minHeight: 520)
-#endif
-        }
         .task { await reminderCenter.refreshAuthorization() }
     }
 
-    // MARK: - Start
+    // MARK: - Allgemein
 
-    private var startupSection: some View {
-        card {
-            sectionTitle("Start")
-
-            Picker("Startansicht", selection: $startupViewRaw) {
+    private var generalSection: some View {
+        section("Allgemein") {
+            settingsPicker("Startansicht", selection: $startupViewRaw) {
                 ForEach(StartupViewMode.allCases) { mode in
-                    Label(verbatim: mode.title, ankerIcon: mode.icon)
-                        .tag(mode.rawValue)
+                    Label(verbatim: mode.title, ankerIcon: mode.icon).tag(mode.rawValue)
                 }
             }
-            .pickerStyle(.segmented)
-            .labelsHidden()
-            .accessibilityLabel("Startansicht wählen")
-
-            Text(startupViewMode.explanation)
-                .ankerType(AnkerType.caption)
-                .foregroundStyle(AnkerColor.inkSecond)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-    }
-
-    // MARK: - Erscheinungsbild
-
-    private var appearanceSection: some View {
-        card {
-            sectionTitle("Erscheinungsbild")
-
-            Picker("Erscheinungsbild", selection: $appearanceRaw) {
+            rowDivider
+            settingsPicker("Erscheinungsbild", selection: $appearanceRaw) {
                 ForEach(AppearanceMode.allCases) { mode in
-                    Label(verbatim: mode.title, ankerIcon: mode.icon)
-                        .tag(mode.rawValue)
+                    Label(verbatim: mode.title, ankerIcon: mode.icon).tag(mode.rawValue)
                 }
             }
-            .pickerStyle(.segmented)
-            .labelsHidden()
-            .accessibilityLabel("Erscheinungsbild wählen")
-
-            Text(appearance == .system
-                 ? String(localized: "Folgt der Systemeinstellung dieses Geräts.")
-                 : String(localized: "Gilt nur für Anchorit, unabhängig vom System."))
-                .ankerType(AnkerType.caption)
-                .foregroundStyle(AnkerColor.inkSecond)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-        // Sofort anwenden: auf macOS hängen die Farbtokens und das Statusbar-Popover an
-        // `NSApp.appearance`, nicht am Fenster.
-        .onChange(of: appearanceRaw) { _, _ in
-            appearance.apply()
-        }
-    }
-
-    // MARK: - Sprache
-
-    private var languageSection: some View {
-        card {
-            sectionTitle("Sprache")
-
-            Picker("Sprache", selection: Binding(
+            rowDivider
+            settingsPicker("Sprache", selection: Binding(
                 get: { languageRaw },
                 set: { raw in
                     languageRaw = raw
@@ -143,19 +87,12 @@ struct SettingsView: View {
                     Text(verbatim: language.title).tag(language.rawValue)
                 }
             }
-            .pickerStyle(.segmented)
-            .labelsHidden()
-            .accessibilityLabel("Sprache wählen")
-
-            Text("Wie das System: Deutsch, wenn dein Gerät Deutsch spricht, sonst Englisch.")
-                .ankerType(AnkerType.caption)
-                .foregroundStyle(AnkerColor.inkSecond)
-                .fixedSize(horizontal: false, vertical: true)
-
             if AppLanguage.needsRestart(for: AppLanguage(rawValue: languageRaw) ?? .system) {
                 languageRestartNotice
+                    .padding(.bottom, AnkerSpacing.s2)
             }
         }
+        .onChange(of: appearanceRaw) { _, _ in appearance.apply() }
     }
 
     /// Texte, Datumsformate und Systemdialoge wechseln gemeinsam — deshalb beim Neustart und
@@ -202,10 +139,8 @@ struct SettingsView: View {
 
     // MARK: - iCloud
 
-    private var cloudSyncSection: some View {
-        card {
-            sectionTitle("iCloud-Sync")
-
+    private var cloudSyncControls: some View {
+        VStack(alignment: .leading, spacing: AnkerSpacing.s2) {
             Toggle(isOn: Binding(
                 // Über `CloudSyncPreference`, nicht über den Vorgabewert von `@AppStorage`: ein
                 // frisches Gerät ist bis zur Wahl lokal. Das Lesen von `cloudSyncEnabled` hält die
@@ -214,9 +149,10 @@ struct SettingsView: View {
                 set: { CloudSyncPreference.set($0) }
             )) {
                 Text("Über iCloud synchronisieren")
-                    .ankerType(AnkerType.caption)
+                    .ankerType(AnkerType.body)
                     .foregroundStyle(AnkerColor.ink)
             }
+            .toggleStyle(.switch)
             .accessibilityLabel("iCloud-Sync ein- oder ausschalten")
 
             Text("Mit Sync sind Wochen, Anker, Aufgaben und Notizen auf allen Geräten mit demselben Apple-Account gleich. Ohne Sync bleibt alles auf diesem Gerät.")
@@ -227,14 +163,14 @@ struct SettingsView: View {
             if CloudSyncPreference.needsRestart {
                 restartNotice
             } else {
-                HStack(spacing: AnkerSpacing.s2) {
+                HStack(alignment: .top, spacing: AnkerSpacing.s2) {
                     Image(cloudSyncStatus.phase.icon)
                         .ankerIcon(AnkerIconSize.xs)
                         .foregroundStyle(cloudSyncStatus.phase.tint)
                     Text("\(cloudSyncStatus.phase.title) · \(cloudSyncStatus.detail)")
                         .ankerType(AnkerType.caption)
                         .foregroundStyle(AnkerColor.inkSecond)
-                        .lineLimit(1)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
                 .accessibilityElement(children: .combine)
             }
@@ -246,6 +182,7 @@ struct SettingsView: View {
                 .foregroundStyle(AnkerColor.inkSecond)
                 .fixedSize(horizontal: false, vertical: true)
         }
+        .padding(.vertical, AnkerSpacing.s2)
     }
 
     /// Der Store wird beim Start einmal geöffnet, mit oder ohne CloudKit. Ein Umschalten
@@ -279,20 +216,20 @@ struct SettingsView: View {
     // MARK: - Erinnerungen
 
     private var remindersSection: some View {
-        card {
-            sectionTitle("Erinnerungen")
-
+        section("Mitteilungen") {
             reminderRow(.weekStart, title: "Montags: Anker setzen", isOn: $weekStartReminderOn, minutes: $weekStartReminderMinutes)
-            AnkerRule(color: AnkerColor.cardDivider, weight: .row)
+            rowDivider
             reminderRow(.review, title: "Sonntags: Rückblick", isOn: $reviewReminderOn, minutes: $reviewReminderMinutes)
 
             Text("Die Erinnerung am Montag kommt nur, solange die Woche noch keine Anker hat. Die am Sonntag nur, wenn die Woche Anker hat und noch offen ist.")
                 .ankerType(AnkerType.caption)
                 .foregroundStyle(AnkerColor.inkSecond)
                 .fixedSize(horizontal: false, vertical: true)
+                .padding(.bottom, AnkerSpacing.s2)
 
             if showsReminderPermissionNotice {
                 reminderPermissionNotice
+                    .padding(.bottom, AnkerSpacing.s2)
             }
         }
         .disabled(RitualReminderCenter.isInactiveInThisProcess)
@@ -317,9 +254,10 @@ struct SettingsView: View {
                 set: { newValue in setReminder(isOn: isOn, to: newValue) }
             )) {
                 Text(title)
-                    .ankerType(AnkerType.caption)
+                    .ankerType(AnkerType.body)
                     .foregroundStyle(AnkerColor.ink)
             }
+            .toggleStyle(.switch)
             .frame(minHeight: 44)
 
             if isOn.wrappedValue {
@@ -401,110 +339,99 @@ struct SettingsView: View {
     // MARK: - Daten
 
     private var dataSection: some View {
-        card {
-            sectionTitle("Daten")
-
+        section("Daten") {
+            cloudSyncControls
+            rowDivider
             Button {
                 showingDataPrivacy = true
             } label: {
-                HStack(spacing: AnkerSpacing.s3) {
-                    Image(.privacy)
-                        .ankerType(AnkerType.meta)
-                        .foregroundStyle(AnkerColor.accentInk)
-                    VStack(alignment: .leading, spacing: AnkerSpacing.s1) {
-                        Text("Daten und Datenschutz")
-                            .ankerType(AnkerType.caption)
-                            .foregroundStyle(AnkerColor.ink)
-                        Text("Exportieren oder vollständig löschen")
-                            .ankerType(AnkerType.caption)
-                            .foregroundStyle(AnkerColor.inkSecond)
-                    }
-                    Spacer(minLength: 0)
-                    Image(.chevronRight)
-                        .ankerType(AnkerType.caption)
-                        .foregroundStyle(AnkerColor.inkSecond)
-                }
-                .contentShape(Rectangle())
+                disclosureRow("Daten und Datenschutz", detail: "Exportieren oder vollständig löschen", icon: .note)
             }
             .buttonStyle(.plain)
             .accessibilityLabel("Daten und Datenschutz öffnen")
-
-            if RemindersImportModel.isAvailable {
-                AnkerRule(color: AnkerColor.cardDivider, weight: .row)
-                Button {
-                    showingRemindersImport = true
-                } label: {
-                    HStack(spacing: AnkerSpacing.s3) {
-                        Image(.checkCircle)
-                            .ankerType(AnkerType.meta)
-                            .foregroundStyle(AnkerColor.accentInk)
-                        VStack(alignment: .leading, spacing: AnkerSpacing.s1) {
-                            Text("Aus Erinnerungen importieren …")
-                                .ankerType(AnkerType.caption)
-                                .foregroundStyle(AnkerColor.ink)
-                            Text("Offene Erinnerungen einmalig als Aufgaben übernehmen")
-                                .ankerType(AnkerType.caption)
-                                .foregroundStyle(AnkerColor.inkSecond)
-                        }
-                        Spacer(minLength: 0)
-                        Image(.chevronRight)
-                            .ankerType(AnkerType.caption)
-                            .foregroundStyle(AnkerColor.inkSecond)
-                    }
-                    .frame(minHeight: 44)
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-            }
-
-            AnkerRule(color: AnkerColor.cardDivider, weight: .row)
+            .accessibilityHint("Exportieren oder vollständig löschen")
+            rowDivider
             legalRow(.privacy, icon: .privacy, title: "Datenschutzerklärung", detail: "Was Anchorit speichert und warum")
-            AnkerRule(color: AnkerColor.cardDivider, weight: .row)
+        }
+    }
+
+    private var helpSection: some View {
+        section("Hilfe") {
             legalRow(.support, icon: .share, title: "Hilfe und Kontakt", detail: "Fragen, Fehler, Wünsche")
         }
     }
 
-    /// Öffnet den Text in der App, von rechts hereingeschoben — nicht im Browser.
     private func legalRow(_ document: LegalDocument, icon: AnkerIcon, title: LocalizedStringKey, detail: LocalizedStringKey) -> some View {
         NavigationLink(value: document) {
-            HStack(spacing: AnkerSpacing.s3) {
-                Image(icon)
-                    .ankerType(AnkerType.meta)
-                    .foregroundStyle(AnkerColor.accentInk)
-                VStack(alignment: .leading, spacing: AnkerSpacing.s1) {
-                    Text(title)
-                        .ankerType(AnkerType.caption)
-                        .foregroundStyle(AnkerColor.ink)
-                    Text(detail)
-                        .ankerType(AnkerType.caption)
-                        .foregroundStyle(AnkerColor.inkSecond)
-                }
-                Spacer(minLength: 0)
-                Image(.chevronRight)
-                    .ankerType(AnkerType.caption)
-                    .foregroundStyle(AnkerColor.inkSecond)
-            }
-            .frame(minHeight: 44)
-            .contentShape(Rectangle())
+            disclosureRow(title, detail: detail, icon: icon)
         }
         .buttonStyle(.plain)
     }
 
     // MARK: - Bausteine
 
-    private func sectionTitle(_ text: LocalizedStringKey) -> some View {
-        Text(text)
-            .ankerType(AnkerType.metaStrong)
-            .foregroundStyle(AnkerColor.ink)
+    private func disclosureRow(_ title: LocalizedStringKey, detail: LocalizedStringKey, icon: AnkerIcon) -> some View {
+        HStack(spacing: AnkerSpacing.s3) {
+            Image(icon)
+                .ankerIcon(AnkerIconSize.s)
+                .foregroundStyle(AnkerColor.inkSecond)
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: AnkerSpacing.s1) {
+                Text(title)
+                    .ankerType(AnkerType.body)
+                    .foregroundStyle(AnkerColor.ink)
+                Text(detail)
+                    .ankerType(AnkerType.caption)
+                    .foregroundStyle(AnkerColor.inkSecond)
+            }
+            Spacer(minLength: 0)
+            Image(.chevronRight)
+                .ankerIcon(AnkerIconSize.xs)
+                .foregroundStyle(AnkerColor.inkSecond)
+                .accessibilityHidden(true)
+        }
+        .frame(minHeight: 44)
+        .padding(.vertical, AnkerSpacing.s1)
+        .contentShape(Rectangle())
     }
 
-    private func card<Content: View>(@ViewBuilder content: () -> Content) -> some View {
-        VStack(alignment: .leading, spacing: AnkerSpacing.s2) {
-            content()
+    private func settingsPicker<Value: Hashable, Options: View>(
+        _ title: LocalizedStringKey,
+        selection: Binding<Value>,
+        @ViewBuilder options: () -> Options
+    ) -> some View {
+        LabeledContent {
+            Picker(title, selection: selection, content: options)
+                .labelsHidden()
+                .pickerStyle(.menu)
+                .tint(AnkerColor.ink)
+                .frame(minHeight: 44)
+        } label: {
+            Text(title)
+                .ankerType(AnkerType.body)
+                .foregroundStyle(AnkerColor.ink)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(AnkerSpacing.s4)
-        .ankerCard()
+    }
+
+    private var rowDivider: some View {
+        AnkerRule(color: AnkerColor.cardDivider, weight: .row)
+    }
+
+    private func section<Content: View>(_ title: LocalizedStringKey, @ViewBuilder content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: AnkerSpacing.s2) {
+            Text(title)
+                .ankerType(AnkerType.metaStrong)
+                .foregroundStyle(AnkerColor.ink)
+                .accessibilityAddTraits(.isHeader)
+
+            VStack(alignment: .leading, spacing: 0) {
+                content()
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, AnkerSpacing.s4)
+            .padding(.vertical, AnkerSpacing.s2)
+            .ankerCard()
+        }
     }
 }
 

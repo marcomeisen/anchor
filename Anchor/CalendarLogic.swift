@@ -160,6 +160,21 @@ enum AnkerDateFormat {
         date.formatted(.dateTime.day(.twoDigits).month(.twoDigits).year())
     }
 
+    static func reminderDueDate(_ reminder: ImportedReminderDetails) -> String? {
+        // Schwebende Zeiten und ganztägige Daten zeigen ihre ursprünglichen Komponenten
+        // unabhängig von der Zeitzone des Geräts an.
+        let utc = TimeZone(secondsFromGMT: 0)!
+        guard let date = reminder.date(in: utc) else { return nil }
+        let timeZone = reminder.isAllDay ? utc : reminder.dueDate?.timeZone ?? utc
+        var format = Date.FormatStyle(calendar: Calendar(identifier: .gregorian), timeZone: timeZone)
+            .day(.twoDigits).month(.twoDigits).year()
+        if !reminder.isAllDay {
+            format = format.hour().minute()
+            if reminder.dueDate?.timeZone != nil { format = format.timeZone(.specificName(.short)) }
+        }
+        return date.formatted(format)
+    }
+
     /// `Mo 03.08.` — Kopfzeilen von Tageskarten und Suchtreffern.
     static func weekdayShortWithDayMonth(_ date: Date) -> String {
         date.formatted(.dateTime.weekday(.abbreviated).day(.twoDigits).month(.twoDigits))

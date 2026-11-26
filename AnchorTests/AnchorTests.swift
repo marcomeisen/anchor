@@ -372,7 +372,7 @@ final class AnchorTests: XCTestCase {
         // Version 2: Ankerordnung, Erledigungszeitpunkt, Uebertragungszaehler, Rueckblicktext
         // und Abschlusszeitpunkt. Version 3: Warum-Satz und Rueckblickantwort je Anker.
         // Version 4: Wiederholregel und Folgeinstanz je Aufgabe.
-        XCTAssertEqual(snapshot.formatVersion, 4)
+        XCTAssertEqual(snapshot.formatVersion, 5)
         let exportedRecurring = try XCTUnwrap(snapshot.weeks.flatMap(\.days).flatMap(\.tasks).first { $0.id == recurringTask.id })
         XCTAssertEqual(exportedRecurring.recurrence, "weekdays", "Wiederholregel fehlt im Export")
         XCTAssertEqual(exportedRecurring.recurrenceNextID, nextID, "Folgeinstanz fehlt im Export")
@@ -435,13 +435,19 @@ final class AnchorTests: XCTestCase {
     func testDeleteAllDataRemovesEveryRecord() throws {
         let container = try makeContainer()
         let context = container.mainContext
+        let suite = "AnchorTests.\(#function)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        RemindersImportLedger.add(["test-reminder"], to: defaults)
+        XCTAssertEqual(RemindersImportLedger.load(from: defaults), ["test-reminder"])
         SampleData.insertReferenceWeek(in: context)
         context.insert(Goal(title: "Ziel ohne Woche", colorHex: "#5B6EE8"))
         try context.save()
 
-        let report = DataPortability.deleteAllData(in: context)
+        let report = DataPortability.deleteAllData(in: context, defaults: defaults)
 
         XCTAssertTrue(report.didSave)
+        XCTAssertTrue(RemindersImportLedger.load(from: defaults).isEmpty)
         XCTAssertEqual(report.weeks, 1)
         XCTAssertGreaterThan(report.tasks, 0)
         XCTAssertGreaterThan(report.total, 0)

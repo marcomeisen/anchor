@@ -103,7 +103,7 @@ struct DataPrivacyView: View {
         card {
             sectionTitle("Was Anchorit speichert")
 
-            Text("Wochen, Anker, Aufgaben, Zeitblöcke, Tagesfokus und Notizen — also nur das, was du selbst eingibst. Es gibt keine Analyse, keine Werbung und keine Weitergabe an Dritte.")
+            Text("Anchorit speichert deine Wochen, Aufgaben und Notizen sowie die Angaben aus importierten Erinnerungen. Dazu gehören Fälligkeit, Notiz, Link und die Kennung für erneute Importe.")
                 .ankerType(AnkerType.body)
                 .foregroundStyle(AnkerColor.ink)
                 .fixedSize(horizontal: false, vertical: true)
@@ -172,7 +172,7 @@ struct DataPrivacyView: View {
         card {
             sectionTitle("Alle Daten löschen")
 
-            Text("Entfernt alle Wochen, Anker, Aufgaben, Zeitblöcke und Notizen — auf diesem Gerät und, wenn du bei iCloud angemeldet bist, auch in iCloud und damit auf deinen anderen Geräten.")
+            Text("Löscht deine Planung und die Importhistorie auf diesem Gerät. Anchorit versucht anschließend, deine Daten in iCloud zu löschen.")
                 .ankerType(AnkerType.body)
                 .foregroundStyle(AnkerColor.ink)
                 .fixedSize(horizontal: false, vertical: true)
@@ -239,7 +239,6 @@ struct DataPrivacyView: View {
         let report = DataPortability.deleteAllData(in: modelContext)
 
         guard report.didSave else {
-            // `saveChanges` hat den Fehler bereits gemeldet, die Löschung ist zurückgerollt.
             statusMessage = StatusMessage(
                 text: String(localized: "Die Daten konnten nicht gelöscht werden. Es wurde nichts entfernt."),
                 isError: true
@@ -247,26 +246,44 @@ struct DataPrivacyView: View {
             return
         }
 
-        DataPortability.resetStoredPreferences()
         refreshCounts()
+        let localText = localDeletionMessage(count: report.total)
+        statusMessage = StatusMessage(text: localText + "\n" + String(localized: "iCloud-Löschung wird geprüft …"), isError: false)
         isDeleting = true
         Task {
             let cloud = await DataPortability.deleteCloudData()
             isDeleting = false
-            statusMessage = deletionMessage(local: report.total, cloud: cloud)
+            statusMessage = deletionMessage(localText: localText, cloud: cloud)
         }
     }
 
-    private func deletionMessage(local: Int, cloud: DataPortability.CloudDeletionResult) -> StatusMessage {
-        let localText = local == 1 ? String(localized: "1 Datensatz wurde gelöscht.") : String(localized: "\(local) Datensätze wurden gelöscht.")
+    private func localDeletionMessage(count: Int) -> String {
+        count == 1
+            ? String(localized: "Auf diesem Gerät wurde 1 Datensatz gelöscht.")
+            : String(localized: "Auf diesem Gerät wurden \(count) Datensätze gelöscht.")
+    }
+
+    private func deletionMessage(localText: String, cloud: DataPortability.CloudDeletionResult) -> StatusMessage {
+        let cloudText: String
+        let isError: Bool
         switch cloud {
         case .deleted:
-            return StatusMessage(text: String(localized: "\(localText) Auch die Daten in iCloud sind entfernt; deine anderen Geräte leeren sich beim nächsten Abgleich."), isError: false)
-        case .noAccount, .notApplicable:
-            return StatusMessage(text: String(localized: "\(localText) Dieses Gerät ist nicht bei iCloud angemeldet. Liegen dort noch Daten, lösche sie von einem angemeldeten Gerät aus."), isError: false)
+            cloudText = String(localized: "Die Daten in iCloud wurden gelöscht.")
+            isError = false
+        case .noAccount:
+            cloudText = String(localized: "Melde dich bei iCloud an, um dort gespeicherte Daten zu löschen.")
+            isError = false
+        case .notApplicable:
+            cloudText = String(localized: "Die iCloud-Löschung ist in diesem Build nicht verfügbar.")
+            isError = false
+        case .unavailable:
+            cloudText = String(localized: "iCloud ist derzeit nicht verfügbar. Versuche die iCloud-Löschung später erneut.")
+            isError = true
         case .failed:
-            return StatusMessage(text: String(localized: "\(localText) iCloud war nicht erreichbar, dort liegen eventuell noch Daten. Versuche es mit Internetverbindung erneut."), isError: true)
+            cloudText = String(localized: "Die iCloud-Löschung konnte nicht bestätigt werden. Versuche es erneut.")
+            isError = true
         }
+        return StatusMessage(text: localText + "\n" + cloudText, isError: isError)
     }
 
     private func refreshCounts() {
@@ -282,7 +299,7 @@ struct DataPrivacyView: View {
     // MARK: - Texte
 
     private var deleteConfirmationMessage: String {
-        String(localized: "\(counts.weeks) Wochen, \(counts.goals) Anker, \(counts.tasks) Aufgaben und \(counts.timeBlocks) Zeitblöcke auf diesem Gerät werden dauerhaft entfernt. Bist du bei iCloud angemeldet, wird auch dort alles gelöscht — auch, was hier noch nicht angekommen ist — und deine anderen Geräte leeren sich. Das lässt sich nicht rückgängig machen. Sichere vorher einen Export, wenn du die Daten behalten willst.")
+        String(localized: "\(counts.weeks) Wochen, \(counts.goals) Anker, \(counts.tasks) Aufgaben und \(counts.timeBlocks) Zeitblöcke werden auf diesem Gerät dauerhaft gelöscht. Ist iCloud verfügbar, wird auch der gesamte iCloud-Bestand gelöscht. Sichere vorher einen Export, wenn du deine Planung behalten möchtest.")
     }
 
     // MARK: - Bausteine

@@ -16,6 +16,7 @@ enum WeekLayout: String, CaseIterable, Identifiable {
 struct WeekScreen: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.horizontalSizeClass) private var horizontalClass
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Query(sort: \Week.monday) private var weeks: [Week]
     @Query(filter: #Predicate<AnkerTask> { $0.day == nil && $0.linkedGoal == nil }, sort: \AnkerTask.order)
     private var inbox: [AnkerTask]
@@ -24,6 +25,7 @@ struct WeekScreen: View {
     @StateObject private var undo = TaskUndoCoordinator()
     /// Die Aufgabe, die auf dem iPhone gerade eingeplant wird: erst antippen, dann den Tag.
     @State private var placing: AnkerTask?
+    @State private var showingRemindersImport = false
 
     let weekStart: Date
     var now: Date = Date()
@@ -81,6 +83,12 @@ struct WeekScreen: View {
             }
         }
         .background(AnkerColor.ground)
+        .sheet(isPresented: $showingRemindersImport) {
+            NavigationStack { RemindersImportSheet() }
+#if os(macOS)
+                .frame(minWidth: 460, minHeight: 520)
+#endif
+        }
         .safeAreaInset(edge: .bottom, spacing: 0) {
             VStack(spacing: AnkerSpacing.s2) {
                 BlattUndoBar(coordinator: undo, weeks: weeks)
@@ -113,7 +121,10 @@ struct WeekScreen: View {
                                 isCurrent: sheet.dates.contains { BlattDates.isToday($0, now: now) })
                 }
             }
-            HStack(spacing: AnkerSpacing.s3) {
+            let controls = dynamicTypeSize.isAccessibilitySize
+                ? AnyLayout(VStackLayout(alignment: .leading, spacing: AnkerSpacing.s2))
+                : AnyLayout(HStackLayout(spacing: AnkerSpacing.s2))
+            controls {
                 AnkerSegmented(
                     options: [
                         (WeekLayout.byDay, isWide ? String(localized: "Raster") : String(localized: "Nach Tag")),
@@ -123,11 +134,27 @@ struct WeekScreen: View {
                     accessibilityLabel: String(localized: "Darstellung der Woche")
                 )
                 .frame(maxWidth: isWide ? 260 : .infinity)
-                if isWide {
-                    Spacer()
-                    if sheet.anchorLanes.count < 4 {
+                HStack(spacing: AnkerSpacing.s2) {
+                    if isWide || dynamicTypeSize.isAccessibilitySize { Spacer(minLength: 0) }
+                    if isWide && sheet.anchorLanes.count < 4 {
                         Button("Anker setzen", action: onStartWeek)
                             .buttonStyle(AnkerButtonStyle.secondary)
+                    }
+                    if RemindersImportModel.isAvailable {
+                        Menu {
+                            Button("Aus Erinnerungen importieren") { showingRemindersImport = true }
+                        } label: {
+                            Image(.more)
+                                .ankerIcon(AnkerIconSize.m)
+                                .foregroundStyle(AnkerColor.inkSecond)
+                                .frame(width: 44, height: 44)
+                                .contentShape(Rectangle())
+                        }
+                        .menuStyle(.borderlessButton)
+                        .menuIndicator(.hidden)
+                        .fixedSize()
+                        .accessibilityLabel("Wochenaktionen")
+                        .help("Wochenaktionen")
                     }
                 }
             }

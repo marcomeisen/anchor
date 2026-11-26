@@ -34,6 +34,7 @@ enum CloudSyncConfiguration {
     }
 
     static let containerIdentifier = "iCloud.com.marcomeisen.Anchor"
+    @MainActor private static var requestedRemoteNotificationRegistration = false
 
     /// Im Testlauf ohne CloudKit starten.
     ///
@@ -133,13 +134,19 @@ enum CloudSyncConfiguration {
     static func registerForRemoteNotifications() {
         // Ohne Sync gibt es nichts zu empfangen; die Registrierung wuerde nur unnoetig
         // einen Push-Token anfordern.
-        guard usesCloudKit else { return }
+        guard usesCloudKit, !requestedRemoteNotificationRegistration else { return }
+        requestedRemoteNotificationRegistration = true
 
 #if os(macOS)
         NSApplication.shared.registerForRemoteNotifications()
 #elseif os(iOS)
         UIApplication.shared.registerForRemoteNotifications()
 #endif
+    }
+
+    @MainActor
+    static func allowRemoteNotificationRegistrationRetry() {
+        requestedRemoteNotificationRegistration = false
     }
 
 #if DEBUG
@@ -433,6 +440,7 @@ final class AnchorIOSAppDelegate: NSObject, UIApplicationDelegate {
         _ application: UIApplication,
         didFailToRegisterForRemoteNotificationsWithError error: Error
     ) {
+        CloudSyncConfiguration.allowRemoteNotificationRegistrationRetry()
         CloudSyncStatusCenter.shared.markRemoteNotificationsUnavailable(error)
     }
 
@@ -476,6 +484,7 @@ final class AnchorAppDelegate: NSObject, NSApplicationDelegate {
         _ application: NSApplication,
         didFailToRegisterForRemoteNotificationsWithError error: Error
     ) {
+        CloudSyncConfiguration.allowRemoteNotificationRegistrationRetry()
         CloudSyncStatusCenter.shared.markRemoteNotificationsUnavailable(error)
     }
 

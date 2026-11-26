@@ -23,7 +23,8 @@ enum DataPortability {
         /// 3: Anker tragen ihren Warum-Satz (`why`) und die Rückblickantwort (`verdict`).
         /// 4: Aufgaben tragen ihre Wiederholregel (`recurrence`) und die ID ihrer
         /// Folgeinstanz (`recurrenceNextID`).
-        var formatVersion = 4
+        /// 5: Aufgaben tragen die Originalangaben aus importierten Erinnerungen.
+        var formatVersion = 5
         var exportedAt: Date
         var application: String
         var weeks: [ExportedWeek]
@@ -86,6 +87,7 @@ enum DataPortability {
         /// Rohtext der Regel (`daily`, `weekdays`, `weekly`, `biweekly`, `monthly`), `nil` einmalig.
         var recurrence: String?
         var recurrenceNextID: UUID?
+        var importedReminder: ImportedReminderDetails?
     }
 
     struct ExportedTimeBlock: Codable, Sendable {
@@ -184,7 +186,8 @@ enum DataPortability {
             dayID: task.day?.id,
             linkedGoalID: task.linkedGoal?.id,
             recurrence: task.recurrenceRaw,
-            recurrenceNextID: task.recurrenceNextID
+            recurrenceNextID: task.recurrenceNextID,
+            importedReminder: task.importedReminder
         )
     }
 
@@ -207,7 +210,7 @@ enum DataPortability {
         var days = 0
         var tasks = 0
         var timeBlocks = 0
-        /// Falsch, wenn das Speichern fehlgeschlagen ist — dann ist nichts geloescht.
+        /// Falsch, wenn der Bestand nicht vollständig gelesen oder gelöscht werden konnte.
         var didSave = true
 
         var total: Int { weeks + goals + days + tasks + timeBlocks }
@@ -223,37 +226,37 @@ enum DataPortability {
     /// Reihenfolge von innen nach aussen, damit keine Cascade-Regel ein Objekt entfernt,
     /// das gleich noch gezaehlt werden soll.
     @discardableResult
-    static func deleteAllData(in context: ModelContext) -> DeletionReport {
-        var report = DeletionReport()
+    static func deleteAllData(in context: ModelContext, defaults: UserDefaults = .standard) -> DeletionReport {
+        do {
+            // Alle Typen vor der ersten Löschung laden. Ein Fetch-Fehler darf keinen Typ auslassen.
+            let tasks = try context.fetch(FetchDescriptor<AnkerTask>())
+            let blocks = try context.fetch(FetchDescriptor<TimeBlock>())
+            let goals = try context.fetch(FetchDescriptor<Goal>())
+            let days = try context.fetch(FetchDescriptor<Day>())
+            let weeks = try context.fetch(FetchDescriptor<Week>())
 
-        let tasks = (try? context.fetch(FetchDescriptor<AnkerTask>())) ?? []
-        let blocks = (try? context.fetch(FetchDescriptor<TimeBlock>())) ?? []
-        let goals = (try? context.fetch(FetchDescriptor<Goal>())) ?? []
-        let days = (try? context.fetch(FetchDescriptor<Day>())) ?? []
-        let weeks = (try? context.fetch(FetchDescriptor<Week>())) ?? []
+            // Vor dem Löschstapel offene Änderungen sichern. Bei einem Fehler im Löschstapel
+            // rollt rollback() damit nur die Löschung zurück.
+            guard context.saveChanges() else { return DeletionReport(didSave: false) }
+            for task in tasks { context.delete(task) }
+            for block in blocks { context.delete(block) }
+            for goal in goals { context.delete(goal) }
+            for day in days { context.delete(day) }
+            for week in weeks { context.delete(week) }
 
-        report.tasks = tasks.count
-        report.timeBlocks = blocks.count
-        report.goals = goals.count
-        report.days = days.count
-        report.weeks = weeks.count
-
-        for task in tasks { context.delete(task) }
-        for block in blocks { context.delete(block) }
-        for goal in goals { context.delete(goal) }
-        for day in days { context.delete(day) }
-        for week in weeks { context.delete(week) }
-
-        report.didSave = context.saveChanges()
-        // Sonst blieben die Löschungen im Kontext hängen: die Oberfläche zeigte sofort nichts
-        // mehr an, und der nächste beliebige Save löschte doch alles — ohne neue Bestätigung.
-        if !report.didSave { context.rollback() }
-
-        persistenceLog.notice(
-            "Alle Daten geloescht: \(report.weeks, privacy: .public) Wochen, \(report.goals, privacy: .public) Ziele, \(report.days, privacy: .public) Tage, \(report.tasks, privacy: .public) Aufgaben, \(report.timeBlocks, privacy: .public) Zeitbloecke, gespeichert=\(report.didSave, privacy: .public)"
-        )
-
-        return report
+            guard context.saveChanges() else {
+                context.rollback()
+                return DeletionReport(didSave: false)
+            }
+            resetStoredPreferences(in: defaults)
+            let report = DeletionReport(weeks: weeks.count, goals: goals.count, days: days.count, tasks: tasks.count, timeBlocks: blocks.count)
+            persistenceLog.notice("Lokale Löschung abgeschlossen: \(report.total, privacy: .public) Datensätze")
+            return report
+        } catch {
+            let failure = PersistenceFailure(operation: #function, error: error)
+            persistenceLog.error("Datenbestand für Löschung nicht lesbar — \(failure.code, privacy: .public)")
+            return DeletionReport(didSave: false)
+        }
     }
 
     /// Löscht die CloudKit-Zone, in der SwiftData den Bestand spiegelt.
@@ -266,18 +269,25 @@ enum DataPortability {
     ///
     /// - Returns: `true`, wenn die Zone gelöscht wurde oder gar nicht existierte.
     static func deleteCloudData() async -> CloudDeletionResult {
+#if DEBUG
+        if UITestMode.isActive { return .notApplicable }
+#endif
         guard !CloudSyncConfiguration.isRunningTests, CloudSyncConfiguration.hasCloudKitEntitlement else {
             return .notApplicable
         }
         let container = CKContainer(identifier: CloudSyncConfiguration.containerIdentifier)
         do {
-            guard try await container.accountStatus() == .available else { return .noAccount }
+            let status = try await container.accountStatus()
+            if status == .noAccount { return .noAccount }
+            guard status == .available else { return .unavailable }
             let zone = CKRecordZone.ID(zoneName: "com.apple.coredata.cloudkit.zone", ownerName: CKCurrentUserDefaultName)
             _ = try await container.privateCloudDatabase.deleteRecordZone(withID: zone)
             persistenceLog.notice("CloudKit-Zone gelöscht")
             return .deleted
         } catch let error as CKError where error.code == .zoneNotFound || error.code == .userDeletedZone {
             return .deleted
+        } catch let error as CKError where error.code == .notAuthenticated {
+            return .noAccount
         } catch {
             persistenceLog.error("CloudKit-Zone nicht gelöscht — \((error as NSError).domain, privacy: .public) \((error as NSError).code, privacy: .public)")
             return .failed
@@ -285,7 +295,7 @@ enum DataPortability {
     }
 
     enum CloudDeletionResult: Sendable {
-        case deleted, noAccount, notApplicable, failed
+        case deleted, noAccount, notApplicable, unavailable, failed
     }
 
     /// Zum Datenbestand gehoerende Einstellungen. Ohne diesen Schritt bliebe nach einer
@@ -294,5 +304,6 @@ enum DataPortability {
     static func resetStoredPreferences(in defaults: UserDefaults = .standard) {
         defaults.removeObject(forKey: "hasCompletedOnboarding")
         defaults.removeObject(forKey: "onboardingVersion")
+        defaults.removeObject(forKey: AppSettingsKey.remindersImportedIdentifiers)
     }
 }

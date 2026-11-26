@@ -274,6 +274,13 @@ final class AnkerTask {
     /// Rueckblick die Folgeinstanz finden.
     var recurrenceNextID: UUID?
 
+    /// Originalangaben aus Apple Erinnerungen, unabhängig vom geplanten Tag.
+    var importedReminderData: Data?
+
+    var importedReminder: ImportedReminderDetails? {
+        importedReminderData.flatMap { try? JSONDecoder().decode(ImportedReminderDetails.self, from: $0) }
+    }
+
     var recurrence: TaskRecurrence? {
         get { recurrenceRaw.flatMap(TaskRecurrence.init(rawValue:)) }
         set { recurrenceRaw = newValue?.rawValue }

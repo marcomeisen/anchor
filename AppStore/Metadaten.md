@@ -14,7 +14,7 @@ Klammern; die Texte halten sie ein. Primärsprache: **Deutsch**.
 | Primäre Kategorie | Produktivität |
 | Sekundäre Kategorie | Lifestyle |
 | Inhaltsrechte | Enthält keine Inhalte Dritter (Lucide-Icons sind ISC-lizenziert und mitgeliefert) |
-| Altersfreigabe | Alle Fragen mit „Nein“ bzw. „Keine“ → **4+** |
+| Altersfreigabe | Aktuellen Fragebogen in App Store Connect ausfüllen, dort ermittelte Einstufung übernehmen |
 | Preis | festlegen (z. B. kostenlos), Verfügbarkeit: alle Länder oder DACH |
 
 ## Version 1.0 — Texte
@@ -46,10 +46,10 @@ ABLEGEN
 Das Archiv zeigt dein Jahr als Raster aus Wochen, deine längste Serie und den Anker, der immer wieder liegen bleibt.
 
 RUHIG GESTALTET
-Tinte auf hellem Grau, weiße Karten, eine einzige Farbe für „erledigt“ und „heute“. Hell und dunkel, mit Dynamic Type und VoiceOver.
+Tinte auf hellem Grau, weiße Karten, eine einzige Farbe für „erledigt“ und „heute“. Mit hellem und dunklem Erscheinungsbild.
 
 DEINE DATEN GEHÖREN DIR
-Keine Anmeldung, keine Werbung, kein Tracking, keine Analyse. Deine Daten liegen auf deinem Gerät und, wenn du willst, in deiner privaten iCloud — so bleiben iPhone, iPad und Mac gleich. Du kannst jederzeit alles als Datei exportieren oder vollständig löschen.
+Keine Anmeldung, keine Werbung, kein Tracking, keine Analyse. Deine Daten liegen auf deinem Gerät und, wenn du willst, in deiner privaten iCloud — so bleiben iPhone, iPad und Mac gleich. Du kannst deine Planung als JSON exportieren und lokale sowie synchronisierte Inhalte löschen.
 
 Für iPhone, iPad und Mac.
 ```
@@ -66,8 +66,6 @@ wochenplaner,wochenziele,ziele,fokus,aufgaben,todo,planer,wochenrückblick,produ
 Erste Version.
 ```
 
-| Feld | Wert |
-|---|---|
 ### Englisch (U.S.) — zweite Lokalisierung in App Store Connect
 
 **Subtitle (30):** `One sheet per week`
@@ -99,10 +97,10 @@ ARCHIVE
 Your year as a grid of weeks, your longest streak and the anchor that keeps slipping.
 
 CALM BY DESIGN
-Ink on light grey, white cards, a single color for “done” and “today”. Light and dark, with Dynamic Type and VoiceOver.
+Ink on light grey, white cards, a single color for “done” and “today”. Light and dark appearance.
 
 YOUR DATA IS YOURS
-No sign-up, no ads, no tracking, no analytics. Your data stays on your device and, if you like, in your private iCloud — so iPhone, iPad and Mac stay in step. Export everything as a file or delete it completely at any time.
+No sign-up, no ads, no tracking, no analytics. Your data stays on your device and, if you like, in your private iCloud — so iPhone, iPad and Mac stay in step. Export your plans as JSON and delete local and synced content.
 
 For iPhone, iPad and Mac. In English and German.
 ```
@@ -114,23 +112,12 @@ Englische Bildschirmfotos: wie unten, zusätzlich mit `-AppleLanguages "(en)" -A
 | Feld | Wert |
 |---|---|
 | Support-URL | https://marcomeisen.github.io/anchor/support.html |
-| Marketing-URL | https://marcomeisen.github.io/anchor/ (optional) |
 | Datenschutz-URL | https://marcomeisen.github.io/anchor/datenschutz.html |
 | Copyright | `2026 [Vor- und Nachname]` |
 
 ## App-Datenschutz („Nutrition Label")
 
-Muss zu `Anchor/PrivacyInfo.xcprivacy` passen.
-
-1. **Erheben Sie oder Drittanbieter Daten?** → Ja
-2. Datentyp: **Benutzerinhalte → Sonstige Benutzerinhalte**
-   - Verwendung: **App-Funktionalität**
-   - Mit der Identität verknüpft: **Nein**
-   - Für Tracking verwendet: **Nein**
-3. Alle anderen Datentypen: nicht erhoben.
-4. Tracking: **Nein** (kein ATT-Dialog).
-
-Ergebnis im Store: „Nicht mit dir verknüpfte Daten: Benutzerinhalte".
+**Vorgesehene Angabe für diesen Release-Build:** keine durch den Entwickler oder seine Drittanbieter erhobenen Daten, kein Tracking. Planung und ausgewählte Erinnerungsimporte liegen lokal. Optionaler Sync nutzt die private CloudKit-Datenbank des Apple-Accounts. Der Entwickler hat keinen Zugriff auf diese Nutzerinhalte. Das Manifest deklariert weiterhin `CA92.1` für lokale App-Einstellungen und die Importhistorie. Die veröffentlichten App-Datenschutzangaben vor der Einreichung mit dem signierten Archiv abgleichen. [Apple App Privacy Details](https://developer.apple.com/app-store/app-privacy-details/) · [Apple privater CloudKit-Speicher](https://developer.apple.com/documentation/cloudkit/ckcontainer/privateclouddatabase)
 
 ## App-Prüfung (Review-Informationen)
 
@@ -139,10 +126,20 @@ Ergebnis im Store: „Nicht mit dir verknüpfte Daten: Benutzerinhalte".
 | Anmeldung erforderlich | Nein (Haken bei „Anmeldung erforderlich“ entfernen) |
 | Kontakt | Vorname, Nachname, Telefon, E-Mail |
 
-**Notizen für die Prüfung**
+**Notizen für die Prüfung auf Deutsch**
 
 ```
-Anchorit needs no account. On first launch the app asks whether to sync via the user's private iCloud database (CloudKit) or keep data on this device only; both paths work. To try the main flow: choose either option, enter up to four weekly anchors, then type a task into the capture bar at the bottom ("#1" links it to anchor 1, "fr" schedules it for Friday). The weekly review is available from the Week tab ("Rückblick"). Settings → "Daten und Datenschutz" offers a full JSON export and a complete deletion (device and iCloud). The app makes no network requests other than CloudKit.
+Anchorit braucht kein eigenes Konto. Wähle beim Start „Nur auf diesem Gerät“. Lege einen Wochenanker an und schreibe eine Aufgabe wie „Bericht #1 fr“ in die Erfassungszeile. Unter „Woche“ findest du den Rückblick. In „Einstellungen → Daten und Datenschutz“ kannst du JSON exportieren und Testdaten löschen.
+
+Für den optionalen Import lege in Apple Erinnerungen eine offene Test-Erinnerung an. Öffne in Anchorit „Woche → … → Aus Erinnerungen importieren“, erlaube den Zugriff, wähle die Testliste und tippe auf „Vorschau erstellen“. Nach einem Import kannst du die Erinnerung in Apple Erinnerungen ändern und über „Vorhandene Importe aktualisieren“ dieselbe Anchorit-Aufgabe aktualisieren. Die Arbeitsschritte funktionieren auch mit lokalem Speicher. Der optionale Geräteabgleich läuft über die private iCloud.
+```
+
+**Review notes in English**
+
+```
+Anchorit has no app account. Choose “Only on this device” at first launch. Set a weekly anchor, then type a task such as “Write report #1 fr” into the capture bar. Open the weekly review from Week. Settings → Data & Privacy provides JSON export and deletion of test data.
+
+For the optional import, create an open test reminder in Apple Reminders. In Anchorit, open Week → … → Import from Reminders, grant access, select the test list and choose “Create preview”. After importing, edit the source reminder in Apple Reminders and use “Update previously imported tasks” to update the same Anchorit task. These steps work with local storage. Optional device sync uses the user’s private iCloud database.
 ```
 
 ## Export-Compliance
@@ -151,7 +148,7 @@ Beantwortet über `ITSAppUsesNonExemptEncryption = false` in der Info.plist. Kei
 
 ## Bildschirmfotos
 
-Pflichtgrößen (je 3 bis 10 Bilder, PNG oder JPEG, ohne Alphakanal):
+Pflichtgrößen (je 1 bis 10 Bilder, PNG oder JPEG, ohne Alphakanal):
 
 | Gerät | Größe (Hochformat) | Hinweis |
 |---|---|---|
@@ -184,12 +181,14 @@ Vorgeschlagene Reihenfolge und Bildunterschriften:
 
 ## Vor dem Einreichen
 
+VoiceOver und größere Schrift als Accessibility Nutrition Labels erst je Plattform angeben, wenn die Kernabläufe am Gerät geprüft sind.
+
 - [ ] CloudKit-Schema nach Production deployt ([CloudKit_Schema_Anleitung.md](../CloudKit_Schema_Anleitung.md))
 - [ ] Name, Anschrift und E-Mail in `LegalInfo` ([Anchor/LegalScreens.swift](../Anchor/LegalScreens.swift)) eingetragen — die App zeigt sie in Datenschutzerklärung und Hilfe
 - [ ] Platzhalter in `docs/datenschutz.html` und `docs/support.html` ausgefüllt (Name, Anschrift, E-Mail)
 - [ ] GitHub Pages aktiviert: Repo → Settings → Pages → Branch `main`, Ordner `/docs`
 - [ ] Beide URLs im Browser geprüft
-- [ ] `MARKETING_VERSION` 1.0, Build-Nummer höher als der letzte TestFlight-Build (zuletzt 15)
+- [ ] `MARKETING_VERSION` 1.0, Build-Nummer 16 im Projekt, gegen die tatsächlich höchste in App Store Connect angenommene Nummer prüfen
 - [ ] Archiv für iOS **und** macOS hochgeladen (eine App, zwei Plattformen)
 - [ ] TestFlight-Build auf zwei Geräten: Anker auf einem anlegen, auf dem anderen sehen
 - [ ] App-Name in App Store Connect von „Daivento“ auf „Anchorit“ geändert
