@@ -45,21 +45,38 @@ struct OnboardingView: View {
             .filter { !$0.isEmpty }
     }
 
+    /// Lesbare Spaltenbreite auf Mac und iPad; das iPhone ist ohnehin schmaler.
+    private static let columnWidth: CGFloat = 560
+
     var body: some View {
-        VStack(spacing: 0) {
-            switch step {
-            case .cloudSync:
-                cloudSyncStep
-            case .anchors:
-                if isAwaitingFirstSync && !isAwaitingFirstSyncOverridden {
-                    syncWaitStep
-                } else {
-                    anchorStep
+        // Scrollend, mit der sichtbaren Höhe als Mindesthöhe: Der Spacer schiebt die Knöpfe
+        // weiter nach unten, und passt der Inhalt nicht (kleines iPhone, große Schrift,
+        // Tastatur), bleibt er erreichbar.
+        //
+        // Wichtiger noch auf dem Mac: Das Fenster nimmt seine Mindestgröße aus dem Inhalt
+        // (`.contentMinSize`). Die vertikal fixierten Texte meldeten bei Breite null eine
+        // riesige Höhe — das Fenster wurde endlos lang, die iCloud-Wahl lag unter dem
+        // Bildschirmrand, und das Onboarding war eine Falle. Die ScrollView entkoppelt das.
+        GeometryReader { proxy in
+            ScrollView {
+                VStack(spacing: 0) {
+                    switch step {
+                    case .cloudSync:
+                        cloudSyncStep
+                    case .anchors:
+                        if isAwaitingFirstSync && !isAwaitingFirstSyncOverridden {
+                            syncWaitStep
+                        } else {
+                            anchorStep
+                        }
+                    }
                 }
+                .frame(maxWidth: Self.columnWidth, alignment: .topLeading)
+                .padding(.horizontal, AnkerSpacing.s5)
+                .frame(maxWidth: .infinity, minHeight: proxy.size.height, alignment: .top)
             }
+            .scrollBounceBehavior(.basedOnSize)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .padding(.horizontal, AnkerSpacing.s5)
         .background(AnkerColor.ground)
     }
 
