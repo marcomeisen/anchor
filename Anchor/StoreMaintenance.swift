@@ -37,7 +37,7 @@ enum StoreMaintenance {
     /// Ueber den gemeinten Kalendertag statt ueber das rohe Datum — siehe
     /// `AnkerCalendar.nominalDay(ofStored:)`.
     static func dayKey(_ day: Day) -> String {
-        let components = AnkerCalendar.nominalDay(ofStored: day.date)
+        let components = AnkerCalendar.nominalDay(of: day)
         return "\(components.year ?? 0)-\(components.month ?? 0)-\(components.day ?? 0)"
     }
 
@@ -70,6 +70,10 @@ enum StoreMaintenance {
         /// Betroffene Kalenderwochen als `2026-KW31`, damit im Log nachvollziehbar ist,
         /// wo eingegriffen wurde.
         var affectedWeeks: [String] = []
+
+        /// Altbestand-Tage, die ihren `dayKey` nachgetragen bekamen. Zählt nicht als Eingriff
+        /// für die Anzeige, muss aber gesichert werden.
+        var backfilledDayKeys = 0
 
         var removedTotal: Int { removedWeeks + removedDays }
         var isEmpty: Bool { removedTotal == 0 && reorderedGoalWeeks.isEmpty && adoptedOrphans == 0 }
@@ -147,6 +151,8 @@ enum StoreMaintenance {
             report.reorderedGoalWeeks.append(label)
         }
 
+        report.backfilledDayKeys = backfillDayKeys(in: survivingWeeks)
+
         for week in survivingWeeks {
             let removedDays = mergeDuplicateDays(in: week, modelContext: modelContext)
             guard removedDays > 0 else { continue }
@@ -164,6 +170,10 @@ enum StoreMaintenance {
         )
 
         report.affectedWeeks.sort()
+
+        if report.isEmpty, report.backfilledDayKeys > 0 {
+            modelContext.saveChanges()
+        }
 
         if !report.isEmpty {
             let saved = modelContext.saveChanges()
@@ -215,6 +225,10 @@ enum StoreMaintenance {
         let ordered = unique.sorted { left, right in
             let leftRank = usageRank(left), rightRank = usageRank(right)
             if leftRank != rightRank { return leftRank > rightRank }
+            // Gleichstand: der ältere Anker zuerst. Vier frisch im Onboarding getippte Titel
+            // stehen sonst gleichauf mit echten Ankern ohne Warum und verdrängen zwei davon.
+            let leftCreated = left.createdAt ?? .distantPast, rightCreated = right.createdAt ?? .distantPast
+            if leftCreated != rightCreated { return leftCreated < rightCreated }
             if left.order != right.order { return left.order < right.order }
             return left.id.uuidString < right.id.uuidString
         }
@@ -242,6 +256,20 @@ enum StoreMaintenance {
         // Erst nach dem Umhaengen loeschen: die Cascade-Regel wuerde Tage und Ziele
         // der doppelten Woche sonst mitnehmen.
         modelContext.delete(duplicate)
+    }
+
+    /// Trägt Altbestand-Tagen ohne `dayKey` den Schlüssel nach — **nur wenn er eindeutig ist**
+    /// (`AnkerCalendar.unambiguousDayKey`). Ein Tag, der aus einer zwölf und mehr Stunden
+    /// entfernten Zone stammen könnte, bleibt offen und behält die Zwölf-Stunden-Regel; falsch
+    /// festgeschrieben wäre schlimmer als ungewiss.
+    static func backfillDayKeys(in weeks: [Week]) -> Int {
+        var filled = 0
+        for day in weeks.flatMap(\.dayList) where !day.isDeleted && day.dayKey == nil {
+            guard let key = AnkerCalendar.unambiguousDayKey(ofStored: day.date) else { continue }
+            day.dayKey = key
+            filled += 1
+        }
+        return filled
     }
 
     @discardableResult
@@ -289,6 +317,7 @@ enum StoreMaintenance {
         }
         duplicate.timeBlocks = []
 
+        if survivor.dayKey == nil { survivor.dayKey = duplicate.dayKey }
         survivor.focusNote = firstFilled(survivor.focusNote, duplicate.focusNote)
         survivor.notes = mergedNotes(survivor.notes, duplicate.notes)
 
@@ -331,10 +360,11 @@ enum StoreMaintenance {
     ///
     /// Aufgaben ohne Tag sind **kein** Waisenfall: mit Ziel heissen sie „noch nicht
     /// eingeplant", ohne Ziel liegen sie im Eingang. Sie bleiben, wie sie sind — mit einer
-    /// Ausnahme: hängen sie an einem Ziel ohne Woche, sähe sie niemand. Dann lösen sie sich
-    /// vom Ziel und stehen im Eingang; das Ziel bleibt.
+    /// Ausnahme: hängen sie an einem Ziel ohne Woche, sähe sie niemand. Bleibt das Ziel länger
+    /// als `strandedGrace` ohne Woche, lösen sie sich vom Ziel und stehen im Eingang; das Ziel
+    /// bleibt.
     @discardableResult
-    static func adoptOrphans(weeks: [Week], modelContext: ModelContext) -> Int {
+    static func adoptOrphans(weeks: [Week], modelContext: ModelContext, now: Date = Date()) -> Int {
         var adopted = 0
         // Bekannte Wochen plus ein frischer Fetch: die übergebene Liste kann ein Ausschnitt sein.
         var known = weeks.filter { !$0.isDeleted }
@@ -346,7 +376,7 @@ enum StoreMaintenance {
         let orphanDays = ((try? modelContext.fetch(FetchDescriptor<Day>(predicate: #Predicate { $0.week == nil }))) ?? [])
             .filter { !$0.isDeleted }
         for day in orphanDays {
-            let nominal = AnkerCalendar.nominalDate(ofStored: day.date)
+            let nominal = AnkerCalendar.nominalDate(of: day)
             let key = AnkerCalendar.weekKey(containing: nominal)
             guard let week = WeekPlanning.week(startingAt: nominal, in: known) else {
                 cloudSyncLog.notice("Verwaister Tag \(dayKey(day), privacy: .public) wartet auf \(key.isoYear, privacy: .public)-KW\(key.isoWeek, privacy: .public)")
@@ -368,6 +398,9 @@ enum StoreMaintenance {
         // Ziele haben kein Datum. Ihre Woche ergibt sich aus ihren eingeplanten Aufgaben.
         let orphanGoals = ((try? modelContext.fetch(FetchDescriptor<Goal>(predicate: #Predicate { $0.week == nil }))) ?? [])
             .filter { !$0.isDeleted }
+        // Ziele, die inzwischen wieder eine Woche haben, aus der Karenzliste nehmen.
+        let orphanGoalIDs = Set(orphanGoals.map(\.id))
+        strandedGoalsSeen = strandedGoalsSeen.filter { orphanGoalIDs.contains($0.key) }
         for goal in orphanGoals {
             if let week = goal.taskList.compactMap({ $0.day?.week }).first(where: { !$0.isDeleted }) {
                 goal.order = GoalOrdering.nextOrder(in: week)
@@ -380,7 +413,14 @@ enum StoreMaintenance {
             // Keine Aufgabe mit Tag: das Ziel findet keine Woche. Seine Aufgaben ohne Tag wären
             // unsichtbar — der Eingang filtert `linkedGoal == nil`. In den Eingang damit.
             let stranded = goal.taskList.filter { !$0.isDeleted && $0.day == nil }
-            guard !stranded.isEmpty else { continue }
+            guard !stranded.isEmpty else { strandedGoalsSeen[goal.id] = nil; continue }
+            // Erst nach einer Karenzzeit lösen. Kommt die Löschung einer doppelten Woche vor dem
+            // Umhängen des Ziels an und läuft die Wartung dazwischen, ist das Ziel nur für einen
+            // Moment ohne Woche — ein sofortiges Lösen nähme den Aufgaben ihren Anker für immer.
+            let firstSeen = strandedGoalsSeen[goal.id] ?? now
+            strandedGoalsSeen[goal.id] = firstSeen
+            guard now.timeIntervalSince(firstSeen) >= strandedGrace else { continue }
+            strandedGoalsSeen[goal.id] = nil
             for task in stranded { task.linkedGoal = nil }
             goal.tasks = goal.taskList.filter { task in !stranded.contains { $0 === task } }
             cloudSyncLog.notice("\(stranded.count, privacy: .public) Aufgaben eines Ziels ohne Woche in den Eingang gelegt")
@@ -399,6 +439,11 @@ enum StoreMaintenance {
 
         return adopted
     }
+
+    /// Seit wann ein Ziel ohne Woche Aufgaben ohne Tag hält — nur im Speicher. Nach einem
+    /// Neustart beginnt die Frist von vorn; das verzögert höchstens, es verliert nichts.
+    private static var strandedGoalsSeen: [UUID: Date] = [:]
+    static let strandedGrace: TimeInterval = 10 * 60
 
     private static func firstFilled(_ lhs: String?, _ rhs: String?) -> String? {
         let left = lhs?.trimmingCharacters(in: .whitespacesAndNewlines)

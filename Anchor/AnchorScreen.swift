@@ -9,7 +9,11 @@ struct AnchorScreen: View {
 
     @Bindable var goal: Goal
     var now: Date = Date()
-    var onDeleted: () -> Void = {}
+
+    /// Nach dem Löschen zurück. Über `dismiss`, nicht über eine hereingereichte Closure: der
+    /// Baustein von `navigationDestination` ist escapend, eine Closure daraus schriebe in eine
+    /// Momentaufnahme der Wurzelansicht und täte sichtbar nichts.
+    @Environment(\.dismiss) private var dismiss
 
     @StateObject private var undo = TaskUndoCoordinator()
     @StateObject private var selection = TaskSelectionModel()
@@ -21,7 +25,9 @@ struct AnchorScreen: View {
 
     var body: some View {
         // Einmal pro Durchlauf — als berechnete Eigenschaften baute jeder Zugriff ein neues Blatt.
-        let sheet = week.map { WeekSheet(monday: $0.monday, weeks: weeks, inbox: inbox) }
+        // Über den gemeinten Montag: `monday` ist Mitternacht der anlegenden Zone und läge
+        // westlich davon in der Vorwoche — die Ankerseite blieb dann leer.
+        let sheet = week.map { WeekSheet(week: $0, inbox: inbox, now: now) }
         let lane = sheet?.anchorLanes.first { $0.goal?.id == goal.id }
 
         ScrollView {
@@ -61,7 +67,7 @@ struct AnchorScreen: View {
         .sheet(isPresented: $editing) {
             AnchorEditSheet(goal: goal)
         }
-        .goalDeleteConfirmation(goal: $goalPendingDeletion, week: week, onDeleted: onDeleted)
+        .goalDeleteConfirmation(goal: $goalPendingDeletion, week: week, onDeleted: { dismiss() })
     }
 
     private func header(lane: WeekSheet.Lane?) -> some View {
@@ -246,10 +252,9 @@ struct AnchorEditSheet: View {
                     .buttonStyle(AnkerButtonStyle.secondary)
                 Spacer()
                 Button("Sichern") {
-                    let clean = title.trimmingCharacters(in: .whitespacesAndNewlines)
-                    if !clean.isEmpty { goal.title = clean }
-                    goal.why = why.nilIfBlank?.trimmingCharacters(in: .whitespacesAndNewlines)
-                    modelContext.saveChanges()
+                    // Über die Mutationsschicht: unverändertes schreibt sie nicht, sonst löste jedes
+                    // „Sichern" einen CloudKit-Export aus.
+                    GoalActions.update(goal, title: title, why: why, modelContext: modelContext)
                     dismiss()
                 }
                 .buttonStyle(AnkerButtonStyle.primary)

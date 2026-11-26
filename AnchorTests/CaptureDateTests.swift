@@ -21,7 +21,7 @@ final class CaptureDateTests: XCTestCase {
     }
 
     private func resolvedDate(_ raw: String, language: CaptureLanguage, now: Date) -> Date? {
-        let input = CaptureSyntax.parse(raw, language: language)
+        let input = CaptureSyntax.parse(raw, language: language, now: now)
         guard let captured = input.date else { return nil }
         return CaptureSyntax.date(for: captured, now: now)
     }
@@ -375,5 +375,57 @@ final class CaptureDateTests: XCTestCase {
         let schema = Schema(AnkerSchema.models)
         let configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true, cloudKitDatabase: .none)
         return try ModelContainer(for: schema, configurations: [configuration])
+    }
+
+    // MARK: - Versionsnummern, überschriebene Wörter, Schlusspunkt (Testbericht M2, N3, N4)
+
+    func testVersionNumbersAreNotDates() {
+        for raw in ["Release 1.2.10", "Patch 3.1.24", "Build 2.4.1999", "Version 1.1.2040"] {
+            let input = CaptureSyntax.parse(raw, language: de, now: thursday)
+            XCTAssertNil(input.date, raw)
+            XCTAssertEqual(input.title, raw, "Die Versionsnummer bleibt im Titel: \(raw)")
+        }
+        // Im Fenster bleibt ein Jahr ein Jahr — auch das vorige.
+        XCTAssertEqual(CaptureSyntax.parse("Termin 24.11.2025", language: de, now: thursday).date,
+                       .calendar(day: 24, month: 11, year: 2025))
+        XCTAssertEqual(CaptureSyntax.parse("Termin 1.2.31", language: de, now: thursday).date,
+                       .calendar(day: 1, month: 2, year: 2031))
+        XCTAssertNil(CaptureSyntax.parse("Termin 1.2.32", language: de, now: thursday).date)
+        XCTAssertNil(CaptureSyntax.parse("Call Nov 24 2040", language: en, now: thursday).date)
+    }
+
+    func testHintShowsTheYearOfAnotherYear() {
+        let raw = "Termin 24.11.2027"
+        let input = CaptureSyntax.parse(raw, language: de, now: thursday)
+        let target = CaptureSyntax.resolve(input, weekStart: thursday, fallbackDate: thursday, now: thursday)
+        let hint = CaptureSyntax.hint(raw: raw, target: target, anchorCount: 0, language: de, now: thursday)
+        XCTAssertTrue(hint.contains("2027"), hint)
+
+        let sameYear = CaptureSyntax.parse("Termin 30.11.", language: de, now: thursday)
+        let sameTarget = CaptureSyntax.resolve(sameYear, weekStart: thursday, fallbackDate: thursday, now: thursday)
+        XCTAssertFalse(CaptureSyntax.hint(raw: "Termin 30.11.", target: sameTarget, anchorCount: 0, language: de, now: thursday).contains("2026"))
+    }
+
+    func testOverriddenWordStaysInTitle() {
+        let german = CaptureSyntax.parse("Mach das so morgen", language: de)
+        XCTAssertEqual(german.date, .relative(days: 1))
+        XCTAssertNil(german.weekdayIndex)
+        XCTAssertEqual(german.title, "Mach das so")
+
+        let english = CaptureSyntax.parse("Ask if we may 5", language: en)
+        XCTAssertEqual(english.date, .calendar(day: 5, month: 5, year: nil))
+        XCTAssertEqual(english.title, "Ask if we")
+
+        // Ein echtes Kürzel, das überschrieben wird, ist Korrektur und fällt weiter weg.
+        XCTAssertEqual(CaptureSyntax.parse("Bericht fr morgen", language: de).title, "Bericht")
+    }
+
+    /// Gewollt: mit Schlusspunkt ist eine Zahl mit zwei Punkten ein Datum ohne Jahr. Die
+    /// Hinweiszeile zeigt es vorher an.
+    func testTrailingDotMakesADate() {
+        XCTAssertEqual(CaptureSyntax.parse("Python 3.12.", language: de).date, .calendar(day: 3, month: 12, year: nil))
+        XCTAssertEqual(CaptureSyntax.parse("Python 3.12.", language: de).title, "Python")
+        XCTAssertEqual(CaptureSyntax.parse("Kapitel 1.5.", language: de).date, .calendar(day: 1, month: 5, year: nil))
+        XCTAssertNil(CaptureSyntax.parse("Kapitel 1.5", language: de).date)
     }
 }

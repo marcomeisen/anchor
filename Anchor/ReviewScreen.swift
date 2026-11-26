@@ -81,7 +81,7 @@ struct ReviewScreen: View {
                 )
 
                 if lanes.isEmpty {
-                    emptyState
+                    emptyState(canClose: sheet.week != nil)
                 } else {
                     Text("Die Zahlen sind ein Hinweis. Die Antwort gibst du.")
                         .ankerType(AnkerType.body)
@@ -204,12 +204,20 @@ struct ReviewScreen: View {
         return summary
     }
 
-    private var emptyState: some View {
+    /// „…oder sie so abschließen" nur, wenn es den Knopf dafür gibt — eine nie gespeicherte Woche
+    /// hat nichts abzuschließen.
+    private func emptyState(canClose: Bool) -> some View {
         VStack(alignment: .leading, spacing: AnkerSpacing.s3) {
             Text("Für diese Woche sind keine Anker gesetzt.")
                 .ankerType(AnkerType.bodyStrong)
                 .foregroundStyle(AnkerColor.ink)
-            Text("Ohne Anker gibt es nichts zu beantworten. Du kannst die Woche nachträglich setzen oder sie so abschließen.")
+            Group {
+                if canClose {
+                    Text("Ohne Anker gibt es nichts zu beantworten. Du kannst die Woche nachträglich setzen oder sie so abschließen.")
+                } else {
+                    Text("Ohne Anker gibt es nichts zu beantworten. Du kannst die Woche nachträglich setzen.")
+                }
+            }
                 .ankerType(AnkerType.body)
                 .foregroundStyle(AnkerColor.inkSecond)
             Button("Anker setzen") { showingWeekStart = true }
@@ -241,8 +249,7 @@ struct ReviewScreen: View {
                 ForEach(GoalVerdict.allCases) { verdict in
                     let isOn = goal.verdict == verdict
                     Button {
-                        goal.verdict = isOn ? nil : verdict
-                        modelContext.saveChanges()
+                        GoalActions.setVerdict(goal, to: isOn ? nil : verdict, modelContext: modelContext)
                     } label: {
                         Text(verdict.label)
                             .ankerType(AnkerType.label)

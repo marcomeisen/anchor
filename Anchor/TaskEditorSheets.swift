@@ -310,10 +310,10 @@ struct TaskEditorSheet: View {
         isDone = task.isDone
         // Der gemeinte Kalendertag, nicht der gespeicherte Zeitpunkt — ein Tag aus einer
         // anderen Zeitzone stuende sonst auf dem Vortag.
-        selectedDate = task.day.flatMap { AnkerCalendar.iso.date(from: AnkerCalendar.nominalDay(ofStored: $0.date)) }
+        selectedDate = task.day.map { AnkerCalendar.nominalDate(of: $0) }
         // Ohne Tag zeigt der Editor die Woche des Ankers — dorthin gehört die Aufgabe.
         let anchorDate = selectedDate
-            ?? task.linkedGoal?.week?.monday.addingTimeInterval(12 * 60 * 60)
+            ?? task.linkedGoal?.week?.nominalMonday
             ?? Date()
         selectedWeekStart = AnkerCalendar.weekInterval(containing: anchorDate).monday
         selectedGoalID = task.linkedGoal?.id
@@ -344,7 +344,7 @@ struct TaskEditorSheet: View {
         }
 
         if let date = selectedDate {
-            let isSameDay = task.day.map { AnkerCalendar.storedDay($0.date, isOn: date) } ?? false
+            let isSameDay = task.day.map { AnkerCalendar.storedDay($0, isOn: date) } ?? false
             if !isSameDay {
                 TaskActions.move(task, to: date, weeks: weeks, modelContext: modelContext)
                 changed = true
@@ -534,11 +534,10 @@ struct TaskMoveSheet: View {
     /// sonst deren Montag.
     private func loadInitialDate() {
         guard !hasLoaded else { return }
-        if let stored = movableTasks.compactMap({ $0.day?.date }).first,
-           let date = AnkerCalendar.iso.date(from: AnkerCalendar.nominalDay(ofStored: stored)) {
-            selectedDate = date
-        } else if let monday = movableTasks.compactMap({ $0.linkedGoal?.week?.monday }).first {
-            let week = AnkerCalendar.weekInterval(containing: monday.addingTimeInterval(12 * 60 * 60))
+        if let stored = movableTasks.compactMap({ $0.day }).first {
+            selectedDate = AnkerCalendar.nominalDate(of: stored)
+        } else if let monday = movableTasks.compactMap({ $0.linkedGoal?.week?.nominalMonday }).first {
+            let week = AnkerCalendar.weekInterval(containing: monday)
             let today = Date()
             selectedDate = AnkerCalendar.weekInterval(containing: today).monday == week.monday ? today : week.monday
         } else {

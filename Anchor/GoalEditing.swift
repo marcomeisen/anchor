@@ -82,6 +82,15 @@ enum GoalActions {
         return didChange
     }
 
+    /// Die Rückblickantwort setzen oder (`nil`) zurücknehmen. Gespeichert wird nur bei einer Änderung.
+    @discardableResult
+    static func setVerdict(_ goal: Goal, to verdict: GoalVerdict?, modelContext: ModelContext) -> Bool {
+        guard goal.verdict != verdict else { return false }
+        goal.verdict = verdict
+        modelContext.saveChanges()
+        return true
+    }
+
     private static func cleanWhy(_ why: String?) -> String? {
         why?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty
     }

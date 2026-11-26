@@ -28,7 +28,7 @@ enum SidebarTimeline {
         case empty
 
         static func of(_ day: Day, now: Date) -> DayMark {
-            if AnkerCalendar.isSameDay(day.date, now) { return .today }
+            if AnkerCalendar.storedDay(day, isOn: now) { return .today }
             let tasks = day.taskList
             if tasks.isEmpty { return .empty }
             return tasks.allSatisfy(\.isDone) ? .done : .open
@@ -87,7 +87,7 @@ enum SidebarTimeline {
             guard let date = AnkerCalendar.iso.date(byAdding: .day, value: index, to: interval.monday) else {
                 return .empty
             }
-            guard let day = days.first(where: { AnkerCalendar.storedDay($0.date, isOn: date) }) else {
+            guard let day = days.first(where: { AnkerCalendar.storedDay($0, isOn: date) }) else {
                 return AnkerCalendar.isSameDay(date, now) ? .today : .empty
             }
             return DayMark.of(day, now: now)

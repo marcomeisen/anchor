@@ -253,7 +253,7 @@ enum RemindersImportPlanner {
         var existing = ExistingReminderTasks()
         for task in tasks where !task.isDeleted {
             let day = task.day.map { stored -> String in
-                let parts = AnkerCalendar.nominalDay(ofStored: stored.date, calendar: calendar)
+                let parts = AnkerCalendar.nominalDay(of: stored, calendar: calendar)
                 return String(format: "%04d-%02d-%02d", parts.year ?? 0, parts.month ?? 0, parts.day ?? 0)
             }
             let key = ExistingTaskKey(title: task.title, day: day)

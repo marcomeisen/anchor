@@ -14,7 +14,7 @@ struct TaskSnapshot: Identifiable {
     let carryOverCount: Int
     let dayID: UUID?
     let goalID: UUID?
-    /// Das gespeicherte Datum des Tages. Rückfall für `restore`, wenn der Tag inzwischen beim
+    /// Der gemeinte Kalendertag als Mitternacht in dieser Zone. Rückfall für `restore`, wenn der Tag inzwischen beim
     /// Zusammenführen von Sync-Duplikaten aufgegangen ist — dann gibt es seine ID nicht mehr,
     /// den Kalendertag aber schon. Additiv, damit ältere Aufrufer weiter kompilieren.
     var dayDate: Date? = nil
@@ -61,6 +61,13 @@ enum TaskUndoOperation {
 /// stapeln, und er verschwindet nach vier Sekunden. Als eigener Typ, damit jede Ansicht mit
 /// Aufgabenliste dieselbe Mechanik nutzt statt sie zu kopieren.
 @MainActor
+/// Wer ⌘Z gerade trägt. Auf dem Mac stehen zwei Undo-Leisten zugleich (Seitenleiste und Inhalt);
+/// mit zwei gleichen Tastenkürzeln war offen, welche greift. Es gilt die zuletzt gezeigte.
+final class UndoShortcutOwner: ObservableObject {
+    static let shared = UndoShortcutOwner()
+    @Published var owner: ObjectIdentifier?
+}
+
 final class TaskUndoCoordinator: ObservableObject {
     @Published private(set) var notice: TaskUndoNotice?
 
@@ -71,6 +78,7 @@ final class TaskUndoCoordinator: ObservableObject {
 
         dismissTask?.cancel()
         self.notice = notice
+        UndoShortcutOwner.shared.owner = ObjectIdentifier(self)
 
         dismissTask = Task { [weak self] in
             try? await Task.sleep(for: .seconds(4))
@@ -144,10 +152,31 @@ enum TaskActions {
         guard task.isDone,
               task.recurrenceNextID == nil,
               let rule = task.recurrence,
-              let stored = task.day?.date else { return nil }
+              let stored = task.day else { return nil }
 
-        let source = AnkerCalendar.nominalDate(ofStored: stored)
-        let target = rule.nextDate(after: source)
+        let source = AnkerCalendar.nominalDate(of: stored)
+        let target = rule.nextDate(after: source, monthDay: task.recurrenceMonthDay)
+        let next = makeOccurrence(of: task, rule: rule, source: source, on: target, modelContext: modelContext)
+        task.recurrenceNextID = next.id
+        return next
+    }
+
+    /// Setzt die Kette fort, ohne dass die Instanz erledigt ist — für „Loslassen" im Rückblick.
+    ///
+    /// Losgelassen wird **diese** Woche, nicht die Gewohnheit. Vorher löschte „Loslassen" die
+    /// einzige Instanz mit der Regel, und die Wiederholung war still und ohne Undo beendet.
+    /// Gibt es schon eine Folgeinstanz, entsteht keine zweite.
+    @discardableResult
+    static func continueRecurrence(of task: AnkerTask, on target: Date, modelContext: ModelContext) -> AnkerTask? {
+        guard task.recurrenceNextID == nil,
+              let rule = task.recurrence,
+              let stored = task.day else { return nil }
+        let next = makeOccurrence(of: task, rule: rule, source: AnkerCalendar.nominalDate(of: stored), on: target, modelContext: modelContext)
+        task.recurrenceNextID = next.id
+        return next
+    }
+
+    private static func makeOccurrence(of task: AnkerTask, rule: TaskRecurrence, source: Date, on target: Date, modelContext: ModelContext) -> AnkerTask {
         let week = ensureWeek(containing: target, weeks: [], modelContext: modelContext)
         let day = ensureDay(containing: target, in: week)
 
@@ -167,11 +196,15 @@ enum TaskActions {
             day: day,
             linkedGoal: goal
         )
-        next.recurrenceRaw = task.recurrenceRaw
+        if rule == .monthly {
+            let monthDay = task.recurrenceMonthDay ?? AnkerCalendar.iso.component(.day, from: source)
+            next.recurrenceRaw = TaskRecurrence.monthlyRaw(monthDay: monthDay)
+        } else {
+            next.recurrenceRaw = task.recurrenceRaw
+        }
         modelContext.insert(next)
         day.appendTask(next)
         normalizeOrders(in: day)
-        task.recurrenceNextID = next.id
         return next
     }
 
@@ -181,7 +214,7 @@ enum TaskActions {
     /// Regel einer erledigten Instanz zu ändern wirkt deshalb erst an der Folgeinstanz.
     @discardableResult
     static func setRecurrence(_ task: AnkerTask, to recurrence: TaskRecurrence?, save: Bool = true, modelContext: ModelContext) -> Bool {
-        guard task.recurrenceRaw != recurrence?.rawValue else { return false }
+        guard task.recurrence != recurrence else { return false }
         task.recurrence = recurrence
         if save { modelContext.saveChanges() }
         return true
@@ -376,7 +409,7 @@ enum TaskActions {
             carryOverCount: task.carryOverCount,
             dayID: task.day?.id,
             goalID: task.linkedGoal?.id,
-            dayDate: task.day?.date,
+            dayDate: task.day.map { AnkerCalendar.nominalDate(of: $0) },
             recurrenceRaw: task.recurrenceRaw,
             recurrenceNextID: task.recurrenceNextID,
             importedReminderData: task.importedReminderData
@@ -418,8 +451,8 @@ enum TaskActions {
             if snapshot.dayID != nil && day == nil {
                 // Der Tag ist inzwischen in einem Duplikat aufgegangen. Sein Kalendertag gibt es
                 // weiter: dort wiederherstellen. Das ist ein Schreibvorgang, Anlegen ist erlaubt.
-                guard let stored = snapshot.dayDate else { continue }
-                let date = AnkerCalendar.nominalDate(ofStored: stored)
+                // `dayDate` ist schon der gemeinte Tag in dieser Zone (siehe `snapshot`).
+                guard let date = snapshot.dayDate else { continue }
                 let week = ensureWeek(containing: date, weeks: knownWeeks, modelContext: modelContext)
                 if !knownWeeks.contains(where: { $0 === week }) { knownWeeks.append(week) }
                 day = ensureDay(containing: date, in: week)
@@ -432,7 +465,9 @@ enum TaskActions {
             }
 
             if let existingTask = existingTasks[snapshot.id] {
-                rollBackSpawnedOccurrence(of: existingTask, to: snapshot, modelContext: modelContext)
+                if let left = rollBackSpawnedOccurrence(of: existingTask, to: snapshot, modelContext: modelContext) {
+                    touchedOldDays[left.id] = left
+                }
                 existingTask.title = snapshot.title
                 existingTask.priority = snapshot.priority
                 existingTask.isDone = snapshot.isDone
@@ -483,7 +518,38 @@ enum TaskActions {
             )
         }
 
+        pruneEmpty(Array(touchedOldDays.values.filter { targetDaysByID[$0.id] == nil }), modelContext: modelContext)
         modelContext.saveChanges()
+    }
+
+    /// Entfernt Tage — und danach ihre Wochen —, die ein Undo **ganz leer** zurückgelassen hat.
+    ///
+    /// Verschieben, Duplizieren und das Abhaken einer wiederkehrenden Aufgabe legen Woche und
+    /// Tag an, weil geschrieben wird. Nimmt das Undo die Aufgabe zurück, blieb das leere Gerüst
+    /// stehen und wurde synchronisiert. Gelöscht wird nur, was nichts mehr trägt: keine Aufgabe,
+    /// kein Fokus, keine Notiz, kein Zeitblock; bei der Woche keine Tage, kein Ziel, kein
+    /// Rückblick. Ein leerer Datensatz ist kein Inhalt, sein Löschen verliert nichts.
+    private static func pruneEmpty(_ days: [Day], modelContext: ModelContext) {
+        func isBlank(_ text: String?) -> Bool {
+            text?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true
+        }
+        var weeks: [Week] = []
+        for day in days where !day.isDeleted {
+            guard day.taskList.allSatisfy(\.isDeleted),
+                  day.timeBlockList.allSatisfy(\.isDeleted),
+                  isBlank(day.focusNote), isBlank(day.notes) else { continue }
+            if let week = day.week {
+                week.days = week.dayList.filter { $0 !== day }
+                if !weeks.contains(where: { $0 === week }) { weeks.append(week) }
+            }
+            modelContext.delete(day)
+        }
+        for week in weeks where !week.isDeleted {
+            guard week.dayList.allSatisfy(\.isDeleted),
+                  week.goalList.allSatisfy(\.isDeleted),
+                  week.reviewedAt == nil, isBlank(week.reflection) else { continue }
+            modelContext.delete(week)
+        }
     }
 
     /// Nimmt die Folgeinstanz zurück, die seit dem Schnappschuss entstanden ist — das Undo des
@@ -492,16 +558,21 @@ enum TaskActions {
     /// Nur eine **offene** Folgeinstanz wird entfernt. Ist sie inzwischen selbst erledigt, hat
     /// der Nutzer mit ihr gearbeitet; dann bleibt sie, und die Verknüpfung auch — sonst entstünde
     /// beim nächsten Abhaken eine zweite.
-    private static func rollBackSpawnedOccurrence(of task: AnkerTask, to snapshot: TaskSnapshot, modelContext: ModelContext) {
+    /// Gibt den Tag zurück, auf dem die entfernte Folgeinstanz lag — er ist danach womöglich leer.
+    @discardableResult
+    private static func rollBackSpawnedOccurrence(of task: AnkerTask, to snapshot: TaskSnapshot, modelContext: ModelContext) -> Day? {
         guard let spawnedID = task.recurrenceNextID, spawnedID != snapshot.recurrenceNextID else {
             task.recurrenceNextID = snapshot.recurrenceNextID
-            return
+            return nil
         }
+        var left: Day?
         if let spawned = fetchTask(id: spawnedID, modelContext: modelContext) {
-            guard !spawned.isDone else { return }
+            guard !spawned.isDone else { return nil }
+            left = spawned.day
             delete(spawned, save: false, modelContext: modelContext)
         }
         task.recurrenceNextID = snapshot.recurrenceNextID
+        return left
     }
 
     private static func fetchGoal(id: UUID, modelContext: ModelContext) -> Goal? {
@@ -516,10 +587,13 @@ enum TaskActions {
             ?? weeks.flatMap(\.dayList).flatMap(\.taskList)
         let tasks = allTasks.filter { createdIDs.contains($0.id) }
 
+        var left: [Day] = []
         for task in tasks {
+            if let day = task.day, !left.contains(where: { $0 === day }) { left.append(day) }
             delete(task, save: false, modelContext: modelContext)
         }
 
+        pruneEmpty(left, modelContext: modelContext)
         modelContext.saveChanges()
     }
 
@@ -589,7 +663,7 @@ enum TaskActions {
 
         // Über den gemeinten Kalendertag: ein Sonntag aus einer westlicheren Zone ist hier schon
         // Montag früh und läge sonst in der falschen Woche.
-        let source = task.day.map { AnkerCalendar.nominalDate(ofStored: $0.date) }
+        let source = task.day.map { AnkerCalendar.nominalDate(of: $0) }
         if isCarryOver(from: source, to: targetDate, isDone: task.isDone) {
             task.carryOverCount += 1
         }
@@ -626,8 +700,8 @@ enum TaskActions {
     @discardableResult
     static func move(_ task: AnkerTask, toWeekStarting monday: Date, weeks: [Week], modelContext: ModelContext) -> Date {
         var weekday = 0
-        if let stored = task.day?.date {
-            let date = AnkerCalendar.nominalDate(ofStored: stored)
+        if let stored = task.day {
+            let date = AnkerCalendar.nominalDate(of: stored)
             let sourceMonday = AnkerCalendar.weekInterval(containing: date).monday
             weekday = AnkerCalendar.iso.dateComponents([.day], from: sourceMonday, to: date).day ?? 0
         }
@@ -720,8 +794,8 @@ enum TaskActions {
     /// Um `offset` Tage — ab dem **gemeinten** Kalendertag, nicht ab dem rohen `Day.date`,
     /// das Mitternacht in der Zone des anlegenden Geräts ist.
     static func move(_ task: AnkerTask, byDays offset: Int, weeks: [Week], modelContext: ModelContext) {
-        guard let stored = task.day?.date else { return }
-        let sourceDate = AnkerCalendar.nominalDate(ofStored: stored)
+        guard let stored = task.day else { return }
+        let sourceDate = AnkerCalendar.nominalDate(of: stored)
         guard let targetDate = AnkerCalendar.iso.date(byAdding: .day, value: offset, to: sourceDate) else { return }
         move(task, to: targetDate, weeks: weeks, modelContext: modelContext)
     }

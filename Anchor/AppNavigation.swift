@@ -197,8 +197,12 @@ nonisolated struct AnkerNavigationState: Codable, Equatable {
     ///
     /// `review` setzt nur `.review`. Den Rückblick öffnet `AnkerRootView` als Blatt über einen
     /// eigenen Zustand; wer den Link auswertet, muss das dort tun.
+    ///
+    /// `review` und `week` ohne Datum meinen die Woche von **heute**, nicht die zuletzt
+    /// angesehene: Die Erinnerungen am Sonntag und am Montag schicken genau diese Links. Vorher
+    /// öffnete „Rückblick" die nächste Woche, wenn man zuletzt dort geblättert hatte.
     @discardableResult
-    mutating func apply(_ url: URL) -> Bool {
+    mutating func apply(_ url: URL, now: Date = Date()) -> Bool {
         guard let scheme = url.scheme?.lowercased(),
               scheme == Self.urlScheme || Self.legacyURLSchemes.contains(scheme),
               let host = url.host?.lowercased() else { return false }
@@ -211,6 +215,7 @@ nonisolated struct AnkerNavigationState: Codable, Equatable {
         case "year":
             select(.year)
         case "review":
+            focus(on: now)
             select(.review)
         case "archive":
             select(.archive)
@@ -218,6 +223,8 @@ nonisolated struct AnkerNavigationState: Codable, Equatable {
             if let argument {
                 guard let date = Self.date(from: argument) else { return false }
                 moveToWeek(startingAt: date)
+            } else {
+                focus(on: now)
             }
             select(.week)
         case "day":

@@ -71,6 +71,7 @@ Englisch.
 | [Anchor/SettingsView.swift](Anchor/SettingsView.swift), [Anchor/DataPrivacyView.swift](Anchor/DataPrivacyView.swift) | Einstellungen, Daten und Datenschutz |
 | [Anchor/TaskCaptureSheets.swift](Anchor/TaskCaptureSheets.swift), [Anchor/TaskEditorSheets.swift](Anchor/TaskEditorSheets.swift) | Schnellerfassung in der Menüleiste, Aufgaben- und Zieleditor |
 | [Anchor/AnkerComponents.swift](Anchor/AnkerComponents.swift) | `TaskCard` (**die** Aufgabenzeile, mit Kontextmenü, Swipe, Undo), `TaskTitleField`, `TaskCheckmark`, `ankerTapTarget` |
+| [Anchor/TaskSwipe.swift](Anchor/TaskSwipe.swift) | iOS: Wischen an der Aufgabenzeile (`.taskSwipe`) — eigene Geste, weil `.swipeActions` nur in einer `List` wirkt |
 | [Anchor/TaskDropHandling.swift](Anchor/TaskDropHandling.swift), [Anchor/AnkerTabBar.swift](Anchor/AnkerTabBar.swift) | Ziehen und Ablegen von Aufgaben (UUID-Text); die Tableiste des iPhones |
 | [Anchor/RitualReminders.swift](Anchor/RitualReminders.swift) | Lokale Erinnerungen montags/sonntags: `RitualReminderPlanner` (reine Rechnung) und `RitualReminderCenter` |
 | [Anchor/RemindersImport.swift](Anchor/RemindersImport.swift) | Einmaliger, lesender Import aus Apple Erinnerungen (EventKit); Zuordnung als reine Funktion |
@@ -144,7 +145,9 @@ Unter [.claude/skills/](.claude/skills/):
   (`WeekSheet`); `TaskActions.ensureWeek` legt **keine** Tage an, `ensureDay` genau einen.
 - **Wochen werden über ISO-Jahr und -Woche gefunden, nie über `monday`.** Das Montagsdatum ist
   Mitternacht in der Zeitzone des anlegenden Geräts. Tage gespeicherter Wochen über
-  `AnkerCalendar.storedDay(_:isOn:)` bzw. `nominalDay(ofStored:)` vergleichen.
+  `AnkerCalendar.storedDay(_ day: Day, isOn:)` bzw. `nominalDate(of: Day)` vergleichen — sie lesen
+  `Day.dayKey` und fallen nur für Altbestand auf die Zwölf-Stunden-Regel zurück; den Montag einer
+  Woche liefert `week.nominalMonday` aus ISO-Jahr und -Woche.
 - **Beim Zusammenführen überlebt immer die kleinste UUID** — nicht die inhaltsreichere Kopie.
   Inhalt wird lokal gezählt und ist mitten in einem Import auf zwei Geräten verschieden; zwei
   Geräte löschten so jeweils die andere Kopie. Dass dabei eine leere Kopie gewinnt, ist kein
@@ -158,15 +161,17 @@ Unter [.claude/skills/](.claude/skills/):
   (`StoreMaintenance.run`), nicht auf dem `@Query`-Schnappschuss einer View.
 - **Aufgaben ohne Tag sind gültig:** mit Anker heißt das „noch nicht eingeplant" (sie gehören über
   den Anker zur Woche), ohne Anker liegen sie im Eingang. Nie als Datenmüll behandeln.
-- **Neue Felder sind optional und additiv** (`Goal.why`, `Goal.verdictRaw`, `AnkerTask.recurrenceRaw`, `AnkerTask.recurrenceNextID`). Enums als Rohtext
+- **Neue Felder sind optional und additiv** (`Goal.why`, `Goal.verdictRaw`, `Goal.createdAt`, `Day.dayKey`, `AnkerTask.recurrenceRaw`, `AnkerTask.recurrenceNextID`). Enums als Rohtext
   speichern, damit ein unbekannter Wert auf einem älteren Gerät den Import nicht bricht.
 - **Nach Modelländerungen** das Schema nach Production bringen — Ablauf in
   [CloudKit_Schema_Anleitung.md](CloudKit_Schema_Anleitung.md). Ohne das gilt: läuft in Xcode, tot in
   TestFlight. Ein Debug-Mac und ein TestFlight-iPhone sehen sich **nie** — zwei Umgebungen.
 - **Das Onboarding darf niemals eine Falle sein.** `needsOnboarding` fragt den **ganzen** Bestand
   einschließlich Eingang, und `hasCompletedOnboarding` muss immer greifen.
-- **Der Testmodus hinterlässt nichts.** `UITestMode.prepare` darf Schlüssel nur **entfernen**, nie
-  setzen; Startargumente (`-AnchoritTab week`) werden nur gelesen. Ein geschriebener Wert überlebt
+- **Der Testmodus hinterlässt nichts.** Er arbeitet in einem eigenen Defaults-Bereich
+  (`UITestMode.appStorage`, an jeder Szene über `.ankerAppStorage()`); `.standard` wird weder
+  gesetzt noch geleert — auch das Entfernen von `hasCompletedOnboarding` nahm schon einmal einer
+  Altinstallation den Sync. Startargumente (`-AnchoritTab week`) werden nur gelesen. Ein geschriebener Wert überlebt
   den Testlauf und gilt für jeden späteren echten Start — so wurde schon einmal der Sync dauerhaft
   abgeschaltet.
 

@@ -28,6 +28,15 @@ enum CaptureLanguage: Equatable {
         case .english: CaptureSyntax.englishWeekdayTokens
         }
     }
+
+    /// Wochentagskürzel, die zugleich gewöhnliche Wörter sind. Überschreibt ein späteres
+    /// Datum sie, bleiben sie im Titel.
+    var wordLikeWeekdayTokens: Set<String> {
+        switch self {
+        case .german: ["so"]
+        case .english: ["we", "sat", "sun"]
+        }
+    }
 }
 
 /// Was in einer Erfassungszeile steht, nachdem die Kuerzel herausgelesen sind.
@@ -120,9 +129,11 @@ enum CaptureSyntax {
     static func parse(
         _ raw: String,
         language: CaptureLanguage = .current,
-        weekdayTokens: [String: Int]? = nil
+        weekdayTokens: [String: Int]? = nil,
+        now: Date = Date()
     ) -> CaptureInput {
         let weekdayTokens = weekdayTokens ?? language.weekdayTokens
+        let referenceYear = AnkerCalendar.iso.component(.year, from: now)
         var input = CaptureInput()
         var titleParts: [String] = []
 
@@ -135,14 +146,15 @@ enum CaptureSyntax {
         // Der Kuerzelschwanz, von hinten gelesen: ab `tailStart` stehen nur noch Kuerzel. Nur
         // darin zaehlen Wochentag und Datum. Mehrwortausdruecke („in 3 Tagen") zuerst, damit
         // „Tagen" nicht als Titelwort den Schwanz abbricht.
-        var tail: [TailItem] = []
+        var tail: [(item: TailItem, range: Range<Int>)] = []
         var tailStart = tokens.count
         scan: while tailStart > 0 {
             for length in stride(from: min(3, tailStart), through: 1, by: -1) {
                 let range = (tailStart - length)..<tailStart
                 if let item = tailItem(tokens: Array(tokens[range]), lowered: Array(lowered[range]),
-                                       language: language, weekdayTokens: weekdayTokens) {
-                    tail.insert(item, at: 0)
+                                       language: language, weekdayTokens: weekdayTokens,
+                                       referenceYear: referenceYear) {
+                    tail.insert((item, range), at: 0)
                     tailStart -= length
                     continue scan
                 }
@@ -161,7 +173,22 @@ enum CaptureSyntax {
             }
         }
 
-        for item in tail {
+        // Ein überschriebener Wochentag, der zugleich ein gewöhnliches Wort ist („so", „we"),
+        // war vermutlich Satzteil: „Mach das so morgen" meint morgen, und „so" gehört zum Titel.
+        // Ein überschriebenes echtes Kürzel („Bericht morgen fr") bleibt Korrektur und fällt weg.
+        let lastDayIndex = tail.lastIndex { entry in
+            switch entry.item {
+            case .weekday, .date: true
+            default: false
+            }
+        }
+        for (index, entry) in tail.enumerated() where index != lastDayIndex {
+            guard case .weekday = entry.item, entry.range.count == 1,
+                  language.wordLikeWeekdayTokens.contains(tokens[entry.range.lowerBound]) else { continue }
+            titleParts.append(String(rawTokens[entry.range.lowerBound]))
+        }
+
+        for (item, _) in tail {
             switch item {
             case .priority(let priority): input.priority = priority
             case .anchor(let anchor): input.anchorNumber = anchor
@@ -183,7 +210,8 @@ enum CaptureSyntax {
         tokens: [String],
         lowered: [String],
         language: CaptureLanguage,
-        weekdayTokens: [String: Int]
+        weekdayTokens: [String: Int],
+        referenceYear: Int
     ) -> TailItem? {
         if tokens.count == 1 {
             let token = tokens[0]
@@ -191,7 +219,7 @@ enum CaptureSyntax {
             if let anchor = anchorNumber(from: token) { return .anchor(anchor) }
             if let weekday = weekdayTokens[token] { return .weekday(weekday) }
         }
-        return date(from: tokens, lowered: lowered, language: language).map(TailItem.date)
+        return date(from: tokens, lowered: lowered, language: language, referenceYear: referenceYear).map(TailItem.date)
     }
 
     // MARK: - Datumswörter
@@ -216,7 +244,18 @@ enum CaptureSyntax {
 
     /// `tokens` ohne Punkte an den Raendern, `lowered` mit — der Schlusspunkt unterscheidet
     /// „24.11." von einer Dezimalzahl.
-    private static func date(from tokens: [String], lowered: [String], language: CaptureLanguage) -> CaptureDate? {
+    private static func date(from tokens: [String], lowered: [String], language: CaptureLanguage, referenceYear: Int) -> CaptureDate? {
+        guard let date = rawDate(from: tokens, lowered: lowered, language: language) else { return nil }
+        // Ein Jahr weit weg von heute ist eher eine Versionsnummer: „Release 1.2.10" ist nicht
+        // der 1. Februar 2010, „Patch 3.1.24" nicht der 3. Januar 2024.
+        if case .calendar(_, _, let year?) = date, !yearWindow(around: referenceYear).contains(year) { return nil }
+        return date
+    }
+
+    /// Die Jahre, die eine Erfassung meinen kann: das vorige bis fünf Jahre voraus.
+    static func yearWindow(around year: Int) -> ClosedRange<Int> { (year - 1)...(year + 5) }
+
+    private static func rawDate(from tokens: [String], lowered: [String], language: CaptureLanguage) -> CaptureDate? {
         switch (language, tokens.count) {
         case (.german, 1):
             if let days = germanRelativeWords[tokens[0]] { return .relative(days: days) }
@@ -390,8 +429,8 @@ enum CaptureSyntax {
     ///
     /// Zeigt immer den **aufgeloesten** Stand, also mit den wirksamen Vorgaben, nicht nur das
     /// Getippte. Sonst waere nicht erkennbar, wo die Aufgabe ohne weitere Angabe landet.
-    static func hint(raw: String, target: CaptureTarget?, anchorCount: Int, language: CaptureLanguage = .current) -> String {
-        let input = parse(raw, language: language)
+    static func hint(raw: String, target: CaptureTarget?, anchorCount: Int, language: CaptureLanguage = .current, now: Date = Date()) -> String {
+        let input = parse(raw, language: language, now: now)
 
         guard !raw.trimmingCharacters(in: .whitespaces).isEmpty else { return syntaxHelp }
         guard let target else { return syntaxHelp }
@@ -399,7 +438,13 @@ enum CaptureSyntax {
 
         // „Blatt" zeigt keine Prioritaetsstufen. Die Hinweiszeile nennt sie nur, wenn sie
         // ausdruecklich getippt wurde — sonst verschwaende `!a` spurlos aus dem Titel.
-        var parts = [AnkerDateFormat.weekdayShortCommaDayMonth(target.date)]
+        // Liegt der Tag in einem anderen Jahr, steht das Jahr dabei — sonst sähe „Do, 24.11."
+        // nach dieser Woche aus.
+        let calendar = AnkerCalendar.iso
+        let otherYear = calendar.component(.year, from: target.date) != calendar.component(.year, from: now)
+        var parts = [otherYear
+            ? AnkerDateFormat.weekdayShortCommaDayMonthYear(target.date)
+            : AnkerDateFormat.weekdayShortCommaDayMonth(target.date)]
         if let priority = input.priority {
             parts.append(priority == .a ? String(localized: "wichtig") : String(localized: "Prio \(priority.label)"))
         }

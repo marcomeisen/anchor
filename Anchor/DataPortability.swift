@@ -62,6 +62,7 @@ enum DataPortability {
         var weekID: UUID?
         var why: String?
         var verdict: String?
+        var createdAt: Date? = nil
     }
 
     struct ExportedDay: Codable, Sendable {
@@ -70,6 +71,8 @@ enum DataPortability {
         var focusNote: String?
         var notes: String?
         var weekID: UUID?
+        /// Der gemeinte Kalendertag, `2026-11-23`; fehlt bei Altbestand.
+        var dayKey: String? = nil
         var tasks: [ExportedTask]
         var timeBlocks: [ExportedTimeBlock]
     }
@@ -158,7 +161,8 @@ enum DataPortability {
             order: goal.order,
             weekID: goal.week?.id,
             why: goal.why,
-            verdict: goal.verdictRaw
+            verdict: goal.verdictRaw,
+            createdAt: goal.createdAt
         )
     }
 
@@ -169,6 +173,7 @@ enum DataPortability {
             focusNote: day.focusNote,
             notes: day.notes,
             weekID: day.week?.id,
+            dayKey: day.dayKey,
             tasks: day.taskList.sorted { $0.order < $1.order }.map(exported(task:)),
             timeBlocks: day.timeBlockList.sorted { $0.startTime < $1.startTime }.map(exported(timeBlock:))
         )

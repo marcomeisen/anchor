@@ -1,5 +1,9 @@
 import XCTest
 
+// Klick, Rechtsklick und Doppelklick gibt es nur auf dem Mac; das iPhone deckt
+// `PhoneChromeTests` ab.
+#if os(macOS)
+
 /// Der im Spec geforderte Kernfluss: Aufgabe erstellen, an ein Wochenziel verankern,
 /// Fortschritt prüfen.
 ///
@@ -40,7 +44,7 @@ final class AnchorUITests: XCTestCase {
         field.typeText("Vertrag prüfen !a #1")
         let hint = element(app, "captureBar.hint")
         XCTAssertTrue(
-            waitUntil(timeout: 5) { text(of: hint).contains("Prio A") && text(of: hint).contains("Anker 1") },
+            waitUntil(timeout: 5) { text(of: hint).contains("wichtig") && text(of: hint).contains("Anker 1") },
             "Hinweiszeile löst nicht auf (Stand: \(text(of: hint)))"
         )
         app.buttons["captureBar.commit"].firstMatch.click()
@@ -110,24 +114,73 @@ final class AnchorUITests: XCTestCase {
         field.typeText("Vertrag prüfen #1")
         app.buttons["captureBar.commit"].firstMatch.click()
 
-        let title = app.staticTexts["Vertrag prüfen"].firstMatch
-        XCTAssertTrue(title.waitForExistence(timeout: 10), "Aufgabe fehlt in der Tagesliste")
-        title.doubleClick()
+        // Die Karte ist für VoiceOver **ein** Element (`children: .combine`); den Titel gibt es
+        // darin nicht als eigenen Text. Doppelklick deshalb auf die Stelle, an der er steht:
+        // rechts neben dem Kästchen, in der ersten Zeile.
+        let card = element(app, "taskCard")
+        XCTAssertTrue(
+            waitUntil(timeout: 10) { card.exists && card.label.contains("Vertrag prüfen") },
+            "Aufgabe fehlt in der Tagesliste"
+        )
+        card.coordinate(withNormalizedOffset: .zero).withOffset(CGVector(dx: 90, dy: 20)).doubleClick()
 
-        let titleField = app.textFields["taskTitleField"].firstMatch
-        XCTAssertTrue(titleField.waitForExistence(timeout: 5), "Der Titel öffnet sich nicht zum Tippen")
-        titleField.click()
-        titleField.typeKey("a", modifierFlags: .command)
-        titleField.typeText("Vertrag gegengelesen\n")
+        // Auch das offene Feld steckt in der zusammengefassten Karte: sie meldet dann dessen
+        // Beschriftung „Titel der Aufgabe", und der Tastaturfokus liegt im Feld.
+        XCTAssertTrue(
+            waitUntil(timeout: 5) { card.label.contains("Titel der Aufgabe") },
+            "Der Titel öffnet sich nicht zum Tippen (Stand: \(card.label))"
+        )
+        app.typeKey("a", modifierFlags: .command)
+        app.typeText("Vertrag gegengelesen\n")
 
         XCTAssertTrue(
-            waitUntil(timeout: 10) { app.staticTexts["Vertrag gegengelesen"].firstMatch.exists },
+            waitUntil(timeout: 10) { element(app, "taskCard").label.contains("Vertrag gegengelesen") },
             "Der neue Titel steht nicht in der Liste"
         )
         XCTAssertTrue(
             element(app, "anchorCell.1").label.contains("0 von 1"),
             "Bearbeiten darf nichts abhaken (Stand: \(element(app, "anchorCell.1").label))"
         )
+    }
+
+    /// Nach „Anker löschen" muss die Ankeransicht verschwinden. Eine Closure aus dem
+    /// escapenden Baustein von `navigationDestination` tat das nicht.
+    @MainActor
+    func testDeletingAnAnchorLeavesItsScreen() throws {
+        let app = launchApp()
+        completeOnboarding(app)
+
+        // Mit einer Aufgabe: ein Anker **ohne** Aufgabe öffnet sich auf dem Mac aus der
+        // Ankerleiste derzeit gar nicht (Testbericht 2026-11-26, H7) — das ist ein eigener Fehler.
+        let field = element(app, "captureBar.field")
+        XCTAssertTrue(field.waitForExistence(timeout: 10), "Erfassungszeile fehlt")
+        field.click()
+        field.typeText("Vertrag prüfen #1")
+        app.buttons["captureBar.commit"].firstMatch.click()
+        let cell = element(app, "anchorCell.1")
+        XCTAssertTrue(
+            waitUntil(timeout: 10) { cell.label.contains("0 von 1") },
+            "Aufgabe wurde nicht verankert (Stand: \(cell.label))"
+        )
+        cell.click()
+        XCTAssertTrue(element(app, "anchorProgress").waitForExistence(timeout: 10), "Ankeransicht fehlt")
+
+        let actions = element(app, "Ankeraktionen")
+        let menu = actions.exists ? actions : app.menuButtons["Ankeraktionen"].firstMatch
+        XCTAssertTrue(menu.waitForExistence(timeout: 5), "Ankeraktionen fehlen")
+        menu.click()
+        let delete = app.menuItems["Anker löschen"].firstMatch
+        XCTAssertTrue(delete.waitForExistence(timeout: 5), "Menü ohne „Anker löschen\"")
+        delete.click()
+        let confirm = app.buttons["Löschen"].firstMatch
+        XCTAssertTrue(confirm.waitForExistence(timeout: 5), "Keine Rückfrage vor dem Löschen")
+        confirm.click()
+
+        XCTAssertTrue(
+            waitUntil(timeout: 10) { !element(app, "anchorProgress").exists },
+            "Die Ankeransicht bleibt nach dem Löschen stehen"
+        )
+        XCTAssertTrue(element(app, "captureBar.field").waitForExistence(timeout: 5), "Zurück führt nicht nach Heute")
     }
 
     @MainActor
@@ -176,3 +229,5 @@ final class AnchorUITests: XCTestCase {
         return condition()
     }
 }
+
+#endif

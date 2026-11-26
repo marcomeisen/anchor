@@ -30,7 +30,12 @@ struct DayDetailView: View {
 
     private var week: Week? { WeekPlanning.week(startingAt: monday, in: weeks) }
 
-    private var day: Day? { WeekPlanning.existingDay(on: date, in: week) }
+    private var day: Day? { storedDay(on: date) }
+
+    private func storedDay(on target: Date) -> Day? {
+        let monday = AnkerCalendar.weekInterval(containing: target).monday
+        return WeekPlanning.existingDay(on: target, in: WeekPlanning.week(startingAt: monday, in: weeks))
+    }
 
     private var sheet: WeekSheet { WeekSheet(monday: monday, weeks: weeks, inbox: []) }
 
@@ -78,7 +83,16 @@ struct DayDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
 #endif
         .onAppear(perform: loadDraftsIfNeeded)
-        .onDisappear(perform: commitNow)
+        .onDisappear { commitNow(on: date) }
+        // Die View bleibt beim Sprung auf einen anderen Tag dieselbe (Suche, Mitternacht).
+        // Ohne das stünden Fokus und Notiz des alten Tages da — und würden in den neuen
+        // gesichert.
+        .onChange(of: date) { old, new in
+            guard !AnkerCalendar.isSameDay(old, new) else { return }
+            commitNow(on: old)
+            hasLoadedDrafts = false
+            loadDraftsIfNeeded()
+        }
         .onDrop(
             of: TaskDropHandling.draggedTypes,
             isTargeted: $isDropTargeted
@@ -349,24 +363,26 @@ struct DayDetailView: View {
     private func scheduleCommit() {
         guard hasLoadedDrafts else { return }
 
+        let target = date
         commitTask?.cancel()
         commitTask = Task {
             try? await Task.sleep(for: .milliseconds(600))
             guard !Task.isCancelled else { return }
-            commitDrafts()
+            commitDrafts(on: target)
         }
     }
 
-    private func commitNow() {
+    private func commitNow(on target: Date) {
         commitTask?.cancel()
         commitTask = nil
-        commitDrafts()
+        commitDrafts(on: target)
     }
 
     /// Erst wenn sich wirklich etwas ändert, entstehen Woche und Tag.
-    private func commitDrafts() {
+    private func commitDrafts(on date: Date) {
         guard hasLoadedDrafts else { return }
 
+        let day = storedDay(on: date)
         let focus = normalized(focusDraft)
         let notes = normalized(notesDraft)
         guard day?.focusNote != focus || day?.notes != notes else { return }

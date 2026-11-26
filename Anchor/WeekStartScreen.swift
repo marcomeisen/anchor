@@ -15,6 +15,8 @@ struct WeekStartScreen: View {
 
     @State private var drafts: [Draft] = []
     @State private var didLoad = false
+    /// Bestehende Anker, die in diesem Blatt entfernt wurden — gelöscht wird erst beim Sichern.
+    @State private var removedGoalIDs: Set<UUID> = []
 
     struct Draft: Identifiable {
         let id = UUID()
@@ -63,7 +65,7 @@ struct WeekStartScreen: View {
                     ForEach($drafts) { $draft in
                         let index = drafts.firstIndex { $0.id == draft.id } ?? 0
                         if index > 0 { AnkerRule(weight: .row) }
-                        draftRow(number: index + 1, draft: $draft)
+                        draftRow(number: index + 1, draft: $draft) { remove(draft) }
                     }
                     if drafts.count < 4 {
                         if !drafts.isEmpty { AnkerRule(weight: .row) }
@@ -88,6 +90,14 @@ struct WeekStartScreen: View {
                 }
                 .ankerCard()
 
+                if !removedGoalIDs.isEmpty {
+                    Text(removedGoalIDs.count == 1
+                         ? String(localized: "Ein Anker wird beim Beginnen entfernt. Seine Aufgaben bleiben, ohne Anker.")
+                         : String(localized: "\(removedGoalIDs.count) Anker werden beim Beginnen entfernt. Ihre Aufgaben bleiben, ohne Anker."))
+                        .ankerType(AnkerType.caption)
+                        .foregroundStyle(AnkerColor.inkSecond)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
                 if !suggestions.isEmpty && drafts.count < 4 {
                     VStack(alignment: .leading, spacing: AnkerSpacing.s2) {
                         BlattSectionLabel(title: String(localized: "Letzte Woche nicht gehalten"))
@@ -120,8 +130,8 @@ struct WeekStartScreen: View {
 
                 Button("Woche beginnen", action: save)
                     .buttonStyle(AnkerButtonStyle.primaryBlock)
-                    .disabled(!hasAnyTitle)
-                    .opacity(hasAnyTitle ? 1 : 0.4)
+                    .disabled(!canSave)
+                    .opacity(canSave ? 1 : 0.4)
                     .keyboardShortcut(.defaultAction)
             }
             .padding(.horizontal, AnkerSpacing.screenPadding)
@@ -140,7 +150,19 @@ struct WeekStartScreen: View {
         drafts.contains { !$0.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
     }
 
-    private func draftRow(number: Int, draft: Binding<Draft>) -> some View {
+    /// Auch nur Entfernen ist eine Änderung, die gesichert werden will.
+    private var canSave: Bool {
+        hasAnyTitle || !removedGoalIDs.isEmpty
+    }
+
+    /// Ein Anker verschwand vorher nur, wenn man seinen Titel leerte — und auch dann nicht:
+    /// der leere Titel wurde still verworfen. Jetzt hat jede Zeile ein Entfernen.
+    private func remove(_ draft: Draft) {
+        if let id = draft.goalID { removedGoalIDs.insert(id) }
+        drafts.removeAll { $0.id == draft.id }
+    }
+
+    private func draftRow(number: Int, draft: Binding<Draft>, onRemove: @escaping () -> Void) -> some View {
         HStack(alignment: .top, spacing: AnkerSpacing.s3) {
             Text(verbatim: "\(number)")
                 .ankerType(AnkerType.anchorNumber)
@@ -159,6 +181,16 @@ struct WeekStartScreen: View {
                     .lineLimit(1...3)
                     .accessibilityLabel("Warum zählt Anker \(number)?")
             }
+            Spacer(minLength: AnkerSpacing.s2)
+            Button(action: onRemove) {
+                Image(AnkerIcon.clear)
+                    .ankerIcon(AnkerIconSize.s)
+                    .foregroundStyle(AnkerColor.inkTertiary)
+                    .ankerTapTarget(16)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Anker \(number) entfernen")
+            .help(Text("Anker \(number) entfernen"))
         }
         .padding(AnkerSpacing.s4)
     }
@@ -177,6 +209,10 @@ struct WeekStartScreen: View {
     /// Erst hier entsteht die Woche — beim Schreiben, nicht beim Anzeigen.
     private func save() {
         let week = TaskActions.ensureWeek(containing: interval.monday, weeks: weeks, modelContext: modelContext)
+        // Erst löschen, dann anlegen: die Grenze von vier Ankern zählt die entfernten nicht mit.
+        for goal in week.goalList where removedGoalIDs.contains(goal.id) {
+            GoalActions.delete(goal, in: week, modelContext: modelContext)
+        }
         for draft in drafts {
             // Anlegen und Ändern laufen über `GoalActions` — dort liegt die Grenze von vier Ankern.
             if let id = draft.goalID, let goal = week.goalList.first(where: { $0.id == id }) {

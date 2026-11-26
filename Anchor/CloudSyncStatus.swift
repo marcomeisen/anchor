@@ -142,6 +142,9 @@ final class CloudSyncStatusCenter: ObservableObject {
     /// wieder auf demselben Wert stehen kann.
     private var syncEventCount = 0
 
+    /// CloudKit-Ereignisse, die begonnen, aber noch nicht geendet haben — nach `identifier`.
+    private var runningEvents: Set<UUID> = []
+
     /// Ohne Nebenwirkungen: die Beobachter entstehen erst in `startObserving()`.
     ///
     /// Vorher registrierte der Initialisierer sie selbst — damit war jede Instanz an den
@@ -162,7 +165,9 @@ final class CloudSyncStatusCenter: ObservableObject {
             }
 
             let update = CloudSyncEventUpdate(event: event)
-            Task { @MainActor in
+            // `queue: .main`: der Block läuft schon auf dem Hauptthread. Synchron statt über
+            // einen `Task`, der das schwache `self` in nebenläufigen Code mitnähme.
+            MainActor.assumeIsolated {
                 self?.apply(update)
             }
         }
@@ -177,7 +182,9 @@ final class CloudSyncStatusCenter: ObservableObject {
             // auf "Export ausstehend" zurueck und der Watchdog meldet faelschlich ein Problem.
             guard CloudSyncStatusCenter.isUserContext(notification.object) else { return }
 
-            Task { @MainActor in
+            // `queue: .main`: der Block läuft schon auf dem Hauptthread. Synchron statt über
+            // einen `Task`, der das schwache `self` in nebenläufigen Code mitnähme.
+            MainActor.assumeIsolated {
                 self?.markLocalChangeSaved()
             }
         }
@@ -187,7 +194,9 @@ final class CloudSyncStatusCenter: ObservableObject {
             object: nil,
             queue: .main
         ) { [weak self] _ in
-            Task { @MainActor in
+            // `queue: .main`: der Block läuft schon auf dem Hauptthread. Synchron statt über
+            // einen `Task`, der das schwache `self` in nebenläufigen Code mitnähme.
+            MainActor.assumeIsolated {
                 self?.markRemoteChangeSeen()
             }
         }
@@ -223,6 +232,7 @@ final class CloudSyncStatusCenter: ObservableObject {
 
     /// Der Sync wurde in diesem Prozess eingeschaltet (Onboarding auf einem frischen Gerät).
     func markCloudSyncEnabledAtRuntime() {
+        runningEvents.removeAll()
         isSyncDisabled = false
         isCloudUnavailable = false
         phase = .starting
@@ -241,6 +251,7 @@ final class CloudSyncStatusCenter: ObservableObject {
     func markCloudSyncDisabled() {
         pendingExportWatchdog?.cancel()
         pendingExportWatchdog = nil
+        runningEvents.removeAll()
         isSyncDisabled = true
         phase = .disabled
         detail = String(localized: "Nur auf diesem Gerät")
@@ -303,12 +314,16 @@ final class CloudSyncStatusCenter: ObservableObject {
     /// Fragt den iCloud-Account direkt ab, statt das Problem aus einem Core-Data-Fehler
     /// abzuleiten. Ohne angemeldeten Account startet CloudKit gar nicht — das ist die
     /// haeufigste Ursache und soll auch so dastehen.
-    func refreshAccountStatus() async {
-        guard !isSyncDisabled else { return }
+    ///
+    /// Gibt zurück, ob der Account **nachweislich** angemeldet ist. Nur dann darf `requestSync`
+    /// „Nichts zu übertragen" sagen — eine gescheiterte Abfrage ist kein erreichbarer Account.
+    @discardableResult
+    func refreshAccountStatus() async -> Bool {
+        guard !isSyncDisabled else { return false }
 
         guard CloudSyncConfiguration.usesCloudKit else {
             accountSummary = String(localized: "CloudKit in diesem Build abgeschaltet")
-            return
+            return false
         }
 
         let status: CKAccountStatus
@@ -317,7 +332,7 @@ final class CloudSyncStatusCenter: ObservableObject {
         } catch {
             accountSummary = String(localized: "Nicht abrufbar")
             cloudSyncLog.error("iCloud-Accountstatus nicht abrufbar — \(CloudSyncErrorFormatter.describe(error), privacy: .public)")
-            return
+            return false
         }
 
         accountSummary = Self.summary(for: status)
@@ -348,6 +363,7 @@ final class CloudSyncStatusCenter: ObservableObject {
         @unknown default:
             break
         }
+        return status == .available
     }
 
     /// Vom Nutzer angeforderter Abgleich — auf dem iPhone die Geste „nach unten ziehen".
@@ -378,7 +394,7 @@ final class CloudSyncStatusCenter: ObservableObject {
         detail = String(localized: "Abgleich angefordert")
         tooltip = String(localized: "Anchorit prüft den iCloud-Account und wartet auf den nächsten Abgleich.")
 
-        await refreshAccountStatus()
+        let isAccountAvailable = await refreshAccountStatus()
 
         // Nicht endlos warten: CloudKit meldet sich oft binnen Sekundenbruchteilen, manchmal
         // gar nicht — dann lag schlicht nichts an.
@@ -390,9 +406,15 @@ final class CloudSyncStatusCenter: ObservableObject {
         // Ein Ereignis oder ein Accountproblem hat die Anzeige schon gesetzt — dann nicht
         // darüberschreiben.
         if syncEventCount == eventsBefore, phase == .syncing {
-            phase = .synced
-            detail = String(localized: "Nichts zu übertragen")
-            tooltip = String(localized: "Der iCloud-Account ist erreichbar, und es lag keine Änderung zum Abgleich an.")
+            if isAccountAvailable {
+                phase = .synced
+                detail = String(localized: "Nichts zu übertragen")
+                tooltip = String(localized: "Der iCloud-Account ist erreichbar, und es lag keine Änderung zum Abgleich an.")
+            } else {
+                phase = .issue
+                detail = String(localized: "iCloud-Account nicht erreichbar")
+                tooltip = String(localized: "Der iCloud-Account ließ sich nicht abfragen. Ob etwas zu übertragen ist, ist deshalb unbekannt.")
+            }
         }
 
         // Das Ergebnis kurz stehen lassen. `refreshable` haelt seinen Ladeindikator, bis diese
@@ -437,6 +459,7 @@ final class CloudSyncStatusCenter: ObservableObject {
     func markCloudUnavailable(_ error: Error) {
         pendingExportWatchdog?.cancel()
         pendingExportWatchdog = nil
+        runningEvents.removeAll()
         isCloudUnavailable = true
         phase = .issue
         detail = String(localized: "Nur lokal gespeichert")
@@ -466,12 +489,22 @@ final class CloudSyncStatusCenter: ObservableObject {
         syncEventCount += 1
         pendingExportWatchdog?.cancel()
         pendingExportWatchdog = nil
-        phase = update.phase
-        detail = update.detail
-        tooltip = update.tooltip
         if update.completedImport && !hasCompletedImportThisSession {
             hasCompletedImportThisSession = true
         }
+
+        // Laufende Ereignisse als Menge: endet ein Export, während ein Import noch läuft, bleibt
+        // die Phase `.syncing`. Vorher sprang sie auf „Aktuell", und das Aufräumen startete
+        // mitten im Import auf einem halben Bestand.
+        if update.isRunning {
+            runningEvents.insert(update.identifier)
+        } else {
+            runningEvents.remove(update.identifier)
+            guard runningEvents.isEmpty else { return }
+        }
+        phase = update.phase
+        detail = update.detail
+        tooltip = update.tooltip
     }
 
     private func markLocalChangeSaved() {
@@ -952,8 +985,12 @@ private struct CloudSyncEventUpdate: Sendable {
     let detail: String
     let tooltip: String
     let completedImport: Bool
+    let identifier: UUID
+    let isRunning: Bool
 
     init(event: NSPersistentCloudKitContainer.Event) {
+        identifier = event.identifier
+        isRunning = event.endDate == nil
         completedImport = event.type == .import && event.endDate != nil && event.succeeded
         if event.endDate == nil {
             phase = .syncing

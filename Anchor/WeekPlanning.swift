@@ -13,7 +13,7 @@ enum WeekPlanning {
 
     /// Die Woche, in der `date` liegt.
     static func week(containing date: Date, in weeks: [Week]) -> Week? {
-        weeks.sorted { $0.monday < $1.monday }.first { contains(date, in: $0) }
+        week(startingAt: date, in: weeks)
     }
 
     /// Die Woche, die an `monday` beginnt — über ISO-Jahr und -Woche, nicht über das Datum.
@@ -34,8 +34,9 @@ enum WeekPlanning {
     /// `sunday` ist auf den Tagesanfang normalisiert; ein `<=`-Vergleich würde den Sonntag
     /// ab 00:01 aus seiner eigenen Woche fallen lassen.
     static func contains(_ date: Date, in week: Week) -> Bool {
-        let nextMonday = AnkerCalendar.iso.date(byAdding: .day, value: 7, to: week.monday) ?? week.sunday
-        return date >= week.monday && date < nextMonday
+        let monday = week.nominalMonday
+        let nextMonday = AnkerCalendar.iso.date(byAdding: .day, value: 7, to: monday) ?? week.nominalSunday
+        return date >= monday && date < nextMonday
     }
 
     /// Der Tag zu `date`, mit Rückfall auf heute und dann auf den ersten Tag der Woche.
@@ -44,8 +45,8 @@ enum WeekPlanning {
     /// der bisher gewählte Tag verschwunden sein, und ohne Tag zeigt die App nur einen Spinner.
     static func day(on date: Date, in week: Week?, now: Date = Date()) -> Day? {
         let sortedDays = week?.dayList.sorted { $0.date < $1.date }
-        return sortedDays?.first { AnkerCalendar.storedDay($0.date, isOn: date) }
-            ?? sortedDays?.first { AnkerCalendar.storedDay($0.date, isOn: now) }
+        return sortedDays?.first { AnkerCalendar.storedDay($0, isOn: date) }
+            ?? sortedDays?.first { AnkerCalendar.storedDay($0, isOn: now) }
             ?? sortedDays?.first
     }
 
@@ -53,7 +54,7 @@ enum WeekPlanning {
     /// entstehen, heißt `nil` schlicht „an diesem Tag liegt noch nichts".
     static func existingDay(on date: Date, in week: Week?) -> Day? {
         week?.dayList
-            .filter { !$0.isDeleted && AnkerCalendar.storedDay($0.date, isOn: date) }
+            .filter { !$0.isDeleted && AnkerCalendar.storedDay($0, isOn: date) }
             .min { $0.id.uuidString < $1.id.uuidString }
     }
 

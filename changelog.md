@@ -1,5 +1,30 @@
 # Changelog
 
+## 2026-11-26
+
+- **Testlauf im Testmodus.** Der Startbildschirm-Test lief ohne `-AnchoritUITest` gegen den echten Store und das echte iCloud und legte ein Bildschirmfoto davon ins Ergebnis; im unsignierten Simulator stürzte er beim iCloud-Zugriff ab. Er startet jetzt mit Testmodus und Beispieldaten. Die Mac-UI-Tests passen wieder zur App („wichtig“ statt „Prio A“, Titel über die zusammengefasste Karte) und laufen nur noch auf macOS. Neu ist ein Test, der einen Anker löscht.
+- **Tagesdetail behält den richtigen Tag.** Beim Sprung auf einen anderen Tag (Suche, Mitternacht) standen Fokus und Notiz des alten Tages da und wurden in den neuen gesichert. Der alte Tag wird jetzt gesichert, dann werden die Entwürfe neu geladen.
+- **Einplanen auf dem iPhone:** Die gewählte Aufgabe hängt an ihrer Kennung. Wird sie gelöscht, löst sich die Auswahl auf, statt auf ein gelöschtes Modell zu zeigen; beim Wechsel der Woche wird sie zurückgesetzt, statt die Aufgabe still in die fremde Woche zu legen.
+- **Anker löschen führt zurück.** Die Ankeransicht schließt sich nach dem Löschen über `dismiss`; die Closure aus dem Baustein von `navigationDestination` tat sichtbar nichts.
+- **Tage bleiben über zwölf und mehr Zeitzonen dieselben.** Neue Tage tragen ihren Kalendertag als `Day.dayKey` („2026-11-23“); ein Montag aus New York ist in Tokio kein Dienstag mehr, und das Zusammenführen legt solche Tage nicht mehr aufeinander. Wochen rechnen ihren Montag aus ISO-Jahr und -Woche. Altbestand behält die Zwölf-Stunden-Regel und bekommt den Schlüssel bei der Wartung nur, wenn er eindeutig ist. Das optionale CloudKit-Feld `dayKey` braucht vor TestFlight einen Schema-Deploy.
+- **Zusammenführen:** Bei Gleichstand stehen ältere Anker vor frisch im Onboarding angelegten (neues optionales Feld `Goal.createdAt`, ebenfalls Schema-Deploy). Aufgaben eines Ziels, das kurz ohne Woche ist, behalten ihren Anker zehn Minuten lang, statt sofort in den Eingang zu fallen.
+- **Erfassung:** Versionsnummern wie „Release 1.2.10“ werden nicht mehr zum Datum — Jahre außerhalb von Vorjahr bis fünf Jahre voraus bleiben Titel. Liegt ein Datum in einem anderen Jahr, nennt die Hinweiszeile das Jahr. Ein überschriebenes Kürzel, das zugleich ein Wort ist, bleibt im Titel („Mach das so morgen“ heißt „Mach das so“, morgen).
+- **Wiederholungen:** „Monatlich“ ab dem 31. läuft 28.02., 31.03., 30.04. statt dauerhaft auf den 28. „Loslassen“ im Rückblick lässt nur diese Woche los; die Kette läuft am nächsten Termin danach weiter.
+- **Undo räumt auf.** Nimmt ein Undo eine verschobene, duplizierte oder wiederkehrend erzeugte Aufgabe zurück, verschwinden Tag und Woche, die dafür angelegt wurden und jetzt leer sind.
+- **Archiv:** Ein leerer Anker bricht die Serie gehaltener Wochen nicht mehr.
+- **Sync-Anzeige:** „Jetzt synchronisieren“ meldet „Nichts zu übertragen“ nur noch bei erreichbarem Account, sonst „iCloud-Account nicht erreichbar“. Endet ein Export, während ein Import läuft, bleibt der Status auf „Synchronisiert“, damit das Aufräumen nicht mitten im Import startet. Drei Swift-6-Warnungen sind behoben.
+- **iCloud-Sync bleibt nach UI-Tests an.** Der UI-Testmodus arbeitet in einem eigenen Defaults-Bereich und fasst die Einstellungen der App nicht mehr an — er entfernte `hasCompletedOnboarding`, und eine ältere Installation ohne gespeicherte iCloud-Wahl startete danach ohne Sync. Die Schnellerfassung in der Menüleiste steht erst nach der iCloud-Frage zur Verfügung; vorher ließ eine Erfassung dort das Onboarding samt Frage verschwinden.
+- **Erinnerungen öffnen die laufende Woche.** `anchorit://review` und `anchorit://week` ohne Datum springen in die Woche von heute, nicht in die zuletzt angesehene.
+- **Wochen aus anderen Zeitzonen in den Ansichten:** Ankerseite, Menü „Verschieben auf“, „In die nächste Woche“, Suchsprung, Tagesbeschriftungen, Heute-Marke der Seitenleiste und der Aufgabeneditor rechnen mit dem gemeinten Tag statt mit dem Rohdatum.
+- **Menüleisten-Popover** wächst mit seinem Inhalt; lange Ankertitel schneiden die Knöpfe nicht mehr ab.
+- **Wischen auf dem iPhone funktioniert.** Nach rechts hakt eine Aufgabe ab, nach links löscht sie, beides mit Rückgängig. Vorher stand `.swipeActions` an Zeilen, die nicht in einer `List` liegen, und tat nichts; statt alle Listen umzubauen, hat die Zeile jetzt eine eigene Geste, die nur bei waagerechter Bewegung beginnt und das Scrollen nicht stört.
+- **Mehrfachauswahl** beginnt über „Auswählen“ im Kontextmenü einer Zeile. Das lange Drücken aufs Kästchen ist entfallen: es lief gleichzeitig mit dem Kontextmenü und hakte beim Loslassen zusätzlich ab.
+- **Wochenraster:** „In die nächste Woche“ am Chip rechnet ab der Woche der Aufgabe, nicht ab heute. VoiceOver nennt die Ankernummer statt „Ohne Anker“. Ein Chip, der in seine eigene Zelle fällt, meldet nichts mehr; landet eine Aufgabe aus einer anderen Woche im Eingang, sagt der Hinweis „In den Eingang gelegt“.
+- **Anker im Setzen-Schritt entfernen:** Jede Zeile hat ein Entfernen. Bestehende Anker werden erst mit „Woche beginnen“ gelöscht; ihre Aufgaben bleiben, ohne Anker.
+- **Ankereditor und Rückblickantwort** schreiben nur noch bei einer echten Änderung (über `GoalActions`) und lösen so keinen unnötigen iCloud-Export aus.
+- **⌘Z auf dem Mac** gehört der zuletzt gezeigten Undo-Leiste; beim Tippen in einem Textfeld macht es dessen Eingabe rückgängig.
+- **Texte:** Die Löschbestätigung zählt in Einzahl und Mehrzahl („1 Woche“). Der leere Rückblick bietet das Abschließen nur an, wenn es den Knopf dafür gibt. Die übrigen Swift-6-Warnungen sind behoben.
+
 ## 2026-11-25
 
 - **Onboarding wieder bedienbar.** Bei einer frischen Installation wurde das Fenster auf dem Mac endlos lang, die Wahl „Mit iCloud synchronisieren / Nur auf diesem Gerät" lag unter dem Bildschirmrand, und es ging nicht weiter. Ursache: Das Fenster nimmt seine Mindestgröße aus dem Inhalt, und die umbrechenden Texte meldeten bei Breite null eine riesige Höhe. Das Onboarding scrollt jetzt (Knöpfe weiter unten, solange alles passt) und steht auf Mac und iPad in einer lesbaren Spalte von 560 pt.

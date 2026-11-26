@@ -359,6 +359,7 @@ struct AnchorApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
+                .ankerAppStorage()
                 .onAppear {
                     if !CloudSyncPreference.activeAtLaunch {
                         CloudSyncStatusCenter.shared.markCloudSyncDisabled()
@@ -404,6 +405,7 @@ struct AnchorApp: App {
             // Im eigenen Stapel, damit Datenschutzerklärung und Hilfe von rechts hereinkommen.
             NavigationStack { SettingsView(showsDoneButton: false) }
                 .frame(width: 460, height: 560)
+                .ankerAppStorage()
         }
         .modelContainer(sharedModelContainer)
 #endif
@@ -532,14 +534,18 @@ private final class AnchorStatusItemController: NSObject {
         }
 
         popover.behavior = .transient
-        popover.contentSize = NSSize(width: 300, height: 252)
         update(modelContainer: modelContainer)
     }
 
     func update(modelContainer: ModelContainer) {
         let rootView = QuickCapturePopover(onClose: { [weak self] in self?.closePopover() })
             .modelContainer(modelContainer)
-        popover.contentViewController = NSHostingController(rootView: rootView)
+            .ankerAppStorage()
+        let controller = NSHostingController(rootView: rootView)
+        // Die Größe folgt dem Inhalt. Eine feste Höhe schnitt bei langen Ankertiteln, die in
+        // mehrere Chipzeilen umbrechen, die Knöpfe ab.
+        controller.sizingOptions = .preferredContentSize
+        popover.contentViewController = controller
     }
 
     private func closePopover() {

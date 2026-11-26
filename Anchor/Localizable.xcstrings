@@ -1009,22 +1009,6 @@
         }
       }
     },
-    "%lld Wochen, %lld Anker, %lld Aufgaben und %lld Zeitblöcke werden auf diesem Gerät dauerhaft gelöscht. Ist iCloud verfügbar, wird auch der gesamte iCloud-Bestand gelöscht. Sichere vorher einen Export, wenn du deine Planung behalten möchtest." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%lld Wochen, %lld Anker, %lld Aufgaben und %lld Zeitblöcke werden auf diesem Gerät dauerhaft gelöscht. Ist iCloud verfügbar, wird auch der gesamte iCloud-Bestand gelöscht. Sichere vorher einen Export, wenn du deine Planung behalten möchtest."
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%lld weeks, %lld anchors, %lld tasks and %lld time blocks will be permanently deleted from this device. If iCloud is available, all iCloud data for Anchorit will also be deleted. Save an export first if you want to keep your plans."
-          }
-        }
-      }
-    },
     "1 Aufgabe" : {
       "localizations" : {
         "de" : {
@@ -8238,6 +8222,230 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Second anchor"
+          }
+        }
+      }
+    },
+    "Anchorit öffnen" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anchorit öffnen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open Anchorit"
+          }
+        }
+      }
+    },
+    "Der iCloud-Account ließ sich nicht abfragen. Ob etwas zu übertragen ist, ist deshalb unbekannt." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Der iCloud-Account ließ sich nicht abfragen. Ob etwas zu übertragen ist, ist deshalb unbekannt."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The iCloud account could not be checked, so it is unknown whether anything needs to sync."
+          }
+        }
+      }
+    },
+    "Richte Anchorit zuerst im Fenster ein — dort entscheidest du auch, ob iCloud synchronisiert." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Richte Anchorit zuerst im Fenster ein — dort entscheidest du auch, ob iCloud synchronisiert."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Set up Anchorit in its window first — that is also where you decide whether iCloud syncs."
+          }
+        }
+      }
+    },
+    "iCloud-Account nicht erreichbar" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud-Account nicht erreichbar"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud account unreachable"
+          }
+        }
+      }
+    },
+    "%@, %@, %@ und %@ werden auf diesem Gerät dauerhaft gelöscht. Ist iCloud verfügbar, wird auch der gesamte iCloud-Bestand gelöscht. Sichere vorher einen Export, wenn du deine Planung behalten möchtest." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@, %@, %@ und %@ werden auf diesem Gerät dauerhaft gelöscht. Ist iCloud verfügbar, wird auch der gesamte iCloud-Bestand gelöscht. Sichere vorher einen Export, wenn du deine Planung behalten möchtest."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@, %2$@, %3$@ and %4$@ will be permanently deleted from this device. If iCloud is available, all of your iCloud data will be deleted too. Export first if you want to keep your planning."
+          }
+        }
+      }
+    },
+    "%lld Anker" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld Anker"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld anchors"
+          }
+        }
+      }
+    },
+    "%lld Anker werden beim Beginnen entfernt. Ihre Aufgaben bleiben, ohne Anker." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld Anker werden beim Beginnen entfernt. Ihre Aufgaben bleiben, ohne Anker."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld anchors will be removed when you start the week. Their tasks stay, without an anchor."
+          }
+        }
+      }
+    },
+    "%lld Zeitblöcke" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld Zeitblöcke"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld time blocks"
+          }
+        }
+      }
+    },
+    "1 Anker" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1 Anker"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1 anchor"
+          }
+        }
+      }
+    },
+    "1 Zeitblock" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1 Zeitblock"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1 time block"
+          }
+        }
+      }
+    },
+    "Anker %lld entfernen" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anker %lld entfernen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Remove anchor %lld"
+          }
+        }
+      }
+    },
+    "Ein Anker wird beim Beginnen entfernt. Seine Aufgaben bleiben, ohne Anker." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ein Anker wird beim Beginnen entfernt. Seine Aufgaben bleiben, ohne Anker."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "One anchor will be removed when you start the week. Its tasks stay, without an anchor."
+          }
+        }
+      }
+    },
+    "In den Eingang gelegt" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "In den Eingang gelegt"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Moved to the inbox"
+          }
+        }
+      }
+    },
+    "Ohne Anker gibt es nichts zu beantworten. Du kannst die Woche nachträglich setzen." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ohne Anker gibt es nichts zu beantworten. Du kannst die Woche nachträglich setzen."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Without anchors there’s nothing to answer. You can set anchors afterwards."
           }
         }
       }

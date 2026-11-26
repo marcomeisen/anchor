@@ -48,9 +48,11 @@ enum ArchiveSummary {
         weeksByKey(weeks).mapValues { marks(for: $0) }
     }
 
-    /// Alle Anker gehalten — und es gab welche.
+    /// Alle Anker gehalten — und es gab welche. Ein leerer Anker (keine Aufgabe, keine Antwort)
+    /// zählt nicht mit: die Anzeige nennt „1/1", dann darf er auch die Serie nicht brechen.
     static func isAllHeld(_ marks: [Mark]) -> Bool {
-        !marks.isEmpty && marks.allSatisfy { $0 == .held }
+        let counted = marks.filter { $0 != .empty }
+        return !counted.isEmpty && counted.allSatisfy { $0 == .held }
     }
 
     /// Längste Folge **aufeinanderfolgender** Wochen, in denen jeder Anker gehalten wurde.
@@ -253,7 +255,7 @@ struct ArchiveScreen: View {
                 let isCurrent = key == currentKey
                 let isFuture = key > currentKey
                 Button {
-                    if let week { onOpenWeek(AnkerCalendar.nominalDate(ofStored: week.monday)) }
+                    if let week { onOpenWeek(week.nominalMonday) }
                 } label: {
                     VStack(alignment: .leading, spacing: AnkerSpacing.s1) {
                         Text(verbatim: "\(number)")
@@ -360,7 +362,7 @@ struct ArchiveScreen: View {
     private func weekRow(_ week: Week, marks allMarks: [ArchiveSummary.Mark]) -> some View {
         let marks = allMarks.filter { $0 != .empty }
         let held = marks.filter { $0 == .held }.count
-        return Button { onOpenWeek(AnkerCalendar.nominalDate(ofStored: week.monday)) } label: {
+        return Button { onOpenWeek(week.nominalMonday) } label: {
             HStack(spacing: AnkerSpacing.s3) {
                 VStack(alignment: .leading, spacing: AnkerSpacing.s0) {
                     Text(verbatim: AnkerDateFormat.calendarWeek(week.isoWeek))

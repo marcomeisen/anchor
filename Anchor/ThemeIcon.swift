@@ -106,14 +106,16 @@ struct AnkerIcon: Sendable, Hashable {
 /// Icongroessen. Eigene Skala, weil ein SVG aus dem Asset-Katalog in seiner Eigengroesse von
 /// 24pt rendert und `.font(.system(size:))` **nicht** beachtet — anders als ein SF Symbol.
 /// Deshalb braucht jede Aufrufstelle eine ausdrueckliche Groesse.
+/// `nonisolated`: die Werte sind Standardargumente von `Label`-Initialisierern, die außerhalb des
+/// MainActor ausgewertet werden.
 enum AnkerIconSize {
     /// Kleinste sinnvolle Groesse. Nicht kleiner: die 2px-Striche von Lucide werden darunter
     /// duenner als ein Pixel und wirken auf nicht-Retina-Bildschirmen matschig.
-    static let xs: CGFloat = 14
-    static let s: CGFloat = 16
-    static let m: CGFloat = 20
-    static let l: CGFloat = 24
-    static let xl: CGFloat = 32
+    nonisolated static let xs: CGFloat = 14
+    nonisolated static let s: CGFloat = 16
+    nonisolated static let m: CGFloat = 20
+    nonisolated static let l: CGFloat = 24
+    nonisolated static let xl: CGFloat = 32
 }
 
 extension Image {

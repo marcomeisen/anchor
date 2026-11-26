@@ -114,7 +114,7 @@ struct AnkerRootView: View {
         }
         .onOpenURL { url in
             var target = navigation
-            guard target.apply(url) else { return }
+            guard target.apply(url, now: now) else { return }
             // `anchorit://review` öffnet den Rückblick der Woche, nicht nur einen Bereich.
             if target.destination == .review {
                 target.select(.week)
@@ -412,7 +412,7 @@ struct AnkerRootView: View {
         switch destination {
         case .goal(let id):
             if let goal = weeks.lazy.flatMap(\.goalList).first(where: { $0.id == id }) {
-                AnchorScreen(goal: goal, now: now) { navigation.popToTopLevel() }
+                AnchorScreen(goal: goal, now: now)
             } else {
                 BlattEmptyNote(text: String(localized: "Dieser Anker ist nicht mehr da — vielleicht auf einem anderen Gerät gelöscht."))
                     .padding(AnkerSpacing.screenPadding)
@@ -467,7 +467,8 @@ struct AnkerRootView: View {
     // MARK: - Aktionen
 
     private func open(_ result: AnkerSearch.Result) {
-        let dayDate = result.dayID.flatMap { WeekPlanning.day(withID: $0, in: weeks)?.date }
+        // Der gemeinte Tag — mit dem Rohdatum öffnete die Suche westlich der anlegenden Zone die Vorwoche.
+        let dayDate = result.dayID.flatMap { WeekPlanning.day(withID: $0, in: weeks) }.map { AnkerCalendar.nominalDate(of: $0) }
         navigation.open(result, dayDate: dayDate)
     }
 

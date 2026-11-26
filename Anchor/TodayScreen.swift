@@ -190,7 +190,7 @@ struct TodayScreen: View {
     /// Über `TaskActions.move`: der Anker bleibt, denn heute liegt in derselben Woche.
     private func moveToToday(_ tasks: [AnkerTask]) {
         guard !tasks.isEmpty else { return }
-        let snapshots = tasks.map(TaskActions.snapshot)
+        let snapshots = tasks.map { TaskActions.snapshot($0) }
         for task in tasks {
             TaskActions.move(task, to: now, weeks: weeks, save: false, modelContext: modelContext)
         }

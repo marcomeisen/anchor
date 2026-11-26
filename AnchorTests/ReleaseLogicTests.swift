@@ -220,6 +220,28 @@ final class ReleaseLogicTests: XCTestCase {
         XCTAssertEqual(state.weekStart, AnkerCalendar.weekInterval(containing: AnkerCalendar.date(year: 2026, month: 8, day: 10)).monday)
     }
 
+    /// Die Erinnerungen schicken `review` und `week` ohne Datum — gemeint ist die Woche von heute,
+    /// auch wenn zuletzt eine andere Woche offen war (Testbericht 2026-11-26, M4).
+    @MainActor
+    func testReminderLinksWithoutDateOpenTheCurrentWeek() throws {
+        let sunday = AnkerCalendar.date(year: 2026, month: 11, day: 29, hour: 18, minute: 0)
+        let currentMonday = AnkerCalendar.weekInterval(containing: sunday).monday
+        var state = AnkerNavigationState(now: sunday)
+        state.moveWeek(by: 1)
+        XCTAssertNotEqual(state.weekStart, currentMonday)
+
+        XCTAssertTrue(state.apply(try XCTUnwrap(URL(string: "anchorit://review")), now: sunday))
+        XCTAssertEqual(state.destination, .review)
+        XCTAssertEqual(state.weekStart, currentMonday)
+
+        state.moveWeek(by: -3)
+        let monday = AnkerCalendar.date(year: 2026, month: 11, day: 30, hour: 8, minute: 0)
+        XCTAssertTrue(state.apply(try XCTUnwrap(URL(string: "anchorit://week")), now: monday))
+        XCTAssertEqual(state.destination, .week)
+        XCTAssertEqual(state.weekStart, AnkerCalendar.weekInterval(containing: monday).monday)
+        XCTAssertTrue(AnkerCalendar.isSameDay(state.dayDate, monday))
+    }
+
     // MARK: - Suche
 
     @MainActor
@@ -306,6 +328,10 @@ final class ReleaseLogicTests: XCTestCase {
         try context.save()
 
         StoreMaintenance.run(modelContext: context, reporter: nil)
+        // Erst nach der Karenzzeit: ein Ziel kann während eines Imports kurz ohne Woche sein.
+        XCTAssertTrue(task.linkedGoal === goal)
+        StoreMaintenance.adoptOrphans(weeks: [], modelContext: context,
+                                      now: Date().addingTimeInterval(StoreMaintenance.strandedGrace + 1))
         XCTAssertNil(task.linkedGoal)
         XCTAssertEqual(TaskActions.inboxTasks(modelContext: context).map(\.title), ["Unsichtbar"])
         XCTAssertFalse(goal.isDeleted, "Das Ziel bleibt")

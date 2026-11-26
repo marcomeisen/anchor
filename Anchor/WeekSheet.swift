@@ -82,7 +82,7 @@ struct WeekSheet {
     /// Mitternacht in der Zone des anlegenden Geräts und läge westlich davon in der Vorwoche.
     init(week: Week, inbox: [AnkerTask] = [], now: Date = Date(), includesInbox: Bool? = nil) {
         self.init(
-            monday: AnkerCalendar.nominalDate(ofStored: week.monday),
+            monday: week.nominalMonday,
             weeks: [week],
             inbox: inbox,
             now: now,
@@ -102,7 +102,7 @@ struct WeekSheet {
         lane.tasks.filter { task in
             guard let date else { return task.day == nil }
             guard let day = task.day else { return false }
-            return AnkerCalendar.storedDay(day.date, isOn: date)
+            return AnkerCalendar.storedDay(day, isOn: date)
         }
     }
 
@@ -133,8 +133,8 @@ struct WeekSheet {
             .flatMap(\.tasks)
             .enumerated()
             .compactMap { index, task in
-                guard !task.isDone, !task.isDeleted, let stored = task.day?.date else { return nil }
-                let day = AnkerCalendar.nominalDate(ofStored: stored)
+                guard !task.isDone, !task.isDeleted, let stored = task.day else { return nil }
+                let day = AnkerCalendar.nominalDate(of: stored)
                 guard day < today, AnkerCalendar.weekKey(containing: day) == thisWeek else { return nil }
                 return (index, day, task)
             }

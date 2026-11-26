@@ -299,7 +299,12 @@ struct DataPrivacyView: View {
     // MARK: - Texte
 
     private var deleteConfirmationMessage: String {
-        String(localized: "\(counts.weeks) Wochen, \(counts.goals) Anker, \(counts.tasks) Aufgaben und \(counts.timeBlocks) Zeitblöcke werden auf diesem Gerät dauerhaft gelöscht. Ist iCloud verfügbar, wird auch der gesamte iCloud-Bestand gelöscht. Sichere vorher einen Export, wenn du deine Planung behalten möchtest.")
+        // Einzahl und Mehrzahl je Zählwort als eigene Schlüssel — vorher stand „1 Wochen, 1 Aufgaben".
+        let weeks = counts.weeks == 1 ? String(localized: "1 Woche") : String(localized: "\(counts.weeks) Wochen")
+        let goals = counts.goals == 1 ? String(localized: "1 Anker") : String(localized: "\(counts.goals) Anker")
+        let tasks = BlattCount.tasks(counts.tasks)
+        let blocks = counts.timeBlocks == 1 ? String(localized: "1 Zeitblock") : String(localized: "\(counts.timeBlocks) Zeitblöcke")
+        return String(localized: "\(weeks), \(goals), \(tasks) und \(blocks) werden auf diesem Gerät dauerhaft gelöscht. Ist iCloud verfügbar, wird auch der gesamte iCloud-Bestand gelöscht. Sichere vorher einen Export, wenn du deine Planung behalten möchtest.")
     }
 
     // MARK: - Bausteine

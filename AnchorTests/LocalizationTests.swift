@@ -96,8 +96,10 @@ final class LocalizationTests: XCTestCase {
 
     func testUITestModeNeverTouchesTheLanguage() {
 #if DEBUG
-        XCTAssertFalse(UITestMode.resetKeys.contains(AppSettingsKey.language))
-        XCTAssertFalse(UITestMode.resetKeys.contains(AppSettingsKey.appleLanguages))
+        let before = [AppSettingsKey.language, AppSettingsKey.appleLanguages].map { UserDefaults.standard.object(forKey: $0) as? NSObject }
+        UITestMode.resetTestDefaults()
+        let after = [AppSettingsKey.language, AppSettingsKey.appleLanguages].map { UserDefaults.standard.object(forKey: $0) as? NSObject }
+        XCTAssertEqual(before, after)
 #endif
     }
 

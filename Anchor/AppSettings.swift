@@ -21,36 +21,52 @@ enum UITestMode {
         ProcessInfo.processInfo.arguments.contains(launchArgument)
     }
 
-    /// Die Schluessel, die ein UI-Test-Start zurueckstellt — und **nur** diese.
+    /// Eigener Defaults-Bereich des Testmodus. Views lesen und schreiben ihre `@AppStorage`-Werte
+    /// im Testmodus **nur** hier (`ankerAppStorage()` an jeder Szene).
     ///
-    /// Bewusst eine benannte Liste statt einer Schleife im Rumpf, damit ein Test sie pruefen kann:
-    /// `prepare` ist in einem Unit-Test wirkungslos (`isActive` ist dort falsch), eine Zusicherung
-    /// ueber das Verhalten waere also eine Zusicherung ueber nichts.
-    ///
-    /// Zurueckgestellt wird nur, was der Testlauf frisch braucht, und ausschliesslich durch
-    /// **Entfernen**. Kein Wert wird gesetzt. Vorher stand hier `cloudSyncEnabled = false`, und das
-    /// war ein Fehler mit langer Reichweite: der Wert ueberlebt den Lauf, und weil Debug- und
-    /// TestFlight-Build dieselbe Bundle-ID und damit denselben Defaults-Bereich benutzen, blieb der
-    /// iCloud-Sync auf einem Geraet, auf dem je ein UI-Test lief, danach dauerhaft aus — lautlos,
-    /// ohne Fehler, mit lokal weiterlaufender App. Der Testmodus braucht den Schreibvorgang gar
-    /// nicht: `CloudSyncPreference` und `CloudSyncConfiguration` fragen `UITestMode.isActive` direkt ab.
-    static let resetKeys = [
-        AppSettingsKey.appearance,
-        AppSettingsKey.startupViewMode,
-        "hasCompletedOnboarding",
-        "onboardingVersion"
-    ]
+    /// Vorher stellte `prepare` Schlüssel in `.standard` zurück, und das war zweimal falsch:
+    /// Das Entfernen von `hasCompletedOnboarding` nahm einer Altinstallation ohne gespeicherte
+    /// iCloud-Wahl beim nächsten echten Start den Sync (Testbericht 2026-11-26, H6) — und das
+    /// Onboarding im Testlauf schrieb `hasCompletedOnboarding` und `onboardingVersion` über
+    /// `@AppStorage` wieder hinein. Debug- und TestFlight-Build teilen sich die Bundle-ID und damit
+    /// `.standard`; was dort landet, gilt für jeden späteren echten Start.
+    static let defaultsSuiteName = "com.marcomeisen.Anchor.UITestMode"
 
-    /// Muss vor dem `ModelContainer` und vor der ersten View laufen.
-    static func prepare(defaults: UserDefaults = .standard) {
+    /// `.standard` außerhalb des Testmodus, sonst der eigene Bereich.
+    static var appStorage: UserDefaults {
+        isActive ? testDefaults : .standard
+    }
+
+    // Kann nur für die Bundle-ID selbst oder `NSGlobalDomain` nil sein — beides ist hier nicht der Fall.
+    private static let testDefaults = UserDefaults(suiteName: defaultsSuiteName)!
+
+    /// Muss vor dem `ModelContainer` und vor der ersten View laufen. Leert nur den eigenen
+    /// Bereich des Testmodus; `.standard` bleibt unberührt — weder entfernt noch gesetzt.
+    static func prepare() {
         guard isActive else { return }
+        resetTestDefaults()
+    }
 
-        for key in resetKeys {
-            defaults.removeObject(forKey: key)
-        }
+    /// Ohne die Prüfung auf `isActive`, damit ein Unit-Test zeigen kann, dass dabei nichts
+    /// außerhalb des eigenen Bereichs passiert.
+    static func resetTestDefaults() {
+        UserDefaults.standard.removePersistentDomain(forName: defaultsSuiteName)
     }
 }
 #endif
+
+extension View {
+    /// Der Defaults-Bereich für `@AppStorage`: im UI-Testmodus der eigene, sonst `.standard`.
+    /// An jede Szene (Fenster, Einstellungen, Menüleiste), sonst schreibt der Testlauf wieder in
+    /// die Einstellungen des Nutzers.
+    func ankerAppStorage() -> some View {
+#if DEBUG
+        defaultAppStorage(UITestMode.appStorage)
+#else
+        self
+#endif
+    }
+}
 
 /// Schluessel der Nutzereinstellungen an einer Stelle, damit `@AppStorage` und die
 /// Vorab-Abfrage beim Start nicht auseinanderlaufen.

@@ -78,11 +78,10 @@ Der Zuschnitt läuft über `#if os(macOS)` in `TaskCard` und die beiden Helper
 - Verschieben ohne Sheet: die Hover-Aktion verschiebt direkt in die nächste Woche. **Keine Tastenkürzel an Zeilen oder Kontextmenüeinträgen:** jede sichtbare Zeile registrierte dasselbe Kürzel, mit vielen Zeilen war es mehrdeutig, und Kürzel an Menüeinträgen greifen nur bei offenem Menü. Globale Befehle stehen im Menü „Gehe zu“ (`AppCommands.swift`)
 
 **iPhone**
-- `.swipeActions(edge: .leading, allowsFullSwipe: true)` → erledigt/offen, `.tint(AnkerColor.accentFill)`
-- `.swipeActions(edge: .trailing, allowsFullSwipe: true)` → löschen (`role: .destructive`) + verschieben (`.tint(AnkerColor.accentInk)`)
+- Wischen über `.taskSwipe` ([Anchor/TaskSwipe.swift](../../../Anchor/TaskSwipe.swift)), **nicht** `.swipeActions` — das wirkt nur in einer `List`, und die Zeilen stehen in `ScrollView`s. Nach rechts erledigt/offen (Blau), nach links löschen (Tinte), beides mit Undo; verschieben über das Kontextmenü. Die Geste beginnt nur bei deutlich waagerechter Bewegung, damit das Scrollen frei bleibt.
 - Kontextmenü **mit** `preview:` (`TaskContextPreviewCard`)
 - Ellipsis-Menü-Button in der Karte statt Hover
-- Mehrfachauswahl über „Auswählen" neben der Abschnittsbeschriftung (Heute, Anker) oder langes Drücken auf ein Kästchen; unten ersetzt `BlattBulkActionBar` die Erfassungszeile (Erledigt, Verschieben, Anker, Löschen, „Alle"); Löschbestätigung ab 3 Aufgaben. Zustand in `TaskSelectionModel` ([Anchor/BlattSelection.swift](../../../Anchor/BlattSelection.swift)); auf dem Mac `⌘⇧A`, Escape beendet
+- Mehrfachauswahl über „Auswählen" neben der Abschnittsbeschriftung (Heute, Anker) oder „Auswählen" im Kontextmenü einer Zeile (langes Drücken aufs Kästchen kollidierte mit dem Kontextmenü); unten ersetzt `BlattBulkActionBar` die Erfassungszeile (Erledigt, Verschieben, Anker, Löschen, „Alle"); Löschbestätigung ab 3 Aufgaben. Zustand in `TaskSelectionModel` ([Anchor/BlattSelection.swift](../../../Anchor/BlattSelection.swift)); auf dem Mac `⌘⇧A`, Escape beendet
 
 ## Drop-Ziele
 

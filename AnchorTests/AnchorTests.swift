@@ -826,32 +826,47 @@ final class AnchorTests: XCTestCase {
     /// weiterlaufender App. Genau die Sorte Fehler, die man in TestFlight als "synct nicht" sieht
     /// und im Code nicht findet.
     ///
-    /// Geprueft wird die Schluesselliste, nicht der Aufruf: `prepare` ist im Unit-Test wirkungslos,
-    /// weil `UITestMode.isActive` nur mit Startargument wahr ist. Eine Zusicherung ueber den
-    /// Aufruf wuerde hier immer bestehen und nichts bedeuten.
+    /// Nachfolger (Testbericht 2026-11-26, H6): der Testmodus fasst `.standard` gar nicht mehr
+    /// an, auch nicht durch Entfernen. Das Entfernen von `hasCompletedOnboarding` nahm einer
+    /// Altinstallation ohne gespeicherte Wahl den Sync. Er arbeitet in einem eigenen Bereich.
+    ///
+    /// `prepare` ist im Unit-Test wirkungslos (`isActive` ist falsch); geprüft wird deshalb das
+    /// Zurückstellen selbst und wohin `@AppStorage` außerhalb des Testmodus zeigt.
     @MainActor
-    func testUITestModeResetsNoSyncPreference() throws {
+    func testUITestModeKeepsItsOwnDefaults() throws {
 #if DEBUG
-        XCTAssertFalse(UITestMode.resetKeys.contains(AppSettingsKey.cloudSyncEnabled),
-                       "Der Testmodus darf den Sync-Schalter nicht anfassen")
-        XCTAssertFalse(UITestMode.resetKeys.contains(AppSettingsKey.hasChosenCloudSync),
-                       "Der Testmodus darf die iCloud-Frage nicht als beantwortet hinterlassen")
+        XCTAssertNotEqual(UITestMode.defaultsSuiteName, Bundle.main.bundleIdentifier,
+                          "Der Bereich des Testmodus darf nicht der der App sein")
+        XCTAssertTrue(UITestMode.appStorage === UserDefaults.standard,
+                      "Außerhalb des Testmodus gilt `.standard`")
 
-        // Und er stellt ausschliesslich zurueck, statt zu setzen: nach einem Lauf auf einem
-        // frischen Bereich steht kein einziger Wert drin.
+        let keys = [AppSettingsKey.hasCompletedOnboarding, "onboardingVersion", AppSettingsKey.cloudSyncEnabled,
+                    AppSettingsKey.hasChosenCloudSync, AppSettingsKey.appearance, AppSettingsKey.language]
+        let before = keys.map { UserDefaults.standard.object(forKey: $0) as? NSObject }
+
+        let testDefaults = try XCTUnwrap(UserDefaults(suiteName: UITestMode.defaultsSuiteName))
+        testDefaults.set(true, forKey: AppSettingsKey.hasCompletedOnboarding)
+        UITestMode.resetTestDefaults()
+
+        XCTAssertNil(UserDefaults(suiteName: UITestMode.defaultsSuiteName)?.object(forKey: AppSettingsKey.hasCompletedOnboarding),
+                     "Der eigene Bereich wird geleert")
+        let after = keys.map { UserDefaults.standard.object(forKey: $0) as? NSObject }
+        XCTAssertEqual(before, after, "`.standard` bleibt unberührt")
+#endif
+    }
+
+    /// Ohne gespeicherte Wahl synchronisiert eine Altinstallation weiter, ein frisches Gerät nicht.
+    @MainActor
+    func testCloudSyncFallbackWithoutStoredChoice() throws {
         let suite = "AnchorTests.\(#function)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
         defer { defaults.removePersistentDomain(forName: suite) }
 
-        UITestMode.prepare(defaults: defaults)
-
-        for key in UITestMode.resetKeys + [AppSettingsKey.cloudSyncEnabled, AppSettingsKey.hasChosenCloudSync] {
-            XCTAssertNil(defaults.object(forKey: key), "\(key) wurde gesetzt statt zurueckgestellt")
-        }
-
-        XCTAssertFalse(CloudSyncPreference.isEnabled(in: defaults),
-                       "Ohne Wahl und ohne Onboarding bleibt ein Gerät lokal")
-#endif
+        XCTAssertFalse(CloudSyncPreference.isEnabled(in: defaults), "Frisches Gerät: erst fragen")
+        defaults.set(true, forKey: AppSettingsKey.hasCompletedOnboarding)
+        XCTAssertTrue(CloudSyncPreference.isEnabled(in: defaults), "Altinstallation behält den Sync")
+        CloudSyncPreference.set(false, in: defaults)
+        XCTAssertFalse(CloudSyncPreference.isEnabled(in: defaults), "Die getroffene Wahl geht vor")
     }
 
     @MainActor

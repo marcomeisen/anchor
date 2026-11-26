@@ -230,14 +230,9 @@ struct TaskCard: View {
                 }
                 .buttonStyle(.plain)
                 .padding(.top, 1)  // optische Ausrichtung, kein Raster. design-guard: erlaubt
-                // Langes Drücken auf das Kästchen beginnt die Mehrfachauswahl — mit dieser Aufgabe.
-                .simultaneousGesture(
-                    LongPressGesture(minimumDuration: 0.5).onEnded { _ in
-                        guard let onStartSelection else { return }
-                        iOSImpact(.medium)
-                        onStartSelection()
-                    }
-                )
+                // Kein langes Drücken am Kästchen: es lief gleichzeitig mit dem Kontextmenü der
+                // Karte, und beim Loslassen hakte der Knopf die Aufgabe zusätzlich ab. Die
+                // Mehrfachauswahl beginnt über „Auswählen" im Kontextmenü oder neben dem Abschnitt.
                 .accessibilityLabel(task.isDone ? "Erledigt" : "Offen")
             }
 
@@ -309,33 +304,9 @@ struct TaskCard: View {
         }
         .conditionalTaskDrag(task: task, isEnabled: !isSelectionMode, isDragging: $isDragging)
 #if os(iOS)
-        .swipeActions(edge: .leading, allowsFullSwipe: true) {
-            if !isSelectionMode {
-                Button {
-                    performToggleDone()
-                } label: {
-                    Label(task.isDone ? "Offen" : "Erledigt", ankerIcon: task.isDone ? .undo : .check)
-                }
-                .tint(AnkerColor.accentFill)
-            }
-        }
-        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-            if !isSelectionMode {
-                Button(role: .destructive) {
-                    performDelete()
-                } label: {
-                    Label("Aufgabe löschen", ankerIcon: AnkerIcon.delete)
-                }
-
-                Button {
-                    iOSImpact(.medium)
-                    showingMoveSheet = true
-                } label: {
-                    Label(hasDay ? "Verschieben" : "Tag wählen", ankerIcon: AnkerIcon.week)
-                }
-                .tint(AnkerColor.accentInk)
-            }
-        }
+        // `.swipeActions` wirkt nur in einer `List`; die Zeilen stehen aber in `ScrollView`s.
+        .taskSwipe(isEnabled: !isSelectionMode, isDone: task.isDone,
+                   onDone: performToggleDone, onDelete: performDelete)
 #endif
         .accessibilityAction(named: task.isDone ? "Als offen markieren" : "Als erledigt markieren") {
             performToggleDone()
@@ -457,6 +428,15 @@ struct TaskCard: View {
             isEditingTitle = true
         } label: {
             Label("Titel ändern", ankerIcon: AnkerIcon.edit)
+        }
+
+        if let onStartSelection {
+            Button {
+                iOSImpact(.medium)
+                onStartSelection()
+            } label: {
+                Label("Auswählen", ankerIcon: AnkerIcon.checkCircle)
+            }
         }
 
         Button {
@@ -590,7 +570,8 @@ struct TaskCard: View {
         case .anchor:
             return anchorLabel
         case .day:
-            guard let date = task.day?.date else { return String(localized: "Ohne Tag") }
+            guard let day = task.day else { return String(localized: "Ohne Tag") }
+            let date = AnkerCalendar.nominalDate(of: day)
             return AnkerCalendar.isSameDay(date, Date()) ? String(localized: "Heute") : AnkerDateFormat.weekdayLongWithDayMonth(date)
         }
     }
@@ -602,14 +583,15 @@ struct TaskCard: View {
         case .anchor:
             return task.linkedGoal == nil ? AnkerColor.inkTertiary : AnkerColor.inkSecond
         case .day:
-            let isToday = task.day.map { AnkerCalendar.isSameDay($0.date, Date()) } ?? false
+            let isToday = task.day.map { AnkerCalendar.storedDay($0, isOn: Date()) } ?? false
             return isToday ? AnkerColor.accentInk : AnkerColor.inkSecond
         }
     }
 
     private var currentWeekDates: [Date] {
         guard let week = task.day?.week else { return [] }
-        return AnkerCalendar.daysInWeek(starting: week.monday)
+        // Der gemeinte Montag — sonst bot das Menü westlich der anlegenden Zone So–Sa an.
+        return AnkerCalendar.daysInWeek(starting: week.nominalMonday)
     }
 
     private func performToggleDone() {
@@ -667,7 +649,7 @@ struct TaskCard: View {
     /// Ankerwoche (bzw. nach der laufenden Woche im Eingang).
     private func performMoveToNextWeek() {
         let snapshot = TaskActions.snapshot(task)
-        let base = task.day?.date.addingTimeInterval(12 * 60 * 60) ?? owningWeek?.monday ?? Date()
+        let base = task.day.map { AnkerCalendar.nominalDate(of: $0) } ?? owningWeek?.nominalMonday ?? Date()
         let monday = AnkerCalendar.weekInterval(containing: base).monday
         guard let next = AnkerCalendar.iso.date(byAdding: .weekOfYear, value: 1, to: monday) else { return }
         TaskActions.move(task, toWeekStarting: next, weeks: [], modelContext: modelContext)
@@ -771,8 +753,8 @@ enum TaskRecurrenceText {
     /// Der Rückgängig-Hinweis, wenn das Abhaken eine Folgeinstanz erzeugt hat — er nennt, wann
     /// sie wiederkommt.
     static func spawnedMessage(for next: AnkerTask?) -> String? {
-        guard let stored = next?.day?.date else { return nil }
-        let date = AnkerCalendar.nominalDate(ofStored: stored)
+        guard let stored = next?.day else { return nil }
+        let date = AnkerCalendar.nominalDate(of: stored)
         return String(localized: "Erledigt – wieder am \(AnkerDateFormat.weekdayShortWithDayMonth(date))")
     }
 }

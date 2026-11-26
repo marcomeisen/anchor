@@ -107,7 +107,7 @@ enum AnkerSearch {
         }
 
         for week in weeks where !week.isDeleted {
-            let monday = AnkerCalendar.nominalDate(ofStored: week.monday)
+            let monday = week.nominalMonday
 
             for goal in week.goalList where !goal.isDeleted {
                 let titleHit = matches(goal.title, needle)
@@ -147,7 +147,7 @@ enum AnkerSearch {
             }
 
             for day in week.dayList where !day.isDeleted {
-                let date = AnkerCalendar.nominalDate(ofStored: day.date)
+                let date = AnkerCalendar.nominalDate(of: day)
                 func dayLabel() -> String { AnkerDateFormat.weekdayShortWithDayMonth(date) }
 
                 for task in day.taskList where !task.isDeleted && matches(task.title, needle) {
@@ -227,7 +227,7 @@ enum AnkerSearch {
                 if !goal.title.isEmpty { context += " · \(goal.title)" }
                 if let week = goal.week {
                     context += " · \(weekLabel(week))"
-                    date = AnkerCalendar.nominalDate(ofStored: week.monday)
+                    date = week.nominalMonday
                 }
             } else {
                 context = String(localized: "Eingang · Prio \(task.priority.label)")

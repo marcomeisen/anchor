@@ -22,6 +22,16 @@ struct QuickCapturePopover: View {
     @State private var selectedGoalID: UUID?
     @FocusState private var isTitleFocused: Bool
 
+    @AppStorage(AppSettingsKey.hasCompletedOnboarding) private var hasCompletedOnboarding = false
+    @AppStorage(AppSettingsKey.hasChosenCloudSync) private var hasChosenCloudSync = false
+
+    /// Erst nach der iCloud-Frage. Vorher machte eine Erfassung hier den Bestand nicht leer,
+    /// das Onboarding verschwand — und mit ihm die Frage, ob synchronisiert wird: der Sync
+    /// blieb auf diesem Mac dauerhaft aus, ohne dass je jemand gefragt hätte.
+    private var isSetUp: Bool {
+        hasCompletedOnboarding || hasChosenCloudSync || CloudSyncPreference.hasBeenChosen()
+    }
+
     /// Nur nachsehen, nicht anlegen — über ISO-Jahr und -Woche, nie über `monday`.
     private var currentWeek: Week? {
         WeekPlanning.week(startingAt: currentMonday, in: weeks)
@@ -51,6 +61,48 @@ struct QuickCapturePopover: View {
     }
 
     var body: some View {
+        Group {
+            if isSetUp {
+                form
+            } else {
+                setupNote
+            }
+        }
+        .padding(AnkerSpacing.s4)
+        .frame(width: 300)
+        // Die Höhe kommt aus dem Inhalt; der Controller übernimmt sie als Größe des Popovers.
+        .fixedSize(horizontal: false, vertical: true)
+        .background(AnkerColor.surface)
+        .tint(AnkerColor.accentMark)
+        .onExitCommand(perform: close)
+    }
+
+    private var setupNote: some View {
+        VStack(alignment: .leading, spacing: AnkerSpacing.s3) {
+            Text("Schnell erfassen")
+                .ankerType(AnkerType.metaStrong)
+                .foregroundStyle(AnkerColor.ink)
+            Text("Richte Anchorit zuerst im Fenster ein — dort entscheidest du auch, ob iCloud synchronisiert.")
+                .ankerType(AnkerType.body)
+                .foregroundStyle(AnkerColor.inkSecond)
+                .fixedSize(horizontal: false, vertical: true)
+            HStack {
+                Spacer()
+                Button("Anchorit öffnen", action: openMainWindow)
+                    .buttonStyle(AnkerButtonStyle.primary)
+                    .keyboardShortcut(.defaultAction)
+            }
+        }
+        .accessibilityIdentifier("quickCapture.setupNote")
+    }
+
+    private func openMainWindow() {
+        NSApp.activate(ignoringOtherApps: true)
+        NSApp.windows.first { $0.canBecomeMain }?.makeKeyAndOrderFront(nil)
+        onClose()
+    }
+
+    private var form: some View {
         VStack(alignment: .leading, spacing: AnkerSpacing.s3) {
             Text("Schnell erfassen")
                 .ankerType(AnkerType.metaStrong)
@@ -101,11 +153,6 @@ struct QuickCapturePopover: View {
             }
             .padding(.top, AnkerSpacing.s1)
         }
-        .padding(AnkerSpacing.s4)
-        .frame(width: 300)
-        .background(AnkerColor.surface)
-        .tint(AnkerColor.accentMark)
-        .onExitCommand(perform: close)
         .task {
             // Wie in `TaskTitleField`: der Fokus greift erst nach einem Durchlauf.
             await Task.yield()

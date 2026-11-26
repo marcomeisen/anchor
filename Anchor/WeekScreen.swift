@@ -24,7 +24,9 @@ struct WeekScreen: View {
     @AppStorage("weekLayout") private var layoutRaw = WeekLayout.byDay.rawValue
     @StateObject private var undo = TaskUndoCoordinator()
     /// Die Aufgabe, die auf dem iPhone gerade eingeplant wird: erst antippen, dann den Tag.
-    @State private var placing: AnkerTask?
+    /// Als Kennung gehalten, nicht als Objekt: wird die Aufgabe gelöscht, löst die Auswahl
+    /// sich auf, statt auf ein gelöschtes Modell zu zeigen.
+    @State private var placingID: UUID?
     @State private var showingRemindersImport = false
 
     let weekStart: Date
@@ -83,6 +85,9 @@ struct WeekScreen: View {
             }
         }
         .background(AnkerColor.ground)
+        // Die Auswahl gilt für die angezeigte Woche. In einer anderen legte „Hierher" die
+        // Aufgabe still dorthin und löste ihren Anker.
+        .onChange(of: weekStart) { _, _ in placingID = nil }
         .sheet(isPresented: $showingRemindersImport) {
             NavigationStack { RemindersImportSheet() }
 #if os(macOS)
@@ -104,6 +109,19 @@ struct WeekScreen: View {
             .padding(.vertical, AnkerSpacing.s3)
             .background(AnkerColor.ground)
             .animation(.easeOut(duration: 0.2), value: undo.notice?.id)
+        }
+    }
+
+    /// Die gewählte Aufgabe, solange es sie gibt.
+    private var placing: AnkerTask? {
+        guard let placingID else { return nil }
+        var descriptor = FetchDescriptor<AnkerTask>(predicate: #Predicate { $0.id == placingID })
+        descriptor.fetchLimit = 1
+        do {
+            guard let task = try modelContext.fetch(descriptor).first, !task.isDeleted else { return nil }
+            return task
+        } catch {
+            return nil
         }
     }
 
@@ -198,7 +216,7 @@ struct WeekScreen: View {
                     .ankerType(AnkerType.caption)
                     .foregroundStyle(AnkerColor.accentInk)
                 Spacer()
-                Button { self.placing = nil } label: {
+                Button { placingID = nil } label: {
                     Text("Abbrechen")
                         .ankerType(AnkerType.caption)
                         .foregroundStyle(AnkerColor.inkSecond)
@@ -218,9 +236,9 @@ struct WeekScreen: View {
                     .foregroundStyle(AnkerColor.inkSecond)
                 FlowLayout(spacing: AnkerSpacing.s1 + 2) {
                     ForEach(unplanned) { task in
-                        let isOn = placing?.id == task.id
+                        let isOn = placingID == task.id
                         Button {
-                            placing = isOn ? nil : task
+                            placingID = isOn ? nil : task.id
                         } label: {
                             HStack(spacing: AnkerSpacing.s1h) {
                                 Text(verbatim: sheet.anchorNumber(of: task).map(String.init) ?? "–")
@@ -279,21 +297,21 @@ struct WeekScreen: View {
                         task: task,
                         number: sheet.anchorNumber(of: task).map(String.init) ?? "–",
                         onPick: task.isDone ? nil : {
-                            placing = placing?.id == task.id ? nil : task
+                            placingID = placingID == task.id ? nil : task.id
                         },
-                        isPicked: placing?.id == task.id,
+                        isPicked: placingID == task.id,
                         onUndoableAction: undo.present
                     )
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
 
-            if let placing, !(placing.day.map { AnkerCalendar.storedDay($0.date, isOn: date) } ?? false) {
+            if let placing, !(placing.day.map { AnkerCalendar.storedDay($0, isOn: date) } ?? false) {
                 Button("Hierher") {
                     let snapshot = TaskActions.snapshot(placing)
                     TaskActions.place(placing, on: date, goalID: placing.linkedGoal?.id, weeks: weeks, modelContext: modelContext)
                     undo.present(TaskUndoNotice(message: String(localized: "Auf \(AnkerDateFormat.weekdayLong(date)) gelegt"), snapshots: [snapshot]))
-                    self.placing = nil
+                    placingID = nil
                 }
                 .buttonStyle(AnkerButtonStyle.accent)
                 .accessibilityLabel("\(placing.title) auf \(AnkerDateFormat.weekdayLong(date)) legen")
@@ -343,7 +361,7 @@ struct WeekScreen: View {
                         Spacer(minLength: AnkerSpacing.s2)
                         if task.day == nil && !task.isDone {
                             Button {
-                                placing = task
+                                placingID = task.id
                                 layout.wrappedValue = .byDay
                             } label: {
                                 Text("Tag wählen")
@@ -354,9 +372,10 @@ struct WeekScreen: View {
                             }
                             .buttonStyle(.plain)
                         } else if let day = task.day {
-                            Text(verbatim: BlattDates.isToday(day.date, now: now) ? String(localized: "Heute") : AnkerDateFormat.weekdayShort(day.date))
+                            let date = AnkerCalendar.nominalDate(of: day)
+                            Text(verbatim: BlattDates.isToday(date, now: now) ? String(localized: "Heute") : AnkerDateFormat.weekdayShort(date))
                                 .ankerType(AnkerType.caption)
-                                .foregroundStyle(BlattDates.isToday(day.date, now: now) ? AnkerColor.accentInk : AnkerColor.inkSecond)
+                                .foregroundStyle(BlattDates.isToday(date, now: now) ? AnkerColor.accentInk : AnkerColor.inkSecond)
                         }
                     }
                     .padding(.horizontal, AnkerSpacing.s3)
@@ -646,7 +665,7 @@ struct WeekGrid: View {
         .padding(AnkerSpacing.s1)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .contentShape(Rectangle())
-        .dropDestination(for: String.self) { items, _ in
+        .dropDestination(for: String.self) { items, _ -> Bool in
             drop(items, on: date, goal: lane.goal)
         }
     }
@@ -656,10 +675,16 @@ struct WeekGrid: View {
         guard let task = WeekDropSupport.task(from: items, modelContext: modelContext) else { return false }
         let id = task.id
         let snapshot = TaskActions.snapshot(task)
-        let placed: Bool = BlattDrop.place(items, on: date, goal: goal, weeks: weeks, modelContext: modelContext)
+        // Der Hinweis nur, wenn sich etwas geändert hat: ein Chip in seiner eigenen Zelle meldete
+        // sonst „Auf X gelegt" samt Rückgängig, ohne dass etwas geschehen war.
+        var changed = false
+        let placed = BlattDrop.place(items, on: date, goal: goal, weeks: weeks, modelContext: modelContext) { _ in
+            changed = true
+        }
         TaskDragEvents.end(taskID: id)
-        if placed {
-            let message = date.map { String(localized: "Auf \(AnkerDateFormat.weekdayLong($0)) gelegt") } ?? String(localized: "Ohne Tag gelegt")
+        if placed && changed {
+            let fallback = date.map { String(localized: "Auf \(AnkerDateFormat.weekdayLong($0)) gelegt") } ?? String(localized: "Ohne Tag gelegt")
+            let message = WeekDropSupport.message(for: task, in: sheet, fallback: fallback)
             undo.present(TaskUndoNotice(message: message, snapshots: [snapshot]))
         }
         return placed
@@ -672,6 +697,15 @@ enum WeekDropSupport {
     static func task(from items: [String], modelContext: ModelContext) -> AnkerTask? {
         guard let raw = items.first, let id = UUID(uuidString: raw) else { return nil }
         return try? modelContext.fetch(FetchDescriptor<AnkerTask>(predicate: #Predicate { $0.id == id })).first
+    }
+
+    /// Ohne Tag und ohne Anker liegt eine Aufgabe im Eingang — und den zeigt nur die laufende
+    /// Woche. In einer anderen Woche verschwand die Aufgabe deshalb mit „Ohne Anker gelegt";
+    /// der Hinweis sagt jetzt, wo sie ist.
+    @MainActor
+    static func message(for task: AnkerTask, in sheet: WeekSheet, fallback: String) -> String {
+        guard task.day == nil, task.linkedGoal == nil, !sheet.includesInbox else { return fallback }
+        return String(localized: "In den Eingang gelegt")
     }
 }
 
@@ -709,8 +743,9 @@ struct WeekColumns: View {
     @ViewBuilder
     private func dayLabel(for task: AnkerTask) -> some View {
         if let day = task.day {
-            let isToday = BlattDates.isToday(day.date, now: now)
-            Text(verbatim: isToday ? String(localized: "Heute") : AnkerDateFormat.weekdayShort(day.date))
+            let date = AnkerCalendar.nominalDate(of: day)
+            let isToday = BlattDates.isToday(date, now: now)
+            Text(verbatim: isToday ? String(localized: "Heute") : AnkerDateFormat.weekdayShort(date))
                 .ankerType(AnkerType.microLabel)
                 .foregroundStyle(isToday ? AnkerColor.accentInk : AnkerColor.inkSecond)
         } else {
@@ -771,11 +806,13 @@ struct WeekColumns: View {
         .contentShape(Rectangle())
         .dropDestination(for: String.self) { items, _ in
             guard let task = WeekDropSupport.task(from: items, modelContext: modelContext) else { return false }
+            TaskDragEvents.end(taskID: task.id)
+            guard task.linkedGoal?.id != lane.goal?.id else { return true }
             let snapshot = TaskActions.snapshot(task)
             TaskActions.link(task, to: lane.goal, modelContext: modelContext)
-            TaskDragEvents.end(taskID: task.id)
+            let fallback = lane.goal == nil ? String(localized: "Ohne Anker gelegt") : String(localized: "An Anker \(lane.numberLabel) gehängt")
             undo.present(TaskUndoNotice(
-                message: lane.goal == nil ? String(localized: "Ohne Anker gelegt") : String(localized: "An Anker \(lane.numberLabel) gehängt"),
+                message: WeekDropSupport.message(for: task, in: sheet, fallback: fallback),
                 snapshots: [snapshot]
             ))
             return true

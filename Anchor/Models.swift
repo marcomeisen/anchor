@@ -23,6 +23,12 @@ final class Goal {
     /// neueren Version auf einem aelteren Geraet nicht den Import bricht.
     var verdictRaw: String?
 
+    /// Wann der Anker angelegt wurde. Optional und additiv; Altbestand hat `nil` und gilt als
+    /// älter als alles mit Zeitpunkt. Entscheidet beim Zusammenführen den Gleichstand zwischen
+    /// echten und frischen Onboarding-Ankern — der Zeitpunkt kommt mit dem Datensatz an und ist
+    /// auf jedem Gerät gleich, anders als die lokal sichtbaren Aufgaben.
+    var createdAt: Date?
+
     var verdict: GoalVerdict? {
         get { verdictRaw.flatMap(GoalVerdict.init(rawValue:)) }
         set { verdictRaw = newValue?.rawValue }
@@ -43,6 +49,7 @@ final class Goal {
         self.colorHex = colorHex
         self.order = order
         self.week = week
+        self.createdAt = Date()
     }
 }
 
@@ -79,6 +86,16 @@ final class Week {
     var goalList: [Goal] { goals ?? [] }
     var dayList: [Day] { days ?? [] }
     var isReviewed: Bool { reviewedAt != nil }
+
+    /// Der gemeinte Montag als Mitternacht in **dieser** Zone — aus ISO-Jahr und -Woche, nicht
+    /// aus `monday`, das die Zone des anlegenden Geräts trägt.
+    var nominalMonday: Date {
+        AnkerCalendar.monday(isoYear: isoYear, isoWeek: isoWeek) ?? AnkerCalendar.nominalDate(ofStored: monday)
+    }
+
+    var nominalSunday: Date {
+        AnkerCalendar.iso.date(byAdding: .day, value: 6, to: nominalMonday) ?? AnkerCalendar.nominalDate(ofStored: sunday)
+    }
 
     func appendGoal(_ goal: Goal) {
         var existingGoals = goalList
@@ -118,6 +135,11 @@ final class Day {
 
     var notes: String?
 
+    /// Der gemeinte Kalendertag als `2026-11-23`. Optional und additiv: Altbestand und ältere
+    /// Versionen kommen ohne aus, dann gilt `AnkerCalendar.nominalDay(ofStored:)`. Geschrieben
+    /// beim Anlegen, damit ein Tag auch zwölf und mehr Zeitzonen weiter derselbe bleibt.
+    var dayKey: String?
+
     var taskList: [AnkerTask] { tasks ?? [] }
     var timeBlockList: [TimeBlock] { timeBlocks ?? [] }
 
@@ -132,13 +154,16 @@ final class Day {
         date: Date,
         focusNote: String? = nil,
         week: Week? = nil,
-        notes: String? = nil
+        notes: String? = nil,
+        dayKey: String? = nil
     ) {
         self.id = id
         self.date = date
         self.focusNote = focusNote
         self.week = week
         self.notes = notes
+        // Das anlegende Gerät kennt den gemeinten Tag sicher: `date` ist Mitternacht seiner Zone.
+        self.dayKey = dayKey ?? AnkerCalendar.dayKey(AnkerCalendar.nominalDay(ofStored: date))
     }
 }
 
@@ -206,14 +231,29 @@ nonisolated enum TaskRecurrence: String, CaseIterable, Identifiable, Sendable {
         }
     }
 
+    /// Liest den Rohtext einer Regel: `monthly` oder `monthly:31` (mit ursprünglichem Monatstag).
+    static func parse(_ raw: String) -> (rule: TaskRecurrence, monthDay: Int?)? {
+        let parts = raw.split(separator: ":", maxSplits: 1).map(String.init)
+        guard let first = parts.first, let rule = TaskRecurrence(rawValue: first) else { return nil }
+        guard parts.count == 2 else { return (rule, nil) }
+        guard rule == .monthly, let day = Int(parts[1]), (1...31).contains(day) else { return nil }
+        return (rule, day)
+    }
+
+    /// Der Rohtext, den die Folgeinstanz einer monatlichen Regel trägt. Der Monatstag steht nur
+    /// darin, wenn ein kürzerer Monat ihn kappen kann (29.–31.) — sonst bleibt es beim
+    /// schlichten `monthly`, das auch ältere Versionen verstehen.
+    static func monthlyRaw(monthDay: Int) -> String {
+        monthDay > 28 ? "\(TaskRecurrence.monthly.rawValue):\(monthDay)" : TaskRecurrence.monthly.rawValue
+    }
+
     /// Der naechste Termin nach dem Kalendertag `date` (Mitternacht in `calendar`).
     ///
     /// Werktags ueberspringt Samstag und Sonntag. Monatlich nimmt denselben Tag im Folgemonat,
-    /// in einem kuerzeren Monat dessen letzten Tag — `date(byAdding: .month)` klemmt genau so.
-    /// Grenze: die Kette merkt sich den urspruenglichen Monatstag nicht; nach einem 31. Januar
-    /// folgt der 28. Februar und danach der 28. Maerz. Ein Feld dafuer waere eine weitere
-    /// Schemaaenderung fuer einen seltenen Fall.
-    func nextDate(after date: Date, calendar: Calendar = AnkerCalendar.iso) -> Date {
+    /// in einem kuerzeren Monat dessen letzten Tag. `monthDay` ist der urspruengliche Monatstag
+    /// der Kette: nach dem 31. Januar folgt der 28. Februar und danach wieder der 31. Maerz —
+    /// ohne ihn klemmte die Kette dauerhaft auf den 28.
+    func nextDate(after date: Date, monthDay: Int? = nil, calendar: Calendar = AnkerCalendar.iso) -> Date {
         let start = calendar.startOfDay(for: date)
         let next: Date?
         switch self {
@@ -231,7 +271,15 @@ nonisolated enum TaskRecurrence: String, CaseIterable, Identifiable, Sendable {
         case .biweekly:
             next = calendar.date(byAdding: .day, value: 14, to: start)
         case .monthly:
-            next = calendar.date(byAdding: .month, value: 1, to: start)
+            let clamped = calendar.date(byAdding: .month, value: 1, to: start)
+            if let monthDay, let clamped,
+               let range = calendar.range(of: .day, in: .month, for: clamped) {
+                var components = calendar.dateComponents([.year, .month], from: clamped)
+                components.day = min(monthDay, range.upperBound - 1)
+                next = calendar.date(from: components) ?? clamped
+            } else {
+                next = clamped
+            }
         }
         return calendar.startOfDay(for: next ?? start)
     }
@@ -282,8 +330,13 @@ final class AnkerTask {
     }
 
     var recurrence: TaskRecurrence? {
-        get { recurrenceRaw.flatMap(TaskRecurrence.init(rawValue:)) }
+        get { recurrenceRaw.flatMap(TaskRecurrence.parse)?.rule }
         set { recurrenceRaw = newValue?.rawValue }
+    }
+
+    /// Der ursprüngliche Monatstag einer monatlichen Kette (`monthly:31`), sonst `nil`.
+    var recurrenceMonthDay: Int? {
+        recurrenceRaw.flatMap(TaskRecurrence.parse)?.monthDay
     }
 
     /// Bestbekannter Erledigungstag, mit Rueckfall auf den geplanten Tag fuer Altbestand.

@@ -315,7 +315,18 @@ struct TaskChip: View {
     }
 
     private var accessibilityText: String {
-        let anchor = number.map { String(localized: "Anker \($0)") } ?? String(localized: "Ohne Anker")
+        // Aus dem Anker selbst, nicht aus `number`: das Raster zeigt die Nummer nicht an (die Zeile
+        // ist der Anker) und übergibt keine — VoiceOver las dort jede Aufgabe als „Ohne Anker".
+        let anchor: String
+        if let goal = task.linkedGoal {
+            if let week = goal.week, let anchorNumber = GoalOrdering.anchorNumber(of: goal, in: week) {
+                anchor = String(localized: "Anker \(anchorNumber)")
+            } else {
+                anchor = goal.title
+            }
+        } else {
+            anchor = String(localized: "Ohne Anker")
+        }
         let base = task.isDone
             ? String(localized: "\(task.title), \(anchor), erledigt")
             : "\(task.title), \(anchor)"
@@ -354,11 +365,15 @@ struct TaskChip: View {
         Button("Aufgabe löschen", role: .destructive, action: delete)
     }
 
-    /// Derselbe Wochentag eine Woche später — ohne Tag der Montag der Folgewoche.
+    /// Derselbe Wochentag eine Woche später — ohne Tag der Montag der Folgewoche. Gerechnet ab der
+    /// Woche der Aufgabe (Tag, sonst Anker), nicht ab heute: im Raster einer späteren Woche ging
+    /// „nächste Woche" sonst rückwärts.
     private func moveToNextWeek() {
         let snapshot = TaskActions.snapshot(task)
-        let base = task.day?.date ?? Date()
-        let monday = AnkerCalendar.weekInterval(containing: base.addingTimeInterval(12 * 60 * 60)).monday
+        let base = task.day.map { AnkerCalendar.nominalDate(of: $0) }
+            ?? task.linkedGoal?.week?.nominalMonday
+            ?? Date()
+        let monday = AnkerCalendar.weekInterval(containing: base).monday
         guard let next = AnkerCalendar.iso.date(byAdding: .weekOfYear, value: 1, to: monday) else { return }
         TaskActions.move(task, toWeekStarting: next, weeks: [], modelContext: modelContext)
         onUndoableAction?(TaskUndoNotice(message: "In die nächste Woche verschoben", snapshots: [snapshot]))
@@ -451,6 +466,23 @@ struct BlattUndoBar: View {
     @ObservedObject var coordinator: TaskUndoCoordinator
     let weeks: [Week]
     @Environment(\.modelContext) private var modelContext
+    @ObservedObject private var shortcutOwner = UndoShortcutOwner.shared
+
+    private var ownsShortcut: Bool {
+        shortcutOwner.owner == ObjectIdentifier(coordinator)
+    }
+
+    /// ⌘Z beim Tippen gehört dem Textfeld: das Tastenkürzel eines Knopfs kommt vor dem
+    /// Bearbeiten-Menü an und nahm dem Feld sein eigenes Undo.
+    private func performUndo() {
+#if os(macOS)
+        if NSApp.keyWindow?.firstResponder is NSText {
+            NSApp.sendAction(Selector(("undo:")), to: nil, from: nil)
+            return
+        }
+#endif
+        coordinator.undo(weeks: weeks, modelContext: modelContext)
+    }
 
     var body: some View {
         if let notice = coordinator.notice {
@@ -465,7 +497,16 @@ struct BlattUndoBar: View {
                 .ankerType(AnkerType.label)
                 .foregroundStyle(AnkerColor.onInk)
                 .buttonStyle(.plain)
-                .keyboardShortcut("z", modifiers: .command)
+                .background {
+                    // Das Kürzel an einem unsichtbaren zweiten Knopf: der sichtbare macht immer das
+                    // Undo der Leiste, das Kürzel achtet auf ein tippendes Textfeld.
+                    if ownsShortcut {
+                        Button("Rückgängig", action: performUndo)
+                            .keyboardShortcut("z", modifiers: .command)
+                            .opacity(0)
+                            .accessibilityHidden(true)
+                    }
+                }
             }
             .padding(.horizontal, AnkerSpacing.s4)
             .frame(minHeight: 48)

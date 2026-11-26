@@ -119,6 +119,71 @@ nonisolated enum AnkerCalendar {
     static func weekKey(ofStored date: Date) -> WeekKey {
         weekKey(containing: date.addingTimeInterval(12 * 60 * 60))
     }
+
+    // MARK: - Tagesschlüssel
+
+    /// `2026-11-23` — der gemeinte Kalendertag als Text, unabhängig von jeder Zeitzone.
+    ///
+    /// Die Zwölf-Stunden-Regel von `nominalDay(ofStored:)` hält nur bei Zonenabständen unter
+    /// zwölf Stunden: ein Montag aus New York ist in Tokio Montag 14 Uhr, plus zwölf Stunden
+    /// Dienstag. `Day.dayKey` hält den Tag deshalb so fest, wie das anlegende Gerät ihn meinte.
+    static func dayKey(_ components: DateComponents) -> String? {
+        guard let year = components.year, let month = components.month, let day = components.day else { return nil }
+        return String(format: "%04d-%02d-%02d", year, month, day)
+    }
+
+    /// Der Schlüssel des Kalendertags von `date` in `calendar` — für „jetzt" und Ziele.
+    static func dayKey(of date: Date, calendar: Calendar = iso) -> String {
+        dayKey(calendar.dateComponents([.year, .month, .day], from: date)) ?? ""
+    }
+
+    static func components(ofDayKey key: String) -> DateComponents? {
+        let parts = key.split(separator: "-").compactMap { Int($0) }
+        guard parts.count == 3, (1...12).contains(parts[1]), (1...31).contains(parts[2]) else { return nil }
+        return DateComponents(year: parts[0], month: parts[1], day: parts[2])
+    }
+
+    /// Der gemeinte Tag eines gespeicherten `Day`: über `dayKey`, sonst die Zwölf-Stunden-Regel.
+    static func nominalDay(of day: Day, calendar: Calendar = iso) -> DateComponents {
+        if let key = day.dayKey, let components = components(ofDayKey: key) { return components }
+        return nominalDay(ofStored: day.date, calendar: calendar)
+    }
+
+    /// Wie `nominalDate(ofStored:)`, aber über `dayKey`, wenn vorhanden.
+    static func nominalDate(of day: Day, calendar: Calendar = iso) -> Date {
+        calendar.date(from: nominalDay(of: day, calendar: calendar)) ?? calendar.startOfDay(for: day.date)
+    }
+
+    /// Wie `storedDay(_:isOn:)`, aber über `dayKey`, wenn vorhanden.
+    static func storedDay(_ day: Day, isOn date: Date, calendar: Calendar = iso) -> Bool {
+        let target = calendar.dateComponents([.year, .month, .day], from: date)
+        let nominal = nominalDay(of: day, calendar: calendar)
+        return nominal.year == target.year && nominal.month == target.month && nominal.day == target.day
+    }
+
+    /// Der Schlüssel, den ein Altbestand-Tag ohne `dayKey` **eindeutig** bekommt — oder `nil`.
+    ///
+    /// Eindeutig ist er nur, wenn das Rohdatum höchstens ein paar Stunden neben Mitternacht
+    /// **dieser** Zone liegt: dann stammt der Tag aus einer nahen Zone, und die Zwölf-Stunden-
+    /// Regel trifft sicher. Liegt es näher an Mittag, kann der Tag aus einer Zone zwölf Stunden
+    /// oder mehr entfernt stammen — das bleibt offen, statt falsch festgeschrieben zu werden.
+    static func unambiguousDayKey(ofStored date: Date, calendar: Calendar = iso) -> String? {
+        let start = calendar.startOfDay(for: date)
+        let sinceMidnight = date.timeIntervalSince(start)
+        let distance = min(sinceMidnight, 24 * 60 * 60 - sinceMidnight)
+        guard distance < 6 * 60 * 60 else { return nil }
+        return dayKey(nominalDay(ofStored: date, calendar: calendar))
+    }
+
+    /// Der Montag einer ISO-Woche als Mitternacht in dieser Zone.
+    static func monday(isoYear: Int, isoWeek: Int, calendar: Calendar = iso) -> Date? {
+        guard isoYear > 0, isoWeek > 0 else { return nil }
+        var components = DateComponents()
+        components.yearForWeekOfYear = isoYear
+        components.weekOfYear = isoWeek
+        components.weekday = 2
+        return calendar.date(from: components).map { calendar.startOfDay(for: $0) }
+    }
 }
 
 /// Alle Datums- und Zeitformate der Oberflaeche an einer Stelle.
@@ -184,6 +249,11 @@ enum AnkerDateFormat {
     /// kann in eine andere Woche zeigen; der Wochentag allein sagte dann zu wenig.
     static func weekdayShortCommaDayMonth(_ date: Date) -> String {
         "\(weekdayShort(date)), \(dayMonth(date))"
+    }
+
+    /// `Do, 24.11.2027` — wie oben, mit Jahr: für Tage in einem anderen Jahr.
+    static func weekdayShortCommaDayMonthYear(_ date: Date) -> String {
+        "\(weekdayShort(date)), \(dayMonthYear(date))"
     }
 
     /// `Montag, 3. August` — die ausgeschriebene Form fuer Titel und Accessibility-Labels.
