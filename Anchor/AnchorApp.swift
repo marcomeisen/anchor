@@ -394,6 +394,10 @@ struct AnchorApp: App {
 #if os(macOS)
         // „Blatt" zeichnet seinen eigenen Fensterkopf; die Ampelknöpfe liegen darüber.
         .windowStyle(.hiddenTitleBar)
+        // Das Fenster erscheint bei jedem Start, auch wenn die Wiederherstellung keins
+        // mitbringt. Ohne das startete die App zeitweise ganz ohne Fenster, nur mit
+        // Menüleiste — unter XCUITest bei jedem Lauf.
+        .defaultLaunchBehavior(.presented)
         .defaultSize(width: 1280, height: 820)
         // Die Mindestgröße kommt aus dem Inhalt — Seitenleiste plus lesbares Raster.
         .windowResizability(.contentMinSize)

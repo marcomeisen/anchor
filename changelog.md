@@ -2,6 +2,7 @@
 
 ## 2026-11-26
 
+- **Das Mac-Fenster erscheint bei jedem Start.** Die App startete zeitweise ohne Fenster, nur mit Menüleiste — unter XCUITest bei jedem Lauf, sodass vier UI-Tests das Onboarding nicht fanden. Das Hauptfenster wird jetzt beim Start immer gezeigt; die Mac-UI-Suite ist wieder 9 von 9 grün.
 - **Testlauf im Testmodus.** Der Startbildschirm-Test lief ohne `-AnchoritUITest` gegen den echten Store und das echte iCloud und legte ein Bildschirmfoto davon ins Ergebnis; im unsignierten Simulator stürzte er beim iCloud-Zugriff ab. Er startet jetzt mit Testmodus und Beispieldaten. Die Mac-UI-Tests passen wieder zur App („wichtig“ statt „Prio A“, Titel über die zusammengefasste Karte) und laufen nur noch auf macOS. Neu ist ein Test, der einen Anker löscht.
 - **Tagesdetail behält den richtigen Tag.** Beim Sprung auf einen anderen Tag (Suche, Mitternacht) standen Fokus und Notiz des alten Tages da und wurden in den neuen gesichert. Der alte Tag wird jetzt gesichert, dann werden die Entwürfe neu geladen.
 - **Einplanen auf dem iPhone:** Die gewählte Aufgabe hängt an ihrer Kennung. Wird sie gelöscht, löst sich die Auswahl auf, statt auf ein gelöschtes Modell zu zeigen; beim Wechsel der Woche wird sie zurückgesetzt, statt die Aufgabe still in die fremde Woche zu legen.

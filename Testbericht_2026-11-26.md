@@ -179,6 +179,7 @@ einige **Interaktionen auf dem iPhone**.
   - Nach der ersten Datenänderung (Aufgabe erfasst) reagiert das Band wieder. Ein Klick ins Erfassungsfeld oder ein Wechsel nach „Woche“ und zurück hilft nicht.
   - Das Band liegt genau auf der Höhe des ersten Onboarding-Felds (y 97–119 gegenüber Zellmitte 110). Den Fokus im Onboarding vor dem Abschluss zu lösen (`focusedSlot = nil`), behebt es aber nicht.
 - **Nächster Schritt:** Prüfen, ob ein Überbleibsel des Onboardings (Textfeld, Fokusbereich) im neu aufgebauten Fensterinhalt Klicks schluckt. Zum Beispiel das Fenster nach dem Onboarding über `.id` neu aufbauen, `makeFirstResponder(nil)` aufrufen, oder die Zeile anders anordnen und vergleichen. Jeder Versuch braucht einen Mac-UI-Lauf; die weiteren Läufe hat der Nutzer in dieser Runde abgelehnt. Der Test `testDeletingAnAnchorLeavesItsScreen` legt deshalb weiter zuerst eine Aufgabe an.
+- **Nachtrag (UI-Läufe am Nachmittag):** Ausprobiert und **ohne Wirkung**: den Fensterinhalt nach dem Onboarding über `.id(needsOnboarding)` neu aufbauen, `makeFirstResponder(nil)` nach dem Wechsel, vorher in die Erfassungszeile klicken. Im Bedienungsbaum liegt über der Zellmitte nichts außer der Zelle selbst; kein Textfeld des Onboardings ist übrig. Es hilft nur, dass eine Aufgabe dazukommt. Offene Spur: Was ändert sich an der Zelle oder an „Heute“, wenn `lane.tasks` von 0 auf 1 geht (Leerhinweis statt Aufgabenliste, `AnkerPips` mit 0 Punkten)?
 
 ---
 
